@@ -6,9 +6,10 @@ import { usePaperFormStore } from '@/stores/paperFormStore';
 
 interface InitialSelectorProps {
   className?: string;
+  onInitialChange?: (initial: string) => void;
 }
 
-export function InitialSelector({ className = '' }: InitialSelectorProps) {
+export function InitialSelector({ className = '', onInitialChange }: InitialSelectorProps) {
   const { getActiveInitials } = useInitialsStore();
   const { selectedInitial, setSelectedInitial } = usePaperFormStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -16,7 +17,11 @@ export function InitialSelector({ className = '' }: InitialSelectorProps) {
   const activeInitials = getActiveInitials();
 
   const handleInitialSelect = (initial: string) => {
-    setSelectedInitial(initial);
+    if (onInitialChange) {
+      onInitialChange(initial);
+    } else {
+      setSelectedInitial(initial);
+    }
     setIsOpen(false);
   };
 

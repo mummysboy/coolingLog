@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import { useInitialsStore } from '@/stores/initialsStore';
+import { usePinStore } from '@/stores/pinStore';
 import { MOCK_USERS } from '@/lib/types';
 import { PaperFormEntry } from '@/lib/paperFormTypes';
 import { PaperForm } from '@/components/PaperForm';
@@ -11,11 +12,14 @@ import { getFormValidationSummary } from '@/lib/validation';
 export default function AdminDashboard() {
   const { savedForms, currentForm, loadForm, updateFormStatus, deleteForm, isFormBlank } = usePaperFormStore();
   const { initials, addInitial, removeInitial, toggleInitialStatus } = useInitialsStore();
+  const { createPin, updatePin, deletePin, getAllPins, getPinForInitials } = usePinStore();
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
   const [showInitialModal, setShowInitialModal] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [newInitialData, setNewInitialData] = useState({ initials: '', name: '' });
+  const [pinModalData, setPinModalData] = useState({ initials: '', pin: '', isEdit: false });
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
 
   const adminUser = MOCK_USERS.find(user => user.role === 'admin');
@@ -51,7 +55,67 @@ export default function AdminDashboard() {
 
   const handleRemoveInitial = (id: string) => {
     if (confirm('Are you sure you want to remove this initial? This action cannot be undone.')) {
+      const initial = initials.find(i => i.id === id);
+      if (initial) {
+        // Also remove PIN if it exists
+        deletePin(initial.initials);
+      }
       removeInitial(id);
+    }
+  };
+
+  // PIN Management Functions
+  const handleCreatePin = (initials: string) => {
+    setPinModalData({ initials, pin: '', isEdit: false });
+    setShowPinModal(true);
+  };
+
+  const handleEditPin = (initials: string) => {
+    const existingPin = getPinForInitials(initials);
+    setPinModalData({ 
+      initials, 
+      pin: existingPin?.pin || '', 
+      isEdit: true 
+    });
+    setShowPinModal(true);
+  };
+
+  const handleDeletePin = (initials: string) => {
+    if (confirm(`Are you sure you want to delete the PIN for "${initials}"? This will prevent them from accessing their forms.`)) {
+      deletePin(initials);
+    }
+  };
+
+  const handlePinSubmit = () => {
+    const { initials: targetInitials, pin, isEdit } = pinModalData;
+    
+    if (!targetInitials.trim() || !pin.trim()) {
+      alert('Please enter both initials and PIN');
+      return;
+    }
+
+    if (!/^\d{4}$/.test(pin)) {
+      alert('PIN must be exactly 4 digits');
+      return;
+    }
+
+    if (!adminUser) {
+      alert('Admin user not found');
+      return;
+    }
+
+    let success = false;
+    if (isEdit) {
+      success = updatePin(targetInitials, pin, adminUser.initials);
+    } else {
+      success = createPin(targetInitials, pin, adminUser.initials);
+    }
+
+    if (success) {
+      setShowPinModal(false);
+      setPinModalData({ initials: '', pin: '', isEdit: false });
+    } else {
+      alert(isEdit ? 'Failed to update PIN' : 'Failed to create PIN. PIN may already exist.');
     }
   };
 
@@ -509,48 +573,105 @@ export default function AdminDashboard() {
                     
                     <div className="border-t border-gray-100 mt-1">
                       <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        PIN Management
+                      </div>
+                    </div>
+                    
+                    <div className="border-t border-gray-100 mt-1">
+                      <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         Current Initials ({initials.filter(i => i.isActive).length} active)
                       </div>
                       <div className="max-h-48 overflow-y-auto">
-                        {initials.map((initial) => (
-                          <div key={initial.id} className="px-4 py-2 hover:bg-gray-50">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-sm font-medium text-gray-900">{initial.initials}</span>
-                                  <span className={`px-1.5 py-0.5 text-xs rounded-full ${initial.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                    {initial.isActive ? 'Active' : 'Inactive'}
-                                  </span>
+                        {initials.map((initial) => {
+                          const hasPin = getPinForInitials(initial.initials) !== null;
+                          
+                          return (
+                            <div key={initial.id} className="px-4 py-2 hover:bg-gray-50">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-medium text-gray-900">{initial.initials}</span>
+                                    <span className={`px-1.5 py-0.5 text-xs rounded-full ${initial.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                      {initial.isActive ? 'Active' : 'Inactive'}
+                                    </span>
+                                    <span className={`px-1.5 py-0.5 text-xs rounded-full ${hasPin ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                      {hasPin ? 'PIN Set' : 'No PIN'}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-gray-500">{initial.name}</div>
                                 </div>
-                                <div className="text-xs text-gray-500">{initial.name}</div>
-                              </div>
-                              <div className="flex space-x-1">
-                                <button
-                                  onClick={() => toggleInitialStatus(initial.id)}
-                                  className={`p-1 rounded text-xs ${initial.isActive ? 'text-yellow-600 hover:bg-yellow-50' : 'text-green-600 hover:bg-green-50'}`}
-                                  title={initial.isActive ? 'Deactivate' : 'Activate'}
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    {initial.isActive ? (
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9V6a4 4 0 118 0v3M5 12h14l-1 7H6l-1-7z" />
-                                    ) : (
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                                    )}
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={() => handleRemoveInitial(initial.id)}
-                                  className="p-1 text-red-600 hover:bg-red-50 rounded text-xs"
-                                  title="Delete"
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
+                                <div className="flex space-x-1">
+                                  {/* PIN Management Buttons */}
+                                  {hasPin ? (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          handleEditPin(initial.initials);
+                                          setShowSettingsDropdown(false);
+                                        }}
+                                        className="p-1 text-blue-600 hover:bg-blue-50 rounded text-xs"
+                                        title="Edit PIN"
+                                      >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          handleDeletePin(initial.initials);
+                                          setShowSettingsDropdown(false);
+                                        }}
+                                        className="p-1 text-orange-600 hover:bg-orange-50 rounded text-xs"
+                                        title="Delete PIN"
+                                      >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        handleCreatePin(initial.initials);
+                                        setShowSettingsDropdown(false);
+                                      }}
+                                      className="p-1 text-green-600 hover:bg-green-50 rounded text-xs"
+                                      title="Create PIN"
+                                    >
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                      </svg>
+                                    </button>
+                                  )}
+                                  
+                                  {/* Existing Buttons */}
+                                  <button
+                                    onClick={() => toggleInitialStatus(initial.id)}
+                                    className={`p-1 rounded text-xs ${initial.isActive ? 'text-yellow-600 hover:bg-yellow-50' : 'text-green-600 hover:bg-green-50'}`}
+                                    title={initial.isActive ? 'Deactivate' : 'Activate'}
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      {initial.isActive ? (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9V6a4 4 0 118 0v3M5 12h14l-1 7H6l-1-7z" />
+                                      ) : (
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                                      )}
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={() => handleRemoveInitial(initial.id)}
+                                    className="p-1 text-red-600 hover:bg-red-50 rounded text-xs"
+                                    title="Delete"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -765,6 +886,80 @@ export default function AdminDashboard() {
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Add Initial
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PIN Management Modal */}
+      {showPinModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h3 className="text-xl font-semibold">
+                {pinModalData.isEdit ? 'Edit PIN' : 'Create PIN'} for {pinModalData.initials}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowPinModal(false);
+                  setPinModalData({ initials: '', pin: '', isEdit: false });
+                }}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  4-Digit PIN
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={pinModalData.pin}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, ''); // Only digits
+                    setPinModalData(prev => ({ ...prev, pin: value }));
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-center text-xl font-mono tracking-widest"
+                  placeholder="••••"
+                />
+                <p className="text-xs text-gray-500 mt-1">Enter exactly 4 digits</p>
+              </div>
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <div className="flex items-start space-x-2">
+                  <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <div className="text-sm text-yellow-800">
+                    <p className="font-medium">Security Notice:</p>
+                    <p>This PIN will be required to access forms for this initial. Share it securely with the user.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 p-6 border-t">
+              <button
+                onClick={() => {
+                  setShowPinModal(false);
+                  setPinModalData({ initials: '', pin: '', isEdit: false });
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePinSubmit}
+                disabled={pinModalData.pin.length !== 4}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {pinModalData.isEdit ? 'Update PIN' : 'Create PIN'}
               </button>
             </div>
           </div>
