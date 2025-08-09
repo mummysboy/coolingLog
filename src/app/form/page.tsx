@@ -59,7 +59,7 @@ export default function FormPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8"></div>
+    <div className="min-h-screen bg-gray-50 py-8">
       {/* Header with Initial Selector */}
       <div className="max-w-7xl mx-auto px-4 mb-6">
         <div className="flex justify-between items-start">
