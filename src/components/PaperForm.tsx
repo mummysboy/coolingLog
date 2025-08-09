@@ -1,14 +1,32 @@
 'use client';
 
 import { usePaperFormStore } from '@/stores/paperFormStore';
+import { PaperFormEntry } from '@/lib/paperFormTypes';
 
-export function PaperForm() {
+interface PaperFormProps {
+  formData?: PaperFormEntry;
+  readOnly?: boolean;
+  onSave?: () => void;
+}
+
+export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps = {}) {
   const { currentForm, updateEntry, updateFormField, saveForm } = usePaperFormStore();
 
-  if (!currentForm) return null;
+  // Use provided formData or fall back to currentForm from store
+  const form = formData || currentForm;
+
+  if (!form) return null;
 
   const handleCellChange = (rowIndex: number, field: string, value: string) => {
-    updateEntry(rowIndex, field, value);
+    if (!readOnly) {
+      updateEntry(rowIndex, field, value);
+    }
+  };
+
+  const handleFormFieldChange = (field: string, value: any) => {
+    if (!readOnly) {
+      updateFormField(field, value);
+    }
   };
 
   return (
@@ -18,19 +36,16 @@ export function PaperForm() {
         <div className="bg-gray-100 p-4 text-center">
           <h1 className="text-xl font-bold">Cooking and Cooling for Meat & Non Meat Ingredients</h1>
         </div>
-        <div className="p-4 flex justify-between items-center">
+        <div className="p-4">
           <div>
             <span className="font-semibold">Date: </span>
             <input
               type="date"
-              value={currentForm.date.toISOString().split('T')[0]}
-              onChange={(e) => updateFormField('date', new Date(e.target.value))}
+              value={form.date.toISOString().split('T')[0]}
+              onChange={(e) => handleFormFieldChange('date', new Date(e.target.value))}
               className="border-b border-black bg-transparent"
+              readOnly={readOnly}
             />
-          </div>
-          <div className="text-right">
-            <div>Modified 05/01/24</div>
-            <div>Previous 05/15/24</div>
           </div>
         </div>
       </div>
@@ -107,7 +122,7 @@ export function PaperForm() {
           
           {/* Data Rows */}
           <tbody>
-            {currentForm.entries.map((entry, rowIndex) => (
+            {form.entries.map((entry, rowIndex) => (
               <tr key={rowIndex} className={rowIndex === 5 ? 'border-t-4 border-black' : ''}>
                 {/* Row number and type */}
                 <td className="border border-black p-1 text-center">
@@ -118,12 +133,9 @@ export function PaperForm() {
                     onChange={(e) => handleCellChange(rowIndex, 'type', e.target.value)}
                     className="w-full text-xs mt-1 border-0 bg-transparent text-center"
                     placeholder="Type"
+                    readOnly={readOnly}
                   />
-                  {rowIndex === 5 && (
-                    <div className="text-xs mt-2 font-semibold">
-                      LAST RACK/BATCH of Production Day
-                    </div>
-                  )}
+
                 </td>
 
                 {/* CCP 1 */}
@@ -135,12 +147,14 @@ export function PaperForm() {
                       onChange={(e) => handleCellChange(rowIndex, 'ccp1.temp', e.target.value)}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="°F"
+                      readOnly={readOnly}
                     />
                     <input
                       type="time"
                       value={entry.ccp1.time}
                       onChange={(e) => handleCellChange(rowIndex, 'ccp1.time', e.target.value)}
                       className="w-full text-xs border-0 bg-transparent"
+                      readOnly={readOnly}
                     />
                     <input
                       type="text"
@@ -149,6 +163,7 @@ export function PaperForm() {
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
+                      readOnly={readOnly}
                     />
                   </div>
                 </td>
@@ -162,12 +177,14 @@ export function PaperForm() {
                       onChange={(e) => handleCellChange(rowIndex, 'ccp2.temp', e.target.value)}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="°F"
+                      readOnly={readOnly}
                     />
                     <input
                       type="time"
                       value={entry.ccp2.time}
                       onChange={(e) => handleCellChange(rowIndex, 'ccp2.time', e.target.value)}
                       className="w-full text-xs border-0 bg-transparent"
+                      readOnly={readOnly}
                     />
                     <input
                       type="text"
@@ -176,6 +193,7 @@ export function PaperForm() {
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
+                      readOnly={readOnly}
                     />
                   </div>
                 </td>
@@ -189,12 +207,14 @@ export function PaperForm() {
                       onChange={(e) => handleCellChange(rowIndex, 'coolingTo80.temp', e.target.value)}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="°F"
+                      readOnly={readOnly}
                     />
                     <input
                       type="time"
                       value={entry.coolingTo80.time}
                       onChange={(e) => handleCellChange(rowIndex, 'coolingTo80.time', e.target.value)}
                       className="w-full text-xs border-0 bg-transparent"
+                      readOnly={readOnly}
                     />
                     <input
                       type="text"
@@ -203,6 +223,7 @@ export function PaperForm() {
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
+                      readOnly={readOnly}
                     />
                   </div>
                 </td>
@@ -216,12 +237,14 @@ export function PaperForm() {
                       onChange={(e) => handleCellChange(rowIndex, 'coolingTo54.temp', e.target.value)}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="°F"
+                      readOnly={readOnly}
                     />
                     <input
                       type="time"
                       value={entry.coolingTo54.time}
                       onChange={(e) => handleCellChange(rowIndex, 'coolingTo54.time', e.target.value)}
                       className="w-full text-xs border-0 bg-transparent"
+                      readOnly={readOnly}
                     />
                     <input
                       type="text"
@@ -230,6 +253,7 @@ export function PaperForm() {
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
+                      readOnly={readOnly}
                     />
                   </div>
                 </td>
@@ -243,12 +267,14 @@ export function PaperForm() {
                       onChange={(e) => handleCellChange(rowIndex, 'finalChill.temp', e.target.value)}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="°F"
+                      readOnly={readOnly}
                     />
                     <input
                       type="time"
                       value={entry.finalChill.time}
                       onChange={(e) => handleCellChange(rowIndex, 'finalChill.time', e.target.value)}
                       className="w-full text-xs border-0 bg-transparent"
+                      readOnly={readOnly}
                     />
                     <input
                       type="text"
@@ -257,6 +283,7 @@ export function PaperForm() {
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
+                      readOnly={readOnly}
                     />
                   </div>
                 </td>
@@ -276,10 +303,11 @@ export function PaperForm() {
               <span className="font-semibold">Thermometer #</span>
               <input
                 type="text"
-                value={currentForm.thermometerNumber}
-                onChange={(e) => updateFormField('thermometerNumber', e.target.value)}
+                value={form.thermometerNumber}
+                onChange={(e) => handleFormFieldChange('thermometerNumber', e.target.value)}
                 className="ml-2 border-b border-black bg-transparent"
                 placeholder="Enter thermometer number"
+                readOnly={readOnly}
               />
             </div>
             
@@ -299,25 +327,28 @@ export function PaperForm() {
                   <td className="border border-black p-1">
                     <input
                       type="text"
-                      value={currentForm.lotNumbers.beef}
-                      onChange={(e) => updateFormField('lotNumbers.beef', e.target.value)}
+                      value={form.lotNumbers.beef}
+                      onChange={(e) => handleFormFieldChange('lotNumbers.beef', e.target.value)}
                       className="w-full border-0 bg-transparent text-sm"
+                      readOnly={readOnly}
                     />
                   </td>
                   <td className="border border-black p-1">
                     <input
                       type="text"
-                      value={currentForm.lotNumbers.chicken}
-                      onChange={(e) => updateFormField('lotNumbers.chicken', e.target.value)}
+                      value={form.lotNumbers.chicken}
+                      onChange={(e) => handleFormFieldChange('lotNumbers.chicken', e.target.value)}
                       className="w-full border-0 bg-transparent text-sm"
+                      readOnly={readOnly}
                     />
                   </td>
                   <td className="border border-black p-1">
                     <input
                       type="text"
-                      value={currentForm.lotNumbers.liquidEggs}
-                      onChange={(e) => updateFormField('lotNumbers.liquidEggs', e.target.value)}
+                      value={form.lotNumbers.liquidEggs}
+                      onChange={(e) => handleFormFieldChange('lotNumbers.liquidEggs', e.target.value)}
                       className="w-full border-0 bg-transparent text-sm"
+                      readOnly={readOnly}
                     />
                   </td>
                 </tr>
@@ -329,24 +360,32 @@ export function PaperForm() {
           <div className="p-4">
             <h3 className="font-semibold mb-2">Corrective Actions & comments:</h3>
             <textarea
-              value={currentForm.correctiveActionsComments}
-              onChange={(e) => updateFormField('correctiveActionsComments', e.target.value)}
+              value={form.correctiveActionsComments}
+              onChange={(e) => handleFormFieldChange('correctiveActionsComments', e.target.value)}
               className="w-full h-32 border border-gray-300 p-2 text-sm resize-none"
               placeholder="Enter any corrective actions taken or additional comments..."
+              readOnly={readOnly}
             />
           </div>
         </div>
       </div>
 
       {/* Save Button */}
-      <div className="mt-4 text-center">
-        <button
-          onClick={saveForm}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-        >
-          Save Form
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => {
+              saveForm();
+              if (onSave) {
+                onSave();
+              }
+            }}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            Save Form
+          </button>
+        </div>
+      )}
     </div>
   );
 }

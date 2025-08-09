@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import { MOCK_USERS } from '@/lib/types';
 import { PaperFormEntry } from '@/lib/paperFormTypes';
+import { PaperForm } from '@/components/PaperForm';
 
 export default function AdminDashboard() {
-  const { savedForms, currentForm } = usePaperFormStore();
+  const { savedForms, currentForm, loadForm } = usePaperFormStore();
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
 
@@ -15,6 +16,8 @@ export default function AdminDashboard() {
   const handleViewForm = (form: PaperFormEntry) => {
     setSelectedForm(form);
     setShowFormModal(true);
+    // Load the selected form into the store for editing
+    loadForm(form.id);
   };
 
   const hasCompleteData = (form: PaperFormEntry) => {
@@ -203,84 +206,20 @@ export default function AdminDashboard() {
 
       {/* Form Details Modal */}
       {showFormModal && selectedForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 m-4 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-semibold">Form Details</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-50 rounded-2xl w-full h-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-4 bg-white border-b">
+              <h3 className="text-xl font-semibold">Edit Form - {new Date(selectedForm.date).toLocaleDateString()}</h3>
               <button
                 onClick={() => setShowFormModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 text-2xl"
               >
                 ✕
               </button>
             </div>
             
-            {/* Form Summary */}
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <h4 className="font-medium mb-2">Form Summary</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><strong>Form ID:</strong> {selectedForm.id}</div>
-                <div><strong>Date:</strong> {new Date(selectedForm.date).toLocaleDateString()}</div>
-                <div><strong>Thermometer:</strong> {selectedForm.thermometerNumber || 'Not set'}</div>
-                <div><strong>Status:</strong> {getFormStatus(selectedForm)}</div>
-              </div>
-            </div>
-
-            {/* Ingredients & Lot Numbers */}
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <h4 className="font-medium mb-2">Ingredients & Lot Numbers</h4>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div><strong>Beef:</strong> {selectedForm.ingredients.beef || 'N/A'} (Lot: {selectedForm.lotNumbers.beef || 'N/A'})</div>
-                <div><strong>Chicken:</strong> {selectedForm.ingredients.chicken || 'N/A'} (Lot: {selectedForm.lotNumbers.chicken || 'N/A'})</div>
-                <div><strong>Liquid Eggs:</strong> {selectedForm.ingredients.liquidEggs || 'N/A'} (Lot: {selectedForm.lotNumbers.liquidEggs || 'N/A'})</div>
-              </div>
-            </div>
-
-            {/* Form Entries */}
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <h4 className="font-medium mb-2">Temperature Entries</h4>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-xs">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-1">Product</th>
-                      <th className="text-left p-1">CCP1</th>
-                      <th className="text-left p-1">CCP2</th>
-                      <th className="text-left p-1">80°F</th>
-                      <th className="text-left p-1">54°F</th>
-                      <th className="text-left p-1">39°F</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedForm.entries.map((entry, index) => (
-                      <tr key={index} className="border-b">
-                        <td className="p-1">{entry.type || '-'}</td>
-                        <td className="p-1">{entry.ccp1.temp}°F {entry.ccp1.time} ({entry.ccp1.initial})</td>
-                        <td className="p-1">{entry.ccp2.temp}°F {entry.ccp2.time} ({entry.ccp2.initial})</td>
-                        <td className="p-1">{entry.coolingTo80.temp}°F {entry.coolingTo80.time} ({entry.coolingTo80.initial})</td>
-                        <td className="p-1">{entry.coolingTo54.temp}°F {entry.coolingTo54.time} ({entry.coolingTo54.initial})</td>
-                        <td className="p-1">{entry.finalChill.temp}°F {entry.finalChill.time} ({entry.finalChill.initial})</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {selectedForm.correctiveActionsComments && (
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <h4 className="font-medium mb-2">Corrective Actions Comments</h4>
-                <p className="text-sm">{selectedForm.correctiveActionsComments}</p>
-              </div>
-            )}
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowFormModal(false)}
-                className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
-              >
-                Close
-              </button>
+            <div className="flex-1 overflow-y-auto">
+              <PaperForm onSave={() => setShowFormModal(false)} />
             </div>
           </div>
         </div>
