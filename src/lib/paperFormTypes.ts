@@ -3,6 +3,7 @@
 export interface PaperFormEntry {
   id: string;
   date: Date;
+  formInitial: string; // The initial this form is associated with
   
   // Row entries (1-9)
   entries: PaperFormRow[];
@@ -70,9 +71,10 @@ export const EMPTY_ROW: PaperFormRow = {
   finalChill: { temp: '', time: '', initial: '' },
 };
 
-export const createEmptyForm = (): PaperFormEntry => ({
+export const createEmptyForm = (formInitial: string = ''): PaperFormEntry => ({
   id: `form-${Date.now()}`,
   date: new Date(),
+  formInitial,
   entries: Array(9).fill(null).map(() => ({ ...EMPTY_ROW })),
   thermometerNumber: '',
   ingredients: {

@@ -5,13 +5,17 @@ import { PaperFormEntry, createEmptyForm } from '@/lib/paperFormTypes';
 interface PaperFormStore {
   currentForm: PaperFormEntry | null;
   savedForms: PaperFormEntry[];
+  selectedInitial: string;
   
   // Actions
-  createNewForm: () => void;
+  createNewForm: (initial?: string) => void;
   updateEntry: (rowIndex: number, field: string, value: string) => void;
   updateFormField: (field: string, value: any) => void;
   saveForm: () => void;
   loadForm: (id: string) => void;
+  setSelectedInitial: (initial: string) => void;
+  getFormsByInitial: (initial: string) => PaperFormEntry[];
+  getFormsForCurrentInitial: () => PaperFormEntry[];
 }
 
 export const usePaperFormStore = create<PaperFormStore>()(
@@ -19,9 +23,12 @@ export const usePaperFormStore = create<PaperFormStore>()(
     (set, get) => ({
       currentForm: null,
       savedForms: [],
+      selectedInitial: '',
 
-      createNewForm: () => {
-        const newForm = createEmptyForm();
+      createNewForm: (initial) => {
+        const { selectedInitial } = get();
+        const formInitial = initial || selectedInitial;
+        const newForm = createEmptyForm(formInitial);
         set({ currentForm: newForm });
       },
 
@@ -103,10 +110,24 @@ export const usePaperFormStore = create<PaperFormStore>()(
           set({ currentForm: form });
         }
       },
+
+      setSelectedInitial: (initial) => {
+        set({ selectedInitial: initial });
+      },
+
+      getFormsByInitial: (initial) => {
+        const { savedForms } = get();
+        return savedForms.filter(form => form.formInitial === initial);
+      },
+
+      getFormsForCurrentInitial: () => {
+        const { savedForms, selectedInitial } = get();
+        return savedForms.filter(form => form.formInitial === selectedInitial);
+      },
     }),
     {
       name: 'paper-form-storage',
-      partialize: (state) => ({ savedForms: state.savedForms }),
+      partialize: (state) => ({ savedForms: state.savedForms, selectedInitial: state.selectedInitial }),
       onRehydrateStorage: () => (state) => {
         if (state?.savedForms) {
           // Convert date strings back to Date objects

@@ -164,6 +164,15 @@ export const MOCK_THRESHOLDS: StageThresholds = {
   finalMax: 39,
 };
 
+export interface InitialEntry {
+  id: string;
+  initials: string;
+  name: string;
+  isActive: boolean;
+  createdAt: Date;
+  createdBy: string;
+}
+
 export const MOCK_USERS: User[] = [
   {
     id: 'emp001',
@@ -188,6 +197,33 @@ export const MOCK_USERS: User[] = [
     role: 'admin',
     certificationNumber: 'FS-2024-ADM-001',
     email: 'maria.johnson@restaurant.com',
+  },
+];
+
+export const MOCK_INITIALS: InitialEntry[] = [
+  {
+    id: 'init001',
+    initials: 'AB',
+    name: 'Alice Baker',
+    isActive: true,
+    createdAt: new Date('2024-01-01'),
+    createdBy: 'MJ',
+  },
+  {
+    id: 'init002',
+    initials: 'JS',
+    name: 'John Smith',
+    isActive: true,
+    createdAt: new Date('2024-01-01'),
+    createdBy: 'MJ',
+  },
+  {
+    id: 'init003',
+    initials: 'MJ',
+    name: 'Maria Johnson',
+    isActive: true,
+    createdAt: new Date('2024-01-01'),
+    createdBy: 'MJ',
   },
 ];
 
