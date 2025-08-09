@@ -26,7 +26,7 @@ export function StageStepper() {
     const currentStageIndex = STAGE_CONFIGS.findIndex(s => s.id === currentLog.currentStage);
 
     if (stage.isValid === false) return 'failed';
-    if (stage.temperature !== undefined && stage.time !== undefined && stage.isValid !== false) return 'completed';
+    if (stage.temperature !== undefined && stage.time !== undefined && stage.isValid === true) return 'completed';
     if (stageIndex === currentStageIndex) return 'active';
     if (stageIndex < currentStageIndex) return 'completed';
     return 'pending';

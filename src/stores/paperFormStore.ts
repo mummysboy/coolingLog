@@ -33,10 +33,12 @@ export const usePaperFormStore = create<PaperFormStore>()(
         const [section, subField] = field.split('.');
         
         if (subField) {
+          const entry = updatedEntries[rowIndex];
+          const sectionData = entry[section as keyof typeof entry] as any;
           updatedEntries[rowIndex] = {
-            ...updatedEntries[rowIndex],
+            ...entry,
             [section]: {
-              ...updatedEntries[rowIndex][section as keyof typeof updatedEntries[rowIndex]],
+              ...sectionData,
               [subField]: value,
             },
           };
@@ -62,11 +64,12 @@ export const usePaperFormStore = create<PaperFormStore>()(
         // Handle nested fields like ingredients.beef or lotNumbers.chicken
         if (field.includes('.')) {
           const [mainField, subField] = field.split('.');
+          const mainFieldData = currentForm[mainField as keyof PaperFormEntry] as any;
           set({
             currentForm: {
               ...currentForm,
               [mainField]: {
-                ...currentForm[mainField as keyof PaperFormEntry],
+                ...mainFieldData,
                 [subField]: value,
               },
             },
@@ -104,6 +107,15 @@ export const usePaperFormStore = create<PaperFormStore>()(
     {
       name: 'paper-form-storage',
       partialize: (state) => ({ savedForms: state.savedForms }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.savedForms) {
+          // Convert date strings back to Date objects
+          state.savedForms = state.savedForms.map(form => ({
+            ...form,
+            date: new Date(form.date),
+          }));
+        }
+      },
     }
   )
 );

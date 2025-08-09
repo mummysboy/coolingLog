@@ -35,15 +35,28 @@ class StorageManager {
     const logsWithDates = logs.map(log => ({
       ...log,
       date: new Date(log.date),
-      stages: Object.fromEntries(
-        Object.entries(log.stages).map(([key, stage]) => [
-          key,
-          {
-            ...stage,
-            time: stage.time ? new Date(stage.time) : stage.time,
-          },
-        ])
-      ),
+      stages: {
+        cook: {
+          ...log.stages.cook,
+          time: log.stages.cook.time ? new Date(log.stages.cook.time) : log.stages.cook.time,
+        },
+        startCooling: {
+          ...log.stages.startCooling,
+          time: log.stages.startCooling.time ? new Date(log.stages.startCooling.time) : log.stages.startCooling.time,
+        },
+        to80: {
+          ...log.stages.to80,
+          time: log.stages.to80.time ? new Date(log.stages.to80.time) : log.stages.to80.time,
+        },
+        to54: {
+          ...log.stages.to54,
+          time: log.stages.to54.time ? new Date(log.stages.to54.time) : log.stages.to54.time,
+        },
+        finalChill: {
+          ...log.stages.finalChill,
+          time: log.stages.finalChill.time ? new Date(log.stages.finalChill.time) : log.stages.finalChill.time,
+        },
+      },
     }));
     
     await Promise.all([
@@ -59,15 +72,28 @@ class StorageManager {
     const logWithDates = {
       ...log,
       date: new Date(log.date),
-      stages: Object.fromEntries(
-        Object.entries(log.stages).map(([key, stage]) => [
-          key,
-          {
-            ...stage,
-            time: stage.time ? new Date(stage.time) : stage.time,
-          },
-        ])
-      ),
+      stages: {
+        cook: {
+          ...log.stages.cook,
+          time: log.stages.cook.time ? new Date(log.stages.cook.time) : log.stages.cook.time,
+        },
+        startCooling: {
+          ...log.stages.startCooling,
+          time: log.stages.startCooling.time ? new Date(log.stages.startCooling.time) : log.stages.startCooling.time,
+        },
+        to80: {
+          ...log.stages.to80,
+          time: log.stages.to80.time ? new Date(log.stages.to80.time) : log.stages.to80.time,
+        },
+        to54: {
+          ...log.stages.to54,
+          time: log.stages.to54.time ? new Date(log.stages.to54.time) : log.stages.to54.time,
+        },
+        finalChill: {
+          ...log.stages.finalChill,
+          time: log.stages.finalChill.time ? new Date(log.stages.finalChill.time) : log.stages.finalChill.time,
+        },
+      },
     };
     
     await db.put('logs', logWithDates);

@@ -10,7 +10,7 @@ interface LogStore {
   // Actions
   createNewLog: () => void;
   updateLogField: (field: keyof LogEntry, value: any) => void;
-  updateStageData: (stage: StageType, data: { temperature?: number; time?: Date; correctiveAction?: string; notes?: string }) => void;
+  updateStageData: (stage: StageType, data: { temperature?: number; time?: Date; isValid?: boolean; correctiveAction?: string; notes?: string }) => void;
   updateHACCPField: (field: keyof LogEntry['haccp'], value: boolean) => void;
   updateVisualInspection: (field: keyof LogEntry['visualInspection'], value: string) => void;
   addComplianceIssue: (issue: string) => void;
