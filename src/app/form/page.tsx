@@ -59,7 +59,7 @@ export default function FormPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8"></div>
       {/* Header with Initial Selector */}
       <div className="max-w-7xl mx-auto px-4 mb-6">
         <div className="flex justify-between items-start">
@@ -102,7 +102,7 @@ export default function FormPage() {
           <div className="text-center py-12 bg-white rounded-xl border-2 border-orange-200">
             <div className="text-6xl mb-4">🔒</div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Authentication Required</h2>
-            <p className="text-gray-600">Please authenticate with your PIN to access forms for "{selectedInitial}".</p>
+            <p className="text-gray-600">Please authenticate with your PIN to access forms for &quot;{selectedInitial}&quot;.</p>
             <button
               onClick={() => {
                 setPendingInitial(selectedInitial);
@@ -119,7 +119,7 @@ export default function FormPage() {
           <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200">
             <div className="text-6xl mb-4">📋</div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">No Forms Available</h2>
-            <p className="text-gray-600">No forms found for initial "{selectedInitial}". A new form will be created automatically.</p>
+            <p className="text-gray-600">No forms found for initial &quot;{selectedInitial}&quot;. A new form will be created automatically.</p>
           </div>
         </div>
       ) : (
