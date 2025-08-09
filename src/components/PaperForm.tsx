@@ -2,6 +2,7 @@
 
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import { PaperFormEntry } from '@/lib/paperFormTypes';
+import { shouldHighlightCell, validateForm } from '@/lib/validation';
 
 interface PaperFormProps {
   formData?: PaperFormEntry;
@@ -10,7 +11,7 @@ interface PaperFormProps {
 }
 
 export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps = {}) {
-  const { currentForm, updateEntry, updateFormField, saveForm } = usePaperFormStore();
+  const { currentForm, updateEntry, updateFormField, saveForm, getFormByDateAndInitial, loadForm, selectedInitial } = usePaperFormStore();
 
   // Use provided formData or fall back to currentForm from store
   const form = formData || currentForm;
@@ -25,8 +26,40 @@ export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps
 
   const handleFormFieldChange = (field: string, value: any) => {
     if (!readOnly) {
-      updateFormField(field, value);
+      // Special handling for date changes
+      if (field === 'date' && selectedInitial) {
+        const newDate = new Date(value);
+        const existingForm = getFormByDateAndInitial(newDate, selectedInitial);
+        
+        if (existingForm && existingForm.id !== form?.id) {
+          // Load the existing form for this date
+          loadForm(existingForm.id);
+        } else {
+          // No existing form for this date, just update the current form's date
+          updateFormField(field, value);
+        }
+      } else {
+        updateFormField(field, value);
+      }
     }
+  };
+
+  // Helper function to get cell CSS classes based on validation
+  const getCellClasses = (rowIndex: number, field: string, baseClasses: string) => {
+    if (!form) return baseClasses;
+    
+    const validation = shouldHighlightCell(form, rowIndex, field);
+    let classes = baseClasses;
+    
+    if (validation.highlight) {
+      if (validation.severity === 'error') {
+        classes += ' bg-red-200 border-2 border-red-500 shadow-sm';
+      } else if (validation.severity === 'warning') {
+        classes += ' bg-yellow-200 border-2 border-yellow-500 shadow-sm';
+      }
+    }
+    
+    return classes;
   };
 
   return (
@@ -145,7 +178,7 @@ export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps
                       type="text"
                       value={entry.ccp1.temp}
                       onChange={(e) => handleCellChange(rowIndex, 'ccp1.temp', e.target.value)}
-                      className="w-full text-xs border-0 bg-transparent text-center"
+                      className={getCellClasses(rowIndex, 'ccp1.temp', 'w-full text-xs text-center rounded-sm')}
                       placeholder="°F"
                       readOnly={readOnly}
                     />
@@ -175,7 +208,7 @@ export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps
                       type="text"
                       value={entry.ccp2.temp}
                       onChange={(e) => handleCellChange(rowIndex, 'ccp2.temp', e.target.value)}
-                      className="w-full text-xs border-0 bg-transparent text-center"
+                      className={getCellClasses(rowIndex, 'ccp2.temp', 'w-full text-xs text-center rounded-sm')}
                       placeholder="°F"
                       readOnly={readOnly}
                     />
@@ -205,7 +238,7 @@ export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps
                       type="text"
                       value={entry.coolingTo80.temp}
                       onChange={(e) => handleCellChange(rowIndex, 'coolingTo80.temp', e.target.value)}
-                      className="w-full text-xs border-0 bg-transparent text-center"
+                      className={getCellClasses(rowIndex, 'coolingTo80.temp', 'w-full text-xs text-center rounded-sm')}
                       placeholder="°F"
                       readOnly={readOnly}
                     />
@@ -235,7 +268,7 @@ export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps
                       type="text"
                       value={entry.coolingTo54.temp}
                       onChange={(e) => handleCellChange(rowIndex, 'coolingTo54.temp', e.target.value)}
-                      className="w-full text-xs border-0 bg-transparent text-center"
+                      className={getCellClasses(rowIndex, 'coolingTo54.temp', 'w-full text-xs border-0 bg-transparent text-center')}
                       placeholder="°F"
                       readOnly={readOnly}
                     />
@@ -265,7 +298,7 @@ export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps
                       type="text"
                       value={entry.finalChill.temp}
                       onChange={(e) => handleCellChange(rowIndex, 'finalChill.temp', e.target.value)}
-                      className="w-full text-xs border-0 bg-transparent text-center"
+                      className={getCellClasses(rowIndex, 'finalChill.temp', 'w-full text-xs border-0 bg-transparent text-center')}
                       placeholder="°F"
                       readOnly={readOnly}
                     />
@@ -369,6 +402,42 @@ export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps
           </div>
         </div>
       </div>
+
+      {/* Validation Summary */}
+      {form && (() => {
+        const validation = validateForm(form);
+        if (validation.errors.length > 0) {
+          return (
+            <div className="mt-4 p-4 border-2 border-red-300 bg-red-50 rounded-lg">
+              <h3 className="text-lg font-semibold text-red-800 mb-2 flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                Validation Issues Found
+              </h3>
+              <div className="space-y-2">
+                {validation.errors.map((error, index) => (
+                  <div 
+                    key={index} 
+                    className={`text-sm p-2 rounded ${
+                      error.severity === 'error' 
+                        ? 'bg-red-100 text-red-800 border border-red-200' 
+                        : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                    }`}
+                  >
+                    <span className="font-medium">Row {error.rowIndex + 1}:</span> {error.message}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 text-sm text-red-700">
+                <strong>Summary:</strong> {validation.summary.totalErrors} errors, {validation.summary.totalWarnings} warnings. 
+                Compliance rate: {validation.summary.totalEntries > 0 ? Math.round((validation.summary.compliantEntries / validation.summary.totalEntries) * 100) : 0}%
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* Save Button */}
       {!readOnly && (

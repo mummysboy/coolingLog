@@ -6,6 +6,7 @@ import { useInitialsStore } from '@/stores/initialsStore';
 import { MOCK_USERS } from '@/lib/types';
 import { PaperFormEntry } from '@/lib/paperFormTypes';
 import { PaperForm } from '@/components/PaperForm';
+import { getFormValidationSummary } from '@/lib/validation';
 
 export default function AdminDashboard() {
   const { savedForms, currentForm, loadForm } = usePaperFormStore();
@@ -66,6 +67,8 @@ export default function AdminDashboard() {
   };
 
   const getFormStatus = (form: PaperFormEntry) => {
+    const validation = getFormValidationSummary(form);
+    
     if (!hasCompleteData(form)) {
       return <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">📝 Draft</span>;
     }
@@ -79,11 +82,19 @@ export default function AdminDashboard() {
       entry.finalChill.temp
     ).length;
     
+    if (validation.hasErrors) {
+      return <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">❌ Non-Compliant</span>;
+    }
+    
+    if (validation.warningCount > 0) {
+      return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">⚠️ Warnings</span>;
+    }
+    
     if (completeEntries === 0) {
       return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">⏳ In Progress</span>;
     }
     
-    return <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">✓ Complete</span>;
+    return <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">✓ Compliant</span>;
   };
 
   return (
@@ -225,9 +236,6 @@ export default function AdminDashboard() {
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Entries
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -239,9 +247,16 @@ export default function AdminDashboard() {
                       entry.coolingTo80.temp && entry.coolingTo54.temp && entry.finalChill.temp
                     ).length;
                     const usedProducts = form.entries.filter(entry => entry.type).map(entry => entry.type).join(', ') || 'No products';
+                    const validation = getFormValidationSummary(form);
                     
                     return (
-                      <tr key={form.id} className="hover:bg-gray-50">
+                      <tr 
+                        key={form.id} 
+                        className={`hover:bg-gray-50 ${
+                          validation.hasErrors ? 'bg-red-50 border-l-4 border-red-500' : 
+                          validation.warningCount > 0 ? 'bg-yellow-50 border-l-4 border-yellow-500' : ''
+                        }`}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900">Form #{form.id.slice(-6)}</div>
@@ -263,11 +278,6 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {getFormStatus(form)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm">
-                            <span className="text-green-600">{completeEntries}/9 complete</span>
-                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <button

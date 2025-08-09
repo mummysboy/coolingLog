@@ -16,6 +16,7 @@ interface PaperFormStore {
   setSelectedInitial: (initial: string) => void;
   getFormsByInitial: (initial: string) => PaperFormEntry[];
   getFormsForCurrentInitial: () => PaperFormEntry[];
+  getFormByDateAndInitial: (date: Date, initial: string) => PaperFormEntry | null;
 }
 
 export const usePaperFormStore = create<PaperFormStore>()(
@@ -123,6 +124,17 @@ export const usePaperFormStore = create<PaperFormStore>()(
       getFormsForCurrentInitial: () => {
         const { savedForms, selectedInitial } = get();
         return savedForms.filter(form => form.formInitial === selectedInitial);
+      },
+
+      getFormByDateAndInitial: (date, initial) => {
+        const { savedForms } = get();
+        // Convert date to string for comparison (YYYY-MM-DD format)
+        const targetDateStr = date.toISOString().split('T')[0];
+        
+        return savedForms.find(form => {
+          const formDateStr = form.date.toISOString().split('T')[0];
+          return formDateStr === targetDateStr && form.formInitial === initial;
+        }) || null;
       },
     }),
     {
