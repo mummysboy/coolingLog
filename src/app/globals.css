@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background-color: #f9fafb;
+    color: #111827;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .touch-target {
+    @apply min-h-[64px] min-w-[64px];
+  }
+  
+  .stage-card {
+    @apply rounded-xl border-2 p-6 transition-all duration-200;
+  }
+  
+  .stage-card.pending {
+    @apply border-gray-200 bg-gray-50;
+  }
+  
+  .stage-card.active {
+    @apply border-blue-300 bg-blue-50 shadow-lg;
+  }
+  
+  .stage-card.completed {
+    @apply border-green-300 bg-green-50;
+  }
+  
+  .stage-card.failed {
+    @apply border-red-300 bg-red-50;
+  }
+
+  /* iPad landscape optimizations */
+  @media (min-width: 1024px) and (orientation: landscape) {
+    .touch-target {
+      @apply min-h-[72px] min-w-[72px];
+    }
+    
+    .stage-card {
+      @apply p-8;
+    }
+    
+    /* Larger text for better readability on iPad */
+    body {
+      font-size: 18px;
+    }
+    
+    /* Optimize grid layouts for iPad landscape */
+    .ipad-grid {
+      @apply grid-cols-2 gap-8;
+    }
+  }
+
+  /* Prevent zoom on iOS */
+  input[type="color"],
+  input[type="date"],
+  input[type="datetime"],
+  input[type="datetime-local"],
+  input[type="email"],
+  input[type="month"],
+  input[type="number"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="text"],
+  input[type="time"],
+  input[type="url"],
+  input[type="week"],
+  select:focus,
+  textarea {
+    font-size: 16px !important;
+  }
+}
