@@ -218,7 +218,9 @@ export const usePinStore = create<PinStore>()(
           }));
         }
         // Clear all sessions on reload for security
-        state.authenticatedSessions = {};
+        if (state) {
+          state.authenticatedSessions = {};
+        }
       },
     }
   )

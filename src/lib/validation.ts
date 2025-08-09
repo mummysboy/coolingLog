@@ -114,14 +114,14 @@ export function validateTemperatureCell(
   }
   
   // Check temperature bounds
-  if (rule.min !== undefined && temperature < rule.min) {
+  if ('min' in rule && rule.min !== undefined && temperature < rule.min) {
     return {
       isValid: false,
       error: `Temperature ${temperature}°F is below minimum required ${rule.min}°F`
     };
   }
   
-  if (rule.max !== undefined && temperature > rule.max) {
+  if ('max' in rule && rule.max !== undefined && temperature > rule.max) {
     return {
       isValid: false,
       error: `Temperature ${temperature}°F is above maximum allowed ${rule.max}°F`
@@ -129,7 +129,7 @@ export function validateTemperatureCell(
   }
   
   // Check time limits for cooling stages
-  if (rule.timeLimit && referenceTime && comparisonTime) {
+  if ('timeLimit' in rule && rule.timeLimit && referenceTime && comparisonTime) {
     const timeDiff = getTimeDifferenceMinutes(referenceTime, comparisonTime);
     
     if (timeDiff !== null) {
