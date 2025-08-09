@@ -1,0 +1,321 @@
+# Food Chilling Log GraphQL Schema
+
+# Global auth rule for testing - in production you'll want more specific auth rules
+input AMPLIFY { globalAuthRule: AuthRule = { allow: public } } # FOR TESTING ONLY!
+
+# User model for employees, supervisors, and admins
+type User @model {
+  id: ID!
+  initials: String!
+  name: String!
+  role: UserRole!
+  certificationNumber: String
+  email: String
+  isActive: Boolean!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+  logEntries: [LogEntry] @hasMany(indexName: "byEmployee", fields: ["id"])
+}
+
+# Log entry model for food chilling records
+type LogEntry @model {
+  id: ID!
+  date: AWSDateTime!
+  shift: Shift!
+  
+  # Product Information
+  product: String!
+  productCode: String
+  supplier: String
+  receivedDate: AWSDateTime
+  expirationDate: AWSDateTime
+  thermometerNumber: String!
+  lotNumber: String!
+  batchSize: Int
+  packagingType: String
+  
+  # Employee Information
+  employeeId: ID! @index(name: "byEmployee")
+  employeeName: String!
+  employeeInitials: String!
+  supervisorInitials: String
+  employee: User @belongsTo(fields: ["employeeId"])
+  
+  # Cooking & Cooling Stages
+  cookStage: StageData
+  startCoolingStage: StageData
+  to80Stage: StageData
+  to54Stage: StageData
+  finalChillStage: StageData
+  
+  # HACCP Documentation
+  ccp1Verified: Boolean!
+  ccp2Verified: Boolean!
+  monitoringCompleted: Boolean!
+  correctiveActionsDocumented: Boolean!
+  
+  # Quality Control
+  visualInspectionColor: InspectionResult!
+  visualInspectionTexture: InspectionResult!
+  visualInspectionOdor: InspectionResult!
+  visualInspectionNotes: String
+  
+  # Storage Information
+  storageLocation: String!
+  storageTemperature: Float
+  storageTime: AWSDateTime
+  
+  # Workflow Status
+  currentStage: StageType!
+  isComplete: Boolean!
+  requiresReview: Boolean!
+  isApproved: Boolean
+  adminComments: String
+  reviewedBy: String
+  reviewDate: AWSDateTime
+  
+  # Compliance
+  complianceIssues: [String]
+  riskLevel: RiskLevel!
+  
+  # Signatures & Timestamps
+  employeeSignature: String
+  supervisorSignature: String
+  adminSignature: String
+  completedAt: AWSDateTime
+  submittedAt: AWSDateTime
+  
+  # Additional Documentation
+  photos: [String]
+  attachments: [String]
+  notes: String
+  
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+# Stage data embedded type
+type StageData {
+  temperature: Float
+  time: AWSDateTime
+  isValid: Boolean
+  correctiveAction: String
+  employeeInitials: String
+  notes: String
+}
+
+# Initial entry model for managing employee initials
+type InitialEntry @model {
+  id: ID!
+  initials: String!
+  name: String!
+  isActive: Boolean!
+  createdBy: String!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+# Enums
+enum UserRole {
+  EMPLOYEE
+  SUPERVISOR
+  ADMIN
+}
+
+enum Shift {
+  MORNING
+  AFTERNOON
+  EVENING
+  OVERNIGHT
+}
+
+enum StageType {
+  COOK
+  START_COOLING
+  TO_80
+  TO_54
+  FINAL_CHILL
+}
+
+enum InspectionResult {
+  NORMAL
+  ABNORMAL
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+# Custom input types for mutations
+input StageDataInput {
+  temperature: Float
+  time: AWSDateTime
+  isValid: Boolean
+  correctiveAction: String
+  employeeInitials: String
+  notes: String
+}
+
+input CreateLogEntryInput {
+  id: ID
+  date: AWSDateTime!
+  shift: Shift!
+  product: String!
+  productCode: String
+  supplier: String
+  receivedDate: AWSDateTime
+  expirationDate: AWSDateTime
+  thermometerNumber: String!
+  lotNumber: String!
+  batchSize: Int
+  packagingType: String
+  employeeId: ID!
+  employeeName: String!
+  employeeInitials: String!
+  supervisorInitials: String
+  cookStage: StageDataInput
+  startCoolingStage: StageDataInput
+  to80Stage: StageDataInput
+  to54Stage: StageDataInput
+  finalChillStage: StageDataInput
+  ccp1Verified: Boolean!
+  ccp2Verified: Boolean!
+  monitoringCompleted: Boolean!
+  correctiveActionsDocumented: Boolean!
+  visualInspectionColor: InspectionResult!
+  visualInspectionTexture: InspectionResult!
+  visualInspectionOdor: InspectionResult!
+  visualInspectionNotes: String
+  storageLocation: String!
+  storageTemperature: Float
+  storageTime: AWSDateTime
+  currentStage: StageType!
+  isComplete: Boolean!
+  requiresReview: Boolean!
+  isApproved: Boolean
+  adminComments: String
+  reviewedBy: String
+  reviewDate: AWSDateTime
+  complianceIssues: [String]
+  riskLevel: RiskLevel!
+  employeeSignature: String
+  supervisorSignature: String
+  adminSignature: String
+  completedAt: AWSDateTime
+  submittedAt: AWSDateTime
+  photos: [String]
+  attachments: [String]
+  notes: String
+}
+
+input UpdateLogEntryInput {
+  id: ID!
+  date: AWSDateTime
+  shift: Shift
+  product: String
+  productCode: String
+  supplier: String
+  receivedDate: AWSDateTime
+  expirationDate: AWSDateTime
+  thermometerNumber: String
+  lotNumber: String
+  batchSize: Int
+  packagingType: String
+  employeeId: ID
+  employeeName: String
+  employeeInitials: String
+  supervisorInitials: String
+  cookStage: StageDataInput
+  startCoolingStage: StageDataInput
+  to80Stage: StageDataInput
+  to54Stage: StageDataInput
+  finalChillStage: StageDataInput
+  ccp1Verified: Boolean
+  ccp2Verified: Boolean
+  monitoringCompleted: Boolean
+  correctiveActionsDocumented: Boolean
+  visualInspectionColor: InspectionResult
+  visualInspectionTexture: InspectionResult
+  visualInspectionOdor: InspectionResult
+  visualInspectionNotes: String
+  storageLocation: String
+  storageTemperature: Float
+  storageTime: AWSDateTime
+  currentStage: StageType
+  isComplete: Boolean
+  requiresReview: Boolean
+  isApproved: Boolean
+  adminComments: String
+  reviewedBy: String
+  reviewDate: AWSDateTime
+  complianceIssues: [String]
+  riskLevel: RiskLevel
+  employeeSignature: String
+  supervisorSignature: String
+  adminSignature: String
+  completedAt: AWSDateTime
+  submittedAt: AWSDateTime
+  photos: [String]
+  attachments: [String]
+  notes: String
+}
+
+# Custom queries
+type Query {
+  # Get logs by date range
+  getLogsByDateRange(startDate: AWSDateTime!, endDate: AWSDateTime!): [LogEntry]
+  
+  # Get today's logs
+  getTodaysLogs: [LogEntry]
+  
+  # Get logs requiring review
+  getLogsRequiringReview: [LogEntry]
+  
+  # Get logs by employee
+  getLogsByEmployee(employeeId: ID!): [LogEntry]
+  
+  # Get logs by shift
+  getLogsByShift(shift: Shift!): [LogEntry]
+}
+
+# Custom mutations
+type Mutation {
+  # Update stage data for a log entry
+  updateLogEntryStage(
+    logEntryId: ID!
+    stage: StageType!
+    stageData: StageDataInput!
+  ): LogEntry
+  
+  # Submit log entry for review
+  submitLogEntryForReview(logEntryId: ID!): LogEntry
+  
+  # Approve log entry (admin only)
+  approveLogEntry(
+    logEntryId: ID!
+    adminComments: String
+    adminSignature: String
+  ): LogEntry
+  
+  # Add corrective action
+  addCorrectiveAction(
+    logEntryId: ID!
+    stage: StageType!
+    action: String!
+    employeeInitials: String!
+  ): LogEntry
+}
+
+# Subscriptions for real-time updates
+type Subscription {
+  onLogEntryCreated: LogEntry
+    @aws_subscribe(mutations: ["createLogEntry"])
+  
+  onLogEntryUpdated: LogEntry
+    @aws_subscribe(mutations: ["updateLogEntry"])
+  
+  onLogEntrySubmittedForReview: LogEntry
+    @aws_subscribe(mutations: ["submitLogEntryForReview"])
+}

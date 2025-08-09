@@ -8,6 +8,7 @@ import { MOCK_USERS } from '@/lib/types';
 import { PaperFormEntry } from '@/lib/paperFormTypes';
 import { PaperForm } from '@/components/PaperForm';
 import { getFormValidationSummary } from '@/lib/validation';
+import { getStorageStatus, seedInitialData } from '@/lib/seedData';
 
 export default function AdminDashboard() {
   const { savedForms, currentForm, loadForm, updateFormStatus, deleteForm, isFormBlank } = usePaperFormStore();
@@ -20,6 +21,7 @@ export default function AdminDashboard() {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [newInitialData, setNewInitialData] = useState({ initials: '', name: '' });
   const [pinModalData, setPinModalData] = useState({ initials: '', pin: '', isEdit: false });
+  const [storageStatus, setStorageStatus] = useState(getStorageStatus());
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
 
   const adminUser = MOCK_USERS.find(user => user.role === 'admin');
@@ -693,11 +695,33 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="px-6 py-6">
         <div className="max-w-7xl mx-auto">
-          {/* Controls */}
+          {/* Controls and Storage Status */}
           <div className="bg-white rounded-xl border-2 border-gray-200 p-6 mb-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">Submitted Forms</h2>
-              <p className="text-gray-600">Monitor and review food safety forms</p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Submitted Forms</h2>
+                <p className="text-gray-600">Monitor and review food safety forms</p>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className={`w-3 h-3 rounded-full ${storageStatus.isConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                  <span className="text-sm font-medium text-gray-700">{storageStatus.provider}</span>
+                </div>
+                {storageStatus.isConnected && (
+                  <button
+                    onClick={async () => {
+                      await seedInitialData();
+                      setStorageStatus(getStorageStatus());
+                    }}
+                    className="text-xs px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
+                  >
+                    Seed AWS Data
+                  </button>
+                )}
+                {!storageStatus.isConnected && (
+                  <p className="text-xs text-yellow-700">Using local storage fallback</p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -719,7 +743,10 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {savedForms.filter(form => !isFormBlank(form)).map((form) => {
+                  {savedForms
+                    .filter(form => !isFormBlank(form))
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Sort by most recent date first
+                    .map((form) => {
                     const completeEntries = form.entries.filter(entry => 
                       entry.type && entry.ccp1.temp && entry.ccp2.temp && 
                       entry.coolingTo80.temp && entry.coolingTo54.temp && entry.finalChill.temp

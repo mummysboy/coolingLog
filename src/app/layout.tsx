@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { AmplifyProvider } from './AmplifyProvider'
 
 export const metadata: Metadata = {
   title: 'Food Chilling Log',
@@ -20,7 +21,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-gray-100 overflow-x-hidden">
-        {children}
+        <AmplifyProvider>
+          {children}
+        </AmplifyProvider>
       </body>
     </html>
   )
