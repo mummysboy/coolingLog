@@ -11,7 +11,7 @@ interface PaperFormProps {
 }
 
 export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps = {}) {
-  const { currentForm, updateEntry, updateFormField, saveForm, getFormByDateAndInitial, loadForm, selectedInitial } = usePaperFormStore();
+  const { currentForm, updateEntry, updateFormField, saveForm, getFormByDateAndInitial, loadForm, selectedInitial, createNewForm } = usePaperFormStore();
 
   // Use provided formData or fall back to currentForm from store
   const form = formData || currentForm;
@@ -21,6 +21,8 @@ export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps
   const handleCellChange = (rowIndex: number, field: string, value: string) => {
     if (!readOnly) {
       updateEntry(rowIndex, field, value);
+      // Auto-save after updating entry (only if form has data)
+      setTimeout(() => saveForm(), 100);
     }
   };
 
@@ -34,12 +36,21 @@ export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps
         if (existingForm && existingForm.id !== form?.id) {
           // Load the existing form for this date
           loadForm(existingForm.id);
+        } else if (!existingForm) {
+          // No existing form for this date, create a new one
+          createNewForm(selectedInitial);
+          // Set the date on the new form
+          setTimeout(() => {
+            updateFormField(field, value);
+          }, 10);
         } else {
-          // No existing form for this date, just update the current form's date
+          // Update the current form's date
           updateFormField(field, value);
         }
       } else {
         updateFormField(field, value);
+        // Auto-save after updating field (only if form has data)
+        setTimeout(() => saveForm(), 100);
       }
     }
   };
@@ -439,22 +450,7 @@ export function PaperForm({ formData, readOnly = false, onSave }: PaperFormProps
         return null;
       })()}
 
-      {/* Save Button */}
-      {!readOnly && (
-        <div className="mt-4 text-center">
-          <button
-            onClick={() => {
-              saveForm();
-              if (onSave) {
-                onSave();
-              }
-            }}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-          >
-            Save Form
-          </button>
-        </div>
-      )}
+
     </div>
   );
 }

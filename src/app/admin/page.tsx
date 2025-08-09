@@ -9,7 +9,7 @@ import { PaperForm } from '@/components/PaperForm';
 import { getFormValidationSummary } from '@/lib/validation';
 
 export default function AdminDashboard() {
-  const { savedForms, currentForm, loadForm } = usePaperFormStore();
+  const { savedForms, currentForm, loadForm, updateFormStatus, deleteForm, isFormBlank } = usePaperFormStore();
   const { initials, addInitial, removeInitial, toggleInitialStatus } = useInitialsStore();
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
@@ -55,6 +55,335 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleStatusChange = (formId: string, newStatus: 'Complete' | 'In Progress' | 'Non-compliant') => {
+    updateFormStatus(formId, newStatus);
+  };
+
+  const handlePrintForm = (form: PaperFormEntry) => {
+    // Open form in a new window that matches the exact PaperForm component styling
+    const printWindow = window.open('', '_blank', 'width=1200,height=800');
+    
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Food Chilling Log - Form #${form.id.slice(-6)}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: system-ui, -apple-system, sans-serif;
+              background: white;
+              padding: 24px;
+              color: black;
+            }
+            .form-container {
+              background: white;
+              max-width: 1200px;
+              margin: 0 auto;
+            }
+            .header-section {
+              border: 2px solid black;
+              margin-bottom: 16px;
+            }
+            .header-title {
+              background: #f3f4f6;
+              padding: 16px;
+              text-align: center;
+            }
+            .header-title h1 {
+              font-size: 20px;
+              font-weight: bold;
+            }
+            .header-content {
+              padding: 16px;
+            }
+            .main-table-container {
+              border: 2px solid black;
+            }
+            .main-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .main-table th,
+            .main-table td {
+              border: 1px solid black;
+              padding: 8px;
+              text-align: center;
+              vertical-align: top;
+            }
+            .main-table td:first-child {
+              text-align: left;
+            }
+            .main-table thead tr:first-child th {
+              background: #f3f4f6;
+              font-weight: bold;
+              font-size: 13px;
+            }
+            .main-table thead tr:nth-child(2) th {
+              background: #f9fafb;
+              font-size: 12px;
+              padding: 4px;
+            }
+            .row-number {
+              font-weight: bold;
+              font-size: 14px;
+            }
+            .cell-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr 1fr;
+              gap: 4px;
+              font-size: 12px;
+            }
+            .bottom-section {
+              border: 2px solid black;
+              border-top: 0;
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+            }
+            .left-section {
+              border-right: 1px solid black;
+            }
+            .thermometer-section {
+              border-bottom: 1px solid black;
+              padding: 8px;
+              text-align: center;
+              font-weight: bold;
+            }
+            .ingredients-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .ingredients-table th,
+            .ingredients-table td {
+              border: 1px solid black;
+              padding: 8px;
+              text-align: center;
+              font-size: 12px;
+            }
+            .ingredients-table th {
+              background: #f3f4f6;
+              font-weight: bold;
+            }
+            .right-section {
+              padding: 16px;
+            }
+            .comments-title {
+              font-weight: bold;
+              margin-bottom: 8px;
+            }
+            .comments-content {
+              min-height: 120px;
+              padding: 8px;
+              border: 1px solid #d1d5db;
+              font-size: 14px;
+              line-height: 1.4;
+            }
+            .row-separator {
+              border-top: 4px solid black !important;
+            }
+            @media print {
+              body { padding: 0; margin: 0; }
+              .form-container { max-width: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="form-container">
+            <!-- Header -->
+            <div class="header-section">
+              <div class="header-title">
+                <h1>Cooking and Cooling for Meat & Non Meat Ingredients</h1>
+              </div>
+              <div class="header-content">
+                <div>
+                  <strong>Date: </strong>${new Date(form.date).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+
+            <!-- Main Table -->
+            <div class="main-table-container">
+              <table class="main-table">
+                <thead>
+                  <tr>
+                    <th style="width: 120px;">Date</th>
+                    <th style="width: 160px;">
+                      Temperature Must reach 166°F or greater<br/>
+                      <strong>CCP 1</strong>
+                    </th>
+                    <th style="width: 160px;">
+                      127°F or greater<br/>
+                      <strong>CCP 2</strong><br/>
+                      <small>Record Temperature of 1st and LAST rack/batch of the day</small>
+                    </th>
+                    <th style="width: 160px;">
+                      80°F or below within 105 minutes<br/>
+                      <strong>CCP 2</strong><br/>
+                      <small>Record Temperature of 1st rack/batch of the day</small>
+                    </th>
+                    <th style="width: 160px;">
+                      <strong>54</strong> or below within 4.75 hr
+                    </th>
+                    <th style="width: 160px;">
+                      Chill Continuously to<br/>
+                      39°F or below
+                    </th>
+                  </tr>
+                  <tr>
+                    <th>Type</th>
+                    <th>
+                      <div class="cell-grid">
+                        <div>Temp</div>
+                        <div>Time</div>
+                        <div>Initial</div>
+                      </div>
+                    </th>
+                    <th>
+                      <div class="cell-grid">
+                        <div>Temp</div>
+                        <div>Time</div>
+                        <div>Initial</div>
+                      </div>
+                    </th>
+                    <th>
+                      <div class="cell-grid">
+                        <div>Temp</div>
+                        <div>Time</div>
+                        <div>Initial</div>
+                      </div>
+                    </th>
+                    <th>
+                      <div class="cell-grid">
+                        <div>Temp</div>
+                        <div>Time</div>
+                        <div>Initial</div>
+                      </div>
+                    </th>
+                    <th>
+                      <div class="cell-grid">
+                        <div>Temp</div>
+                        <div>Time</div>
+                        <div>Initial</div>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${form.entries.map((entry, index) => `
+                    <tr${index === 5 ? ' class="row-separator"' : ''}>
+                      <td>
+                        <div style="display: flex; align-items: flex-start; text-align: left;">
+                          <div class="row-number" style="margin-right: 8px;">${index + 1}</div>
+                          <div style="font-size: 12px; flex-grow: 1;">${entry.type || ''}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="cell-grid">
+                          <div>${entry.ccp1.temp || ''}</div>
+                          <div>${entry.ccp1.time || ''}</div>
+                          <div>${entry.ccp1.time ? (entry.ccp1.initial || form.formInitial || '') : ''}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="cell-grid">
+                          <div>${entry.ccp2.temp || ''}</div>
+                          <div>${entry.ccp2.time || ''}</div>
+                          <div>${entry.ccp2.time ? (entry.ccp2.initial || form.formInitial || '') : ''}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="cell-grid">
+                          <div>${entry.coolingTo80.temp || ''}</div>
+                          <div>${entry.coolingTo80.time || ''}</div>
+                          <div>${entry.coolingTo80.time ? (entry.coolingTo80.initial || form.formInitial || '') : ''}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="cell-grid">
+                          <div>${entry.coolingTo54.temp || ''}</div>
+                          <div>${entry.coolingTo54.time || ''}</div>
+                          <div>${entry.coolingTo54.time ? (entry.coolingTo54.initial || form.formInitial || '') : ''}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="cell-grid">
+                          <div>${entry.finalChill.temp || ''}</div>
+                          <div>${entry.finalChill.time || ''}</div>
+                          <div>${entry.finalChill.time ? (entry.finalChill.initial || form.formInitial || '') : ''}</div>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Bottom Section -->
+            <div class="bottom-section">
+              <!-- Left side - Thermometer and Ingredients -->
+              <div class="left-section">
+                <!-- Thermometer # -->
+                <div class="thermometer-section">
+                  <span>Thermometer # </span>
+                  <span style="border-bottom: 1px solid black; padding-bottom: 2px; min-width: 100px; display: inline-block;">
+                    ${form.thermometerNumber || ''}
+                  </span>
+                </div>
+                
+                <!-- Ingredients Table -->
+                <table class="ingredients-table">
+                  <thead>
+                    <tr>
+                      <th>Ingredient</th>
+                      <th>Beef</th>
+                      <th>Chicken</th>
+                      <th>Liquid Eggs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="font-weight: bold;">Lot #(s)</td>
+                      <td>${form.lotNumbers.beef || ''}</td>
+                      <td>${form.lotNumbers.chicken || ''}</td>
+                      <td>${form.lotNumbers.liquidEggs || ''}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Right side - Corrective Actions -->
+              <div class="right-section">
+                <div class="comments-title">Corrective Actions & comments:</div>
+                <div class="comments-content">
+                  ${form.correctiveActionsComments || ''}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() {
+                window.close();
+              };
+            };
+          </script>
+        </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+    }
+  };
+
+  const handleDeleteForm = (formId: string) => {
+    if (confirm('Are you sure you want to delete this form? This action cannot be undone.')) {
+      deleteForm(formId);
+    }
+  };
+
   const hasCompleteData = (form: PaperFormEntry) => {
     return form.entries.some(entry => 
       entry.type || 
@@ -66,35 +395,66 @@ export default function AdminDashboard() {
     );
   };
 
-  const getFormStatus = (form: PaperFormEntry) => {
-    const validation = getFormValidationSummary(form);
-    
-    if (!hasCompleteData(form)) {
-      return <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">📝 Draft</span>;
-    }
-    
-    const completeEntries = form.entries.filter(entry => 
-      entry.type && 
-      entry.ccp1.temp && 
-      entry.ccp2.temp && 
-      entry.coolingTo80.temp && 
-      entry.coolingTo54.temp && 
-      entry.finalChill.temp
-    ).length;
-    
-    if (validation.hasErrors) {
-      return <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">❌ Non-Compliant</span>;
-    }
-    
-    if (validation.warningCount > 0) {
-      return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">⚠️ Warnings</span>;
-    }
-    
-    if (completeEntries === 0) {
-      return <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">⏳ In Progress</span>;
-    }
-    
-    return <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">✓ Compliant</span>;
+  const renderStatusDropdown = (form: PaperFormEntry) => {
+    const getStatusStyles = (status: string) => {
+      switch (status) {
+        case 'Complete':
+          return {
+            bg: 'bg-green-100 hover:bg-green-200',
+            text: 'text-green-800',
+            border: 'border-green-300',
+            ring: 'focus:ring-green-500',
+            icon: '✓'
+          };
+        case 'In Progress':
+          return {
+            bg: 'bg-yellow-100 hover:bg-yellow-200',
+            text: 'text-yellow-800',
+            border: 'border-yellow-300',
+            ring: 'focus:ring-yellow-500',
+            icon: '⏳'
+          };
+        case 'Non-compliant':
+          return {
+            bg: 'bg-red-100 hover:bg-red-200',
+            text: 'text-red-800',
+            border: 'border-red-300',
+            ring: 'focus:ring-red-500',
+            icon: '❌'
+          };
+        default:
+          return {
+            bg: 'bg-gray-100 hover:bg-gray-200',
+            text: 'text-gray-800',
+            border: 'border-gray-300',
+            ring: 'focus:ring-blue-500',
+            icon: '?'
+          };
+      }
+    };
+
+    const styles = getStatusStyles(form.status);
+
+    return (
+      <select
+        value={form.status}
+        onChange={(e) => handleStatusChange(form.id, e.target.value as 'Complete' | 'In Progress' | 'Non-compliant')}
+        className={`
+          cursor-pointer
+          px-3 py-2 text-sm font-medium 
+          rounded-lg border-2 
+          transition-all duration-200 ease-in-out
+          focus:outline-none focus:ring-2 focus:ring-offset-1
+          shadow-sm hover:shadow-md
+          ${styles.bg} ${styles.text} ${styles.border} ${styles.ring}
+        `}
+        title={`Change status from ${form.status}`}
+      >
+        <option value="Complete">✓ Complete</option>
+        <option value="In Progress">⏳ In Progress</option>
+        <option value="Non-compliant">❌ Non-compliant</option>
+      </select>
+    );
   };
 
   return (
@@ -230,9 +590,6 @@ export default function AdminDashboard() {
                       Form Details
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Products
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -241,21 +598,17 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {savedForms.map((form) => {
+                  {savedForms.filter(form => !isFormBlank(form)).map((form) => {
                     const completeEntries = form.entries.filter(entry => 
                       entry.type && entry.ccp1.temp && entry.ccp2.temp && 
                       entry.coolingTo80.temp && entry.coolingTo54.temp && entry.finalChill.temp
                     ).length;
-                    const usedProducts = form.entries.filter(entry => entry.type).map(entry => entry.type).join(', ') || 'No products';
                     const validation = getFormValidationSummary(form);
                     
                     return (
                       <tr 
                         key={form.id} 
-                        className={`hover:bg-gray-50 ${
-                          validation.hasErrors ? 'bg-red-50 border-l-4 border-red-500' : 
-                          validation.warningCount > 0 ? 'bg-yellow-50 border-l-4 border-yellow-500' : ''
-                        }`}
+                        className="hover:bg-gray-50"
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
@@ -271,21 +624,45 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 max-w-xs truncate">
-                            {usedProducts}
-                          </div>
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {getFormStatus(form)}
+                          {renderStatusDropdown(form)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => handleViewForm(form)}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            View Details
-                          </button>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleViewForm(form)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                              title="View and edit form details"
+                            >
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              View
+                            </button>
+                            
+                            <button
+                              onClick={() => handlePrintForm(form)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                              title="Print this form"
+                            >
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                              </svg>
+                              Print
+                            </button>
+                            
+                            <button
+                              onClick={() => handleDeleteForm(form.id)}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors"
+                              title="Delete this form permanently"
+                            >
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -295,7 +672,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {savedForms.length === 0 && (
+          {savedForms.filter(form => !isFormBlank(form)).length === 0 && (
             <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200 mt-6">
               <div className="text-6xl mb-4">📋</div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No Forms Submitted</h3>
@@ -320,7 +697,7 @@ export default function AdminDashboard() {
             </div>
             
             <div className="flex-1 overflow-y-auto">
-              <PaperForm onSave={() => setShowFormModal(false)} />
+              <PaperForm />
             </div>
           </div>
         </div>

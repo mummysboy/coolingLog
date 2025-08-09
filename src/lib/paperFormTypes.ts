@@ -4,6 +4,7 @@ export interface PaperFormEntry {
   id: string;
   date: Date;
   formInitial: string; // The initial this form is associated with
+  status: 'Complete' | 'In Progress' | 'Non-compliant'; // Admin-editable status
   
   // Row entries (1-9)
   entries: PaperFormRow[];
@@ -75,6 +76,7 @@ export const createEmptyForm = (formInitial: string = ''): PaperFormEntry => ({
   id: `form-${Date.now()}`,
   date: new Date(),
   formInitial,
+  status: 'In Progress', // Default status for new forms
   entries: Array(9).fill(null).map(() => ({ ...EMPTY_ROW })),
   thermometerNumber: '',
   ingredients: {
