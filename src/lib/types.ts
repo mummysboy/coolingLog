@@ -192,11 +192,11 @@ export const MOCK_USERS: User[] = [
   },
   {
     id: 'adm001',
-    initials: 'MJ',
-    name: 'Maria Johnson',
+    initials: 'JG',
+    name: 'Josh Galant',
     role: 'admin',
     certificationNumber: 'FS-2024-ADM-001',
-    email: 'maria.johnson@restaurant.com',
+    email: 'josh.galant@restaurant.com',
   },
 ];
 
@@ -207,7 +207,7 @@ export const MOCK_INITIALS: InitialEntry[] = [
     name: 'Alice Baker',
     isActive: true,
     createdAt: new Date('2024-01-01'),
-    createdBy: 'MJ',
+    createdBy: 'JG',
   },
   {
     id: 'init002',
@@ -215,15 +215,15 @@ export const MOCK_INITIALS: InitialEntry[] = [
     name: 'John Smith',
     isActive: true,
     createdAt: new Date('2024-01-01'),
-    createdBy: 'MJ',
+    createdBy: 'JG',
   },
   {
     id: 'init003',
-    initials: 'MJ',
-    name: 'Maria Johnson',
+    initials: 'JG',
+    name: 'Josh Galant',
     isActive: true,
     createdAt: new Date('2024-01-01'),
-    createdBy: 'MJ',
+    createdBy: 'JG',
   },
 ];
 

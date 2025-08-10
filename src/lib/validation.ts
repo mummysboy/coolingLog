@@ -342,3 +342,13 @@ export function getFormValidationSummary(form: PaperFormEntry): {
     }))
   };
 }
+
+// Generate a consistent error ID for tracking resolution
+export function generateErrorId(error: { rowIndex: number; field: string; message: string }): string {
+  const sanitizedMessage = error.message
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .toLowerCase();
+  
+  return `error-${error.rowIndex}-${error.field}-${sanitizedMessage}`;
+}

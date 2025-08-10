@@ -2,26 +2,46 @@
 
 import { useEffect, useState } from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
+import type { PaperFormEntry } from '@/lib/paperFormTypes';
 import { usePinStore } from '@/stores/pinStore';
 import { PaperForm } from '@/components/PaperForm';
 import { InitialSelector } from '@/components/InitialSelector';
 import { PinAuthModal } from '@/components/PinAuthModal';
 
 export default function FormPage() {
-  const { currentForm, createNewForm, selectedInitial, setSelectedInitial } = usePaperFormStore();
+  const { currentForm, createNewForm, selectedInitial, setSelectedInitial, updateFormStatus, saveForm, savedForms, loadForm } = usePaperFormStore();
   const { isAuthenticated, clearAuthentication } = usePinStore();
   const [showPinModal, setShowPinModal] = useState(false);
   const [pendingInitial, setPendingInitial] = useState<string>('');
+  const [formUpdateKey, setFormUpdateKey] = useState(0); // Force re-render when form updates
 
   // Check if current initial is authenticated
   const isCurrentInitialAuthenticated = selectedInitial ? isAuthenticated(selectedInitial) : false;
 
   useEffect(() => {
-    // Only auto-create a form if we have a selected initial, it's authenticated, and no current form
-    if (!currentForm && selectedInitial && isCurrentInitialAuthenticated) {
-      createNewForm();
+    // Always ensure there's a form for the current day when authenticated
+    if (selectedInitial && isCurrentInitialAuthenticated) {
+      // Check if there's a form for today
+      const today = new Date();
+      const todayString = today.toISOString().split('T')[0];
+      
+      // Look for an existing form for today
+      const existingForm = savedForms.find((form: PaperFormEntry) => {
+        const formDateString = form.date.toISOString().split('T')[0];
+        return form.formInitial === selectedInitial && formDateString === todayString;
+      });
+      
+      if (existingForm) {
+        // Load the existing form for today
+        if (!currentForm || currentForm.id !== existingForm.id) {
+          loadForm(existingForm.id);
+        }
+      } else if (!currentForm) {
+        // Create a new form for today if none exists
+        createNewForm();
+      }
     }
-  }, [currentForm, createNewForm, selectedInitial, isCurrentInitialAuthenticated]);
+  }, [selectedInitial, isCurrentInitialAuthenticated, savedForms, currentForm, createNewForm, loadForm]);
 
   // Handle initial selection with PIN authentication
   const handleInitialChange = (newInitial: string) => {
@@ -65,24 +85,6 @@ export default function FormPage() {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Food Chilling Log Form</h1>
-            <p className="text-gray-600">Select an initial to view and manage forms</p>
-            {selectedInitial && isCurrentInitialAuthenticated && (
-              <div className="flex items-center space-x-2 mt-2">
-                <div className="flex items-center space-x-1 text-sm text-green-600">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Authenticated as {selectedInitial}</span>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="text-xs text-gray-500 hover:text-red-600 hover:underline"
-                  title="Logout and clear authentication"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
           </div>
           <InitialSelector onInitialChange={handleInitialChange} />
         </div>
@@ -117,13 +119,25 @@ export default function FormPage() {
       ) : !currentForm ? (
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200">
-            <div className="text-6xl mb-4">📋</div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">No Forms Available</h2>
-            <p className="text-gray-600">No forms found for initial &quot;{selectedInitial}&quot;. A new form will be created automatically.</p>
+            <div className="text-6xl mb-4">⏳</div>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Loading Form...</h2>
+            <p className="text-gray-600">Please wait while we prepare your form for today.</p>
           </div>
         </div>
       ) : (
-        <PaperForm />
+        <PaperForm 
+          key={formUpdateKey}
+          onFormUpdate={(formId, updates) => {
+            console.log('Form updated in form page:', formId, updates);
+            // Handle status updates by calling the store's updateFormStatus function
+            if (updates.status) {
+              console.log('Status updated to:', updates.status, 'updating store');
+              updateFormStatus(formId, updates.status);
+              // Ensure the form is saved to persist the status change
+              setTimeout(() => saveForm(), 100);
+            }
+          }}
+        />
       )}
 
       {/* PIN Authentication Modal */}

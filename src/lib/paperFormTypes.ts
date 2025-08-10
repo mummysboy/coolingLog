@@ -1,10 +1,17 @@
 // Types that exactly match the paper form structure
 
+export interface AdminComment {
+  id: string;
+  adminInitial: string;
+  timestamp: Date;
+  comment: string;
+}
+
 export interface PaperFormEntry {
   id: string;
   date: Date;
   formInitial: string; // The initial this form is associated with
-  status: 'Complete' | 'In Progress' | 'Non-compliant'; // Admin-editable status
+  status: 'Complete' | 'In Progress' | 'Error'; // Automatically determined status
   
   // Row entries (1-9)
   entries: PaperFormRow[];
@@ -22,6 +29,10 @@ export interface PaperFormEntry {
     liquidEggs: string;
   };
   correctiveActionsComments: string;
+  
+  // Admin comments and resolution
+  adminComments: AdminComment[];
+  resolvedErrors: string[]; // Array of error IDs that have been resolved
 }
 
 export interface PaperFormRow {
@@ -90,4 +101,6 @@ export const createEmptyForm = (formInitial: string = ''): PaperFormEntry => ({
     liquidEggs: '',
   },
   correctiveActionsComments: '',
+  adminComments: [],
+  resolvedErrors: [],
 });
