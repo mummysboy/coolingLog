@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { PaperFormEntry, createEmptyForm } from '@/lib/paperFormTypes';
+import { validateForm, generateErrorId } from '@/lib/validation';
 
 interface PaperFormStore {
   currentForm: PaperFormEntry | null;
@@ -11,7 +12,7 @@ interface PaperFormStore {
   createNewForm: (initial?: string) => void;
   updateEntry: (rowIndex: number, field: string, value: string) => void;
   updateFormField: (field: string, value: any) => void;
-  updateFormStatus: (formId: string, status: 'Complete' | 'In Progress' | 'Non-compliant') => void;
+  updateFormStatus: (formId: string, status: 'Complete' | 'In Progress' | 'Error') => void;
   deleteForm: (formId: string) => void;
   saveForm: () => void;
   loadForm: (id: string) => void;
@@ -20,6 +21,14 @@ interface PaperFormStore {
   getFormsByInitial: (initial: string) => PaperFormEntry[];
   getFormsForCurrentInitial: () => PaperFormEntry[];
   getFormByDateAndInitial: (date: Date, initial: string) => PaperFormEntry | null;
+  
+  // Admin comment actions
+  addAdminComment: (formId: string, adminInitial: string, comment: string) => void;
+  resolveError: (formId: string, errorId: string) => void;
+  unresolveError: (formId: string, errorId: string) => void;
+  
+  // Admin form updates
+  updateAdminForm: (formId: string, updates: Partial<PaperFormEntry>) => void;
 }
 
 export const usePaperFormStore = create<PaperFormStore>()(
@@ -96,6 +105,7 @@ export const usePaperFormStore = create<PaperFormStore>()(
       },
 
       updateFormStatus: (formId, status) => {
+        console.log('updateFormStatus called with formId:', formId, 'status:', status);
         const { savedForms, currentForm } = get();
         const updatedForms = savedForms.map(form => 
           form.id === formId ? { ...form, status } : form
@@ -106,6 +116,7 @@ export const usePaperFormStore = create<PaperFormStore>()(
           ? { ...currentForm, status }
           : currentForm;
         
+        console.log('Setting new state with updated forms, new status for form:', status);
         set({ savedForms: updatedForms, currentForm: updatedCurrentForm });
       },
 
@@ -160,7 +171,13 @@ export const usePaperFormStore = create<PaperFormStore>()(
         const { savedForms } = get();
         const form = savedForms.find(form => form.id === id);
         if (form) {
-          set({ currentForm: form });
+          // Ensure the form has all required fields (migration for existing forms)
+          const migratedForm = {
+            ...form,
+            adminComments: form.adminComments || [],
+            resolvedErrors: form.resolvedErrors || [],
+          };
+          set({ currentForm: migratedForm });
         }
       },
 
@@ -188,16 +205,154 @@ export const usePaperFormStore = create<PaperFormStore>()(
           return formDateStr === targetDateStr && form.formInitial === initial;
         }) || null;
       },
+
+      // Admin comment actions
+      addAdminComment: (formId, adminInitial, comment) => {
+        const { savedForms, currentForm } = get();
+        
+        const newComment = {
+          id: Date.now().toString(),
+          adminInitial,
+          comment,
+          timestamp: new Date(),
+        };
+        
+        // Update saved forms
+        const updatedForms = savedForms.map(form => 
+          form.id === formId 
+            ? { 
+                ...form, 
+                adminComments: [...(form.adminComments || []), newComment],
+                resolvedErrors: form.resolvedErrors || []
+              }
+            : form
+        );
+        
+        // Update current form if it matches
+        const updatedCurrentForm = currentForm?.id === formId 
+          ? { 
+              ...currentForm, 
+              adminComments: [...(currentForm.adminComments || []), newComment],
+              resolvedErrors: currentForm.resolvedErrors || []
+            }
+          : currentForm;
+        
+        set({ savedForms: updatedForms, currentForm: updatedCurrentForm });
+      },
+      
+      resolveError: (formId, errorId) => {
+        const { savedForms, currentForm } = get();
+        
+        // Update saved forms
+        const updatedForms = savedForms.map(form => {
+          if (form.id === formId) {
+            const newResolvedErrors = [...(form.resolvedErrors || []), errorId];
+            
+            // Check if all validation errors are now resolved
+            const validation = validateForm(form);
+            const allErrorIds = validation.errors.map(error => generateErrorId(error));
+            const allErrorsResolved = allErrorIds.every(id => newResolvedErrors.includes(id));
+            
+            return {
+              ...form,
+              resolvedErrors: newResolvedErrors,
+              adminComments: form.adminComments || [],
+              // If all errors are resolved and this was an error form, change status to 'In Progress'
+              status: (form.status === 'Error' && allErrorsResolved) ? 'In Progress' : form.status
+            };
+          }
+          return form;
+        });
+        
+        // Update current form if it matches
+        const updatedCurrentForm = currentForm?.id === formId 
+          ? {
+              ...currentForm,
+              resolvedErrors: [...(currentForm.resolvedErrors || []), errorId],
+              adminComments: currentForm.adminComments || [],
+              // Check if all errors are resolved
+              status: (() => {
+                const validation = validateForm(currentForm);
+                const allErrorIds = validation.errors.map(error => generateErrorId(error));
+                const allErrorsResolved = allErrorIds.every(id => [...(currentForm.resolvedErrors || []), errorId].includes(id));
+                return (currentForm.status === 'Error' && allErrorsResolved) ? 'In Progress' : currentForm.status;
+              })()
+            }
+          : currentForm;
+        
+        set({ savedForms: updatedForms, currentForm: updatedCurrentForm });
+      },
+      
+      unresolveError: (formId, errorId) => {
+        const { savedForms, currentForm } = get();
+        
+        // Update saved forms
+        const updatedForms = savedForms.map(form => 
+          form.id === formId 
+            ? { 
+                ...form, 
+                resolvedErrors: (form.resolvedErrors || []).filter(id => id !== errorId),
+                adminComments: form.adminComments || []
+              }
+            : form
+        );
+        
+        // Update current form if it matches
+        const updatedCurrentForm = currentForm?.id === formId 
+          ? { 
+              ...currentForm, 
+              resolvedErrors: (currentForm.resolvedErrors || []).filter(id => id !== errorId),
+              adminComments: currentForm.adminComments || []
+            }
+          : currentForm;
+        
+        set({ savedForms: updatedForms, currentForm: updatedCurrentForm });
+      },
+      
+      updateAdminForm: (formId, updates) => {
+        const { savedForms, currentForm } = get();
+        
+        console.log('updateAdminForm called with formId:', formId, 'updates:', updates);
+        console.log('Current savedForms count:', savedForms.length);
+        
+        // Find the form being updated
+        const formToUpdate = savedForms.find(form => form.id === formId);
+        console.log('Form to update - current status:', formToUpdate?.status, 'new status:', updates.status);
+        
+        // Update saved forms
+        const updatedForms = savedForms.map(form => 
+          form.id === formId 
+            ? { ...form, ...updates }
+            : form
+        );
+        
+        // Update current form if it matches
+        const updatedCurrentForm = currentForm?.id === formId 
+          ? { ...currentForm, ...updates }
+          : currentForm;
+        
+        console.log('Setting new state with updated forms, form status will be:', updates.status);
+        set({ savedForms: updatedForms, currentForm: updatedCurrentForm });
+        
+        // Verify the update was applied
+        setTimeout(() => {
+          const { savedForms: newSavedForms } = get();
+          const updatedForm = newSavedForms.find(form => form.id === formId);
+          console.log('Verification - form status after update:', updatedForm?.status);
+        }, 50);
+      },
     }),
     {
       name: 'paper-form-storage',
       partialize: (state) => ({ savedForms: state.savedForms, selectedInitial: state.selectedInitial }),
       onRehydrateStorage: () => (state) => {
         if (state?.savedForms) {
-          // Convert date strings back to Date objects
+          // Convert date strings back to Date objects and ensure all required fields exist
           state.savedForms = state.savedForms.map(form => ({
             ...form,
             date: new Date(form.date),
+            adminComments: form.adminComments || [],
+            resolvedErrors: form.resolvedErrors || [],
           }));
         }
       },

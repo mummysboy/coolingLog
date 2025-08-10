@@ -7,8 +7,9 @@ import { usePinStore } from '@/stores/pinStore';
 import { MOCK_USERS } from '@/lib/types';
 import { PaperFormEntry } from '@/lib/paperFormTypes';
 import { PaperForm } from '@/components/PaperForm';
+
 import { getFormValidationSummary } from '@/lib/validation';
-import { getStorageStatus, seedInitialData } from '@/lib/seedData';
+
 
 export default function AdminDashboard() {
   const { savedForms, currentForm, loadForm, updateFormStatus, deleteForm, isFormBlank } = usePaperFormStore();
@@ -19,18 +20,33 @@ export default function AdminDashboard() {
   const [showInitialModal, setShowInitialModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
-  const [newInitialData, setNewInitialData] = useState({ initials: '', name: '' });
+  const [newInitialData, setNewInitialData] = useState({ initials: '', name: '', pin: '' });
   const [pinModalData, setPinModalData] = useState({ initials: '', pin: '', isEdit: false });
-  const [storageStatus, setStorageStatus] = useState(getStorageStatus());
+
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
+  const initialModalRef = useRef<HTMLDivElement>(null);
+  const pinModalRef = useRef<HTMLDivElement>(null);
 
   const adminUser = MOCK_USERS.find(user => user.role === 'admin');
 
-  // Close dropdown when clicking outside
+  // Close dropdown and modals when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Close settings dropdown
       if (settingsDropdownRef.current && !settingsDropdownRef.current.contains(event.target as Node)) {
         setShowSettingsDropdown(false);
+      }
+      
+      // Close initial modal
+      if (showInitialModal && initialModalRef.current && !initialModalRef.current.contains(event.target as Node)) {
+        setShowInitialModal(false);
+        setNewInitialData({ initials: '', name: '', pin: '' });
+      }
+      
+      // Close PIN modal
+      if (showPinModal && pinModalRef.current && !pinModalRef.current.contains(event.target as Node)) {
+        setShowPinModal(false);
+        setPinModalData({ initials: '', pin: '', isEdit: false });
       }
     };
 
@@ -38,19 +54,28 @@ export default function AdminDashboard() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [showInitialModal, showPinModal]);
 
   const handleViewForm = (form: PaperFormEntry) => {
     setSelectedForm(form);
     setShowFormModal(true);
-    // Load the selected form into the store for editing
-    loadForm(form.id);
+    // Don't load the form into currentForm - we want to edit it as an admin form
   };
 
   const handleAddInitial = () => {
     if (newInitialData.initials.trim() && newInitialData.name.trim() && adminUser) {
       addInitial(newInitialData.initials.trim().toUpperCase(), newInitialData.name.trim(), adminUser.initials);
-      setNewInitialData({ initials: '', name: '' });
+      
+      // Create PIN if provided
+      if (newInitialData.pin.trim()) {
+        if (!/^\d{4}$/.test(newInitialData.pin)) {
+          alert('PIN must be exactly 4 digits');
+          return;
+        }
+        createPin(newInitialData.initials.trim().toUpperCase(), newInitialData.pin, adminUser.initials);
+      }
+      
+      setNewInitialData({ initials: '', name: '', pin: '' });
       setShowInitialModal(false);
     }
   };
@@ -121,9 +146,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleStatusChange = (formId: string, newStatus: 'Complete' | 'In Progress' | 'Non-compliant') => {
-    updateFormStatus(formId, newStatus);
-  };
+
 
   const handlePrintForm = (form: PaperFormEntry) => {
     // Open form in a new window that matches the exact PaperForm component styling
@@ -461,39 +484,27 @@ export default function AdminDashboard() {
     );
   };
 
-  const renderStatusDropdown = (form: PaperFormEntry) => {
+  const renderStatusDisplay = (form: PaperFormEntry) => {
     const getStatusStyles = (status: string) => {
       switch (status) {
         case 'Complete':
           return {
-            bg: 'bg-green-100 hover:bg-green-200',
-            text: 'text-green-800',
-            border: 'border-green-300',
-            ring: 'focus:ring-green-500',
+            text: 'text-green-600',
             icon: '✓'
           };
         case 'In Progress':
           return {
-            bg: 'bg-yellow-100 hover:bg-yellow-200',
-            text: 'text-yellow-800',
-            border: 'border-yellow-300',
-            ring: 'focus:ring-yellow-500',
+            text: 'text-yellow-600',
             icon: '⏳'
           };
-        case 'Non-compliant':
+        case 'Error':
           return {
-            bg: 'bg-red-100 hover:bg-red-200',
-            text: 'text-red-800',
-            border: 'border-red-300',
-            ring: 'focus:ring-red-500',
-            icon: '❌'
+            text: 'text-orange-600',
+            icon: '⚠️'
           };
         default:
           return {
-            bg: 'bg-gray-100 hover:bg-gray-200',
-            text: 'text-gray-800',
-            border: 'border-gray-300',
-            ring: 'focus:ring-blue-500',
+            text: 'text-gray-600',
             icon: '?'
           };
       }
@@ -502,24 +513,12 @@ export default function AdminDashboard() {
     const styles = getStatusStyles(form.status);
 
     return (
-      <select
-        value={form.status}
-        onChange={(e) => handleStatusChange(form.id, e.target.value as 'Complete' | 'In Progress' | 'Non-compliant')}
-        className={`
-          cursor-pointer
-          px-3 py-2 text-sm font-medium 
-          rounded-lg border-2 
-          transition-all duration-200 ease-in-out
-          focus:outline-none focus:ring-2 focus:ring-offset-1
-          shadow-sm hover:shadow-md
-          ${styles.bg} ${styles.text} ${styles.border} ${styles.ring}
-        `}
-        title={`Change status from ${form.status}`}
-      >
-        <option value="Complete">✓ Complete</option>
-        <option value="In Progress">⏳ In Progress</option>
-        <option value="Non-compliant">❌ Non-compliant</option>
-      </select>
+      <div className={`
+        px-3 py-2 text-sm font-medium 
+        ${styles.text}
+      `}>
+        {styles.icon} {form.status}
+      </div>
     );
   };
 
@@ -533,32 +532,24 @@ export default function AdminDashboard() {
             <p className="text-gray-600">Food Safety Form Management</p>
           </div>
           <div className="flex items-center space-x-4">
-            {/* Settings Dropdown */}
+            <div className="text-right">
+              <p className="font-medium text-gray-900">{adminUser?.name}</p>
+              <p className="text-sm text-gray-600">{adminUser?.role}</p>
+            </div>
             <div className="relative" ref={settingsDropdownRef}>
               <button
                 onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-                className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors cursor-pointer"
+                title="Manage Users"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span className="text-sm font-medium">Settings</span>
-                <svg
-                  className={`w-4 h-4 transition-transform ${showSettingsDropdown ? 'rotate-180' : ''}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <span className="text-white font-bold text-lg">{adminUser?.initials}</span>
               </button>
 
               {showSettingsDropdown && (
-                <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div className="absolute top-full right-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                   <div className="py-1">
                     <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b">
-                      Initial Management
+                      User Management
                     </div>
                     <button
                       onClick={() => {
@@ -570,7 +561,7 @@ export default function AdminDashboard() {
                       <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
-                      <span>Add New Initial</span>
+                      <span>Add New User</span>
                     </button>
                     
                     <div className="border-t border-gray-100 mt-1">
@@ -581,7 +572,7 @@ export default function AdminDashboard() {
                     
                     <div className="border-t border-gray-100 mt-1">
                       <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Current Initials ({initials.filter(i => i.isActive).length} active)
+                        Current Users ({initials.filter(i => i.isActive).length} active)
                       </div>
                       <div className="max-h-48 overflow-y-auto">
                         {initials.map((initial) => {
@@ -666,7 +657,7 @@ export default function AdminDashboard() {
                                     title="Delete"
                                   >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                   </button>
                                 </div>
@@ -680,14 +671,6 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
-            
-            <div className="text-right">
-              <p className="font-medium text-gray-900">{adminUser?.name}</p>
-              <p className="text-sm text-gray-600">{adminUser?.role}</p>
-            </div>
-            <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-lg">{adminUser?.initials}</span>
-            </div>
           </div>
         </div>
       </header>
@@ -695,33 +678,11 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="px-6 py-6">
         <div className="max-w-7xl mx-auto">
-          {/* Controls and Storage Status */}
+          {/* Controls */}
           <div className="bg-white rounded-xl border-2 border-gray-200 p-6 mb-6">
-            <div className="flex justify-between items-start">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">Submitted Forms</h2>
-                <p className="text-gray-600">Monitor and review food safety forms</p>
-              </div>
-              <div className="text-right">
-                <div className="flex items-center space-x-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full ${storageStatus.isConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-                  <span className="text-sm font-medium text-gray-700">{storageStatus.provider}</span>
-                </div>
-                {storageStatus.isConnected && (
-                  <button
-                    onClick={async () => {
-                      await seedInitialData();
-                      setStorageStatus(getStorageStatus());
-                    }}
-                    className="text-xs px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
-                  >
-                    Seed AWS Data
-                  </button>
-                )}
-                {!storageStatus.isConnected && (
-                  <p className="text-xs text-yellow-700">Using local storage fallback</p>
-                )}
-              </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Submitted Forms</h2>
+              <p className="text-gray-600">Monitor and review food safety forms</p>
             </div>
           </div>
 
@@ -753,6 +714,50 @@ export default function AdminDashboard() {
                     ).length;
                     const validation = getFormValidationSummary(form);
                     
+                    // Auto-determine and update status based on form data and validation
+                    // Only auto-update if the current status is not manually set to 'In Progress'
+                    let newStatus: 'Complete' | 'In Progress' | 'Error';
+                    
+                    if (validation.hasErrors) {
+                      newStatus = 'Error';
+                    } else if (completeEntries === form.entries.length && form.entries.length > 0) {
+                      // All entries are complete with data
+                      newStatus = 'Complete';
+                    } else if (completeEntries > 0) {
+                      // Some entries have data but not all
+                      newStatus = 'In Progress';
+                    } else {
+                      // No entries have data
+                      newStatus = 'In Progress';
+                    }
+                    
+                    // Auto-update status logic:
+                    // 1. Always allow updates to 'Error' status (new errors should be shown)
+                    // 2. Allow updates from 'In Progress' to 'Complete' (when all issues are resolved)
+                    // 3. Don't override 'In Progress' with 'In Progress' (prevents unnecessary updates)
+                    // 4. Don't override 'In Progress' with 'Error' if admin has manually resolved (has corrective actions)
+                    const shouldUpdate = newStatus !== form.status && (
+                      newStatus === 'Error' || // Always show new errors
+                      form.status !== 'In Progress' || // Allow updates from other statuses
+                      newStatus === 'Complete' // Allow completion from 'In Progress'
+                    );
+                    
+                    // Special case: Don't auto-update to 'Error' if admin has manually set to 'In Progress' and has corrective actions
+                    const adminManuallyResolved = form.status === 'In Progress' && 
+                      form.correctiveActionsComments && 
+                      form.correctiveActionsComments.trim() && 
+                      newStatus === 'Error';
+                    
+                    if (shouldUpdate && !adminManuallyResolved) {
+                      console.log('Auto-updating form status from', form.status, 'to', newStatus, 'for form:', form.id);
+                      setTimeout(() => {
+                        updateFormStatus(form.id, newStatus);
+                      }, 0);
+                    } else {
+                      console.log('Skipping auto-status update for form:', form.id, 'current status:', form.status, 'would update to:', newStatus, 'adminManuallyResolved:', adminManuallyResolved);
+                    }
+                    
+                    console.log('Rendering form:', form.id, 'with status:', form.status, 'hasComments:', !!form.correctiveActionsComments?.trim(), 'correctiveActions:', form.correctiveActionsComments?.substring(0, 50));
                     return (
                       <tr 
                         key={form.id} 
@@ -773,7 +778,7 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {renderStatusDropdown(form)}
+                          {renderStatusDisplay(form)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
@@ -835,9 +840,27 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-50 rounded-2xl w-full h-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-4 bg-white border-b">
-              <h3 className="text-xl font-semibold">Edit Form - {new Date(selectedForm.date).toLocaleDateString()}</h3>
+              <div>
+                <h3 className="text-xl font-semibold">Edit Form - {new Date(selectedForm.date).toLocaleDateString()}</h3>
+                <div className="text-sm text-gray-600 mt-1">
+                  Status: <span className={`font-medium ${
+                    selectedForm.status === 'Complete' ? 'text-green-600' :
+                    selectedForm.status === 'In Progress' ? 'text-yellow-600' :
+                    'text-orange-600'
+                  }`}>
+                    {selectedForm.status}
+                  </span>
+                </div>
+              </div>
               <button
-                onClick={() => setShowFormModal(false)}
+                onClick={() => {
+                  console.log('Closing admin modal, forcing dashboard refresh');
+                  setShowFormModal(false);
+                  // Force a re-render of the dashboard to show updated status
+                  setTimeout(() => {
+                    console.log('Dashboard refresh triggered');
+                  }, 100);
+                }}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
               >
                 ✕
@@ -845,7 +868,27 @@ export default function AdminDashboard() {
             </div>
             
             <div className="flex-1 overflow-y-auto">
-              <PaperForm />
+              <PaperForm 
+                key={`${selectedForm.id}-${selectedForm.status}`}
+                formData={selectedForm} 
+                readOnly={false} 
+                onFormUpdate={(formId, updates) => {
+                  console.log('Form updated in admin modal:', formId, updates);
+                  
+                  // Handle status updates by calling the store's updateFormStatus function
+                  if (updates.status) {
+                    console.log('Admin modal: Updating form status to:', updates.status);
+                    updateFormStatus(formId, updates.status);
+                  }
+                  
+                  // Force re-render of the admin page by updating the selectedForm state
+                  if (selectedForm && selectedForm.id === formId) {
+                    const updatedForm = { ...selectedForm, ...updates };
+                    setSelectedForm(updatedForm);
+                    console.log('Admin modal: Updated selectedForm state');
+                  }
+                }}
+              />
             </div>
           </div>
         </div>
@@ -854,13 +897,13 @@ export default function AdminDashboard() {
       {/* Add Initial Modal */}
       {showInitialModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md">
+          <div ref={initialModalRef} className="bg-white rounded-2xl w-full max-w-md">
             <div className="flex justify-between items-center p-6 border-b">
               <h3 className="text-xl font-semibold">Add New Initial</h3>
               <button
                 onClick={() => {
                   setShowInitialModal(false);
-                  setNewInitialData({ initials: '', name: '' });
+                  setNewInitialData({ initials: '', name: '', pin: '' });
                 }}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
               >
@@ -895,13 +938,28 @@ export default function AdminDashboard() {
                   placeholder="e.g., John Doe"
                 />
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  4-Digit PIN (Optional)
+                </label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={newInitialData.pin}
+                  onChange={(e) => setNewInitialData(prev => ({ ...prev, pin: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  placeholder="e.g., 1234"
+                />
+              </div>
             </div>
             
             <div className="flex justify-end space-x-3 p-6 border-t">
               <button
                 onClick={() => {
                   setShowInitialModal(false);
-                  setNewInitialData({ initials: '', name: '' });
+                  setNewInitialData({ initials: '', name: '', pin: '' });
                 }}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
@@ -922,7 +980,7 @@ export default function AdminDashboard() {
       {/* PIN Management Modal */}
       {showPinModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md">
+          <div ref={pinModalRef} className="bg-white rounded-2xl w-full max-w-md">
             <div className="flex justify-between items-center p-6 border-b">
               <h3 className="text-xl font-semibold">
                 {pinModalData.isEdit ? 'Edit PIN' : 'Create PIN'} for {pinModalData.initials}
