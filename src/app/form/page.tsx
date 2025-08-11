@@ -16,6 +16,7 @@ export default function FormPage() {
   const [pendingInitial, setPendingInitial] = useState<string>('');
   const [formUpdateKey, setFormUpdateKey] = useState(0); // Force re-render when form updates
   const [isLoadingForm, setIsLoadingForm] = useState(false);
+  const [lastValidationUpdate, setLastValidationUpdate] = useState<number>(0); // Track when validation last updated status
 
   // Check if current initial is authenticated
   const isCurrentInitialAuthenticated = selectedInitial ? isAuthenticated(selectedInitial) : false;
@@ -157,10 +158,12 @@ export default function FormPage() {
 
       // Only update if status has changed and we're not overriding a manually set 'Complete' status
       // Also don't override if admin has resolved errors and set status to 'In Progress'
+      // Also don't override if validation just updated the status (within last 5 seconds)
       const adminHasResolvedErrors = currentForm.resolvedErrors && currentForm.resolvedErrors.length > 0;
       const shouldRespectAdminResolution = adminHasResolvedErrors && currentForm.status === 'In Progress';
+      const validationRecentlyUpdated = Date.now() - lastValidationUpdate < 5000; // 5 seconds
       
-      if (newStatus !== currentForm.status && currentForm.status !== 'Complete' && !shouldRespectAdminResolution) {
+      if (newStatus !== currentForm.status && currentForm.status !== 'Complete' && !shouldRespectAdminResolution && !validationRecentlyUpdated) {
         console.log('Real-time status update: Form', currentForm.id, 'status changed from', currentForm.status, 'to', newStatus);
         updateFormStatus(currentForm.id, newStatus);
         
@@ -168,6 +171,8 @@ export default function FormPage() {
         setTimeout(() => saveForm(), 100);
       } else if (shouldRespectAdminResolution) {
         console.log('Skipping status update: Admin has resolved errors and set status to In Progress');
+      } else if (validationRecentlyUpdated) {
+        console.log('Skipping status update: Validation recently updated status, respecting that update');
       }
     };
 
@@ -339,6 +344,8 @@ export default function FormPage() {
               if (updates.status) {
                 console.log('Status updated to:', updates.status, 'updating store');
                 updateFormStatus(formId, updates.status);
+                // Track when validation last updated the status
+                setLastValidationUpdate(Date.now());
                 // Ensure the form is saved to persist the status change
                 setTimeout(() => saveForm(), 100);
               }

@@ -3,7 +3,7 @@
 import React from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import { PaperFormEntry } from '@/lib/paperFormTypes';
-import { shouldHighlightCell, validateForm } from '@/lib/validation';
+import { shouldHighlightCell, validateForm, getTimeDifferenceMinutes } from '@/lib/validation';
 import { TimePicker } from './TimePicker';
 
 
@@ -15,7 +15,7 @@ interface PaperFormProps {
 }
 
 export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: PaperFormProps = {}) {
-  const { currentForm, updateEntry, updateFormField, saveForm, getFormByDateAndInitial, loadForm, selectedInitial, createNewForm, updateAdminForm, savedForms } = usePaperFormStore();
+  const { currentForm, updateEntry, updateFormField, updateFormStatus, saveForm, getFormByDateAndInitial, loadForm, selectedInitial, createNewForm, updateAdminForm, savedForms } = usePaperFormStore();
 
   // Check if we're working with a form from the admin dashboard
   const isAdminForm = formData && formData !== currentForm;
@@ -38,7 +38,34 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
   // Track when form is successfully resolved to show success message
   const [showResolutionSuccess, setShowResolutionSuccess] = React.useState(false);
   
+  // NEW: Toast notification state for validation errors
+  const [toasts, setToasts] = React.useState<Array<{
+    id: string;
+    type: 'error' | 'warning' | 'success' | 'info';
+    message: string;
+    rowIndex?: number;
+    stage?: string;
+  }>>([]);
+  
   // Keep typing indicator visible once admin starts typing (until resolved)
+
+  // NEW: Function to show toast notifications
+  const showToast = (type: 'error' | 'warning' | 'success' | 'info', message: string, rowIndex?: number, stage?: string) => {
+    const toast = {
+      id: `toast-${Date.now()}-${Math.random()}`,
+      type,
+      message,
+      rowIndex,
+      stage
+    };
+    
+    setToasts(prev => [...prev, toast]);
+    
+    // Auto-remove toast after 5 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== toast.id));
+    }, 5000);
+  };
 
   // Monitor form status changes
   React.useEffect(() => {
@@ -307,8 +334,302 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         });
       }
       
-      // Check for new errors ONLY in the specific cell that was modified
-      console.log('=== CHECKING SPECIFIC CELL FOR NEW ERRORS ===');
+      // NEW: Comprehensive validation check when all three fields (temp, time, initial) are complete
+      const currentEntry = form.entries[rowIndex];
+      const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+      
+      stages.forEach(stage => {
+        const stageData = currentEntry[stage as keyof typeof currentEntry] as any;
+        
+        // Check if all three fields are complete for this stage
+        if (stageData && stageData.temp && stageData.time && stageData.initial) {
+          console.log(`=== VALIDATING COMPLETE CELL: ${stage} at row ${rowIndex} ===`);
+          
+          // Validate temperature against column header rules
+          const tempValue = parseFloat(String(stageData.temp));
+          if (!isNaN(tempValue)) {
+            let validationError = '';
+            
+            // Check against specific column requirements
+            if (stage === 'ccp1') {
+              // CCP 1: Temperature Must reach 166°F or greater
+              if (tempValue < 166) {
+                validationError = `CCP1 temperature ${tempValue}°F is below minimum required 166°F`;
+              }
+            } else if (stage === 'ccp2') {
+              // CCP 2: 127°F or greater
+              if (tempValue < 127) {
+                validationError = `CCP2 temperature ${tempValue}°F is below minimum required 127°F`;
+              }
+            } else if (stage === 'coolingTo80') {
+              // 80°F Cooling: 80°F or below within 105 minutes
+              if (tempValue > 80) {
+                validationError = `80°F Cooling temperature ${tempValue}°F is above maximum allowed 80°F`;
+              }
+              
+              // Check time limit if CCP2 time is available
+              if (!validationError && currentEntry.ccp2.time) {
+                const timeDiff = getTimeDifferenceMinutes(currentEntry.ccp2.time, stageData.time);
+                if (timeDiff !== null && timeDiff > 105) {
+                  validationError = `80°F Cooling time limit exceeded: ${timeDiff} minutes (limit: 105 minutes)`;
+                }
+              }
+            } else if (stage === 'coolingTo54') {
+              // 54°F Cooling: 54°F or below within 4.75 hours
+              if (tempValue > 54) {
+                validationError = `54°F Cooling temperature ${tempValue}°F is above maximum allowed 54°F`;
+              }
+              
+              // Check time limit if previous cooling stage time is available
+              if (!validationError) {
+                const referenceTime = currentEntry.coolingTo80.time || currentEntry.ccp2.time;
+                if (referenceTime) {
+                  const timeDiff = getTimeDifferenceMinutes(referenceTime, stageData.time);
+                  if (timeDiff !== null && timeDiff > 4.75 * 60) { // Convert 4.75 hours to minutes
+                    validationError = `54°F Cooling time limit exceeded: ${(timeDiff / 60).toFixed(2)} hours (limit: 4.75 hours)`;
+                  }
+                }
+              }
+            } else if (stage === 'finalChill') {
+              // Final Chill: 39°F or below
+              if (tempValue > 39) {
+                validationError = `Final Chill temperature ${tempValue}°F is above maximum allowed 39°F`;
+              }
+            }
+            
+            // If validation error found, log it and update form status
+            if (validationError) {
+              console.error(`VALIDATION ERROR in ${stage}: ${validationError}`);
+              
+              // Show immediate toast notification to user
+              showToast('error', validationError, rowIndex, stage);
+              
+              console.log(`=== UPDATING FORM STATUS TO ERROR ===`);
+              console.log(`Form ID: ${form.id}, Current status: ${form.status}`);
+              console.log(`Validation error: ${validationError}`);
+              
+              // Update form status to 'Error' when validation fails
+              if (onFormUpdate) {
+                console.log('Calling onFormUpdate with status: Error');
+                onFormUpdate(form.id, { status: 'Error' });
+              }
+              
+              if (isAdminForm) {
+                console.log('Updating admin form status to Error');
+                updateAdminForm(form.id, { status: 'Error' });
+              } else {
+                console.log('Updating regular form status to Error via store');
+                // Use the store's updateFormStatus function directly for immediate effect
+                updateFormStatus(form.id, 'Error');
+                // Also update the current form status locally for immediate UI update
+                updateFormField('status', 'Error');
+                // Save the form to persist the status change
+                setTimeout(() => saveForm(), 100);
+              }
+              
+              console.log(`=== FORM STATUS UPDATE COMPLETED ===`);
+            } else {
+              // Show success message when cell is completed successfully
+              showToast('success', `${stage.toUpperCase()} cell completed successfully`, rowIndex, stage);
+              
+              // Check if this was a validation error that's now resolved
+              // If so, check if we can update status back to 'In Progress'
+              if (form.status === 'Error') {
+                // Validate the entire form to see if there are still errors
+                const validation = validateForm(form);
+                const hasUnresolvedErrors = validation.errors.some(error => {
+                  const errorId = `${error.rowIndex}-${error.field}-${error.message}`;
+                  return !form.resolvedErrors?.includes(errorId);
+                });
+                
+                if (!hasUnresolvedErrors) {
+                  console.log('All validation errors resolved, updating status to In Progress');
+                  if (onFormUpdate) {
+                    onFormUpdate(form.id, { status: 'In Progress' });
+                  }
+                  
+                  if (isAdminForm) {
+                    updateAdminForm(form.id, { status: 'In Progress' });
+                  } else {
+                    updateFormStatus(form.id, 'In Progress');
+                    updateFormField('status', 'In Progress');
+                    setTimeout(() => saveForm(), 100);
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+      
+      // NEW: Validate logical temperature progression
+      if (currentEntry.ccp1.temp && currentEntry.ccp2.temp) {
+        const ccp1Temp = parseFloat(String(currentEntry.ccp1.temp));
+        const ccp2Temp = parseFloat(String(currentEntry.ccp2.temp));
+        
+        if (!isNaN(ccp1Temp) && !isNaN(ccp2Temp) && ccp2Temp > ccp1Temp) {
+          const progressionError = `CCP2 temperature (${ccp2Temp}°F) should not be higher than CCP1 temperature (${ccp1Temp}°F)`;
+          console.error(`LOGICAL VALIDATION ERROR: ${progressionError}`);
+          showToast('warning', progressionError, rowIndex, 'ccp2');
+        }
+      }
+      
+      // NEW: Additional validation when time field is completed to check time limits
+      if (field.includes('.time') && value.trim() !== '') {
+        const [stage] = field.split('.');
+        const stageData = currentEntry[stage as keyof typeof currentEntry] as any;
+        
+        // Only validate time limits if we have both temperature and time for this stage
+        if (stageData && stageData.temp && stageData.initial) {
+          let timeValidationError = '';
+          
+          if (stage === 'coolingTo80' && currentEntry.ccp2.time) {
+            // Check 80°F cooling time limit (105 minutes from CCP2)
+            const timeDiff = getTimeDifferenceMinutes(currentEntry.ccp2.time, value);
+            if (timeDiff !== null && timeDiff > 105) {
+              timeValidationError = `80°F Cooling time limit exceeded: ${timeDiff} minutes (limit: 105 minutes)`;
+            }
+          } else if (stage === 'coolingTo54') {
+            // Check 54°F cooling time limit (4.75 hours from previous stage)
+            const referenceTime = currentEntry.coolingTo80.time || currentEntry.ccp2.time;
+            if (referenceTime) {
+              const timeDiff = getTimeDifferenceMinutes(referenceTime, value);
+              if (timeDiff !== null && timeDiff > 4.75 * 60) {
+                timeValidationError = `54°F Cooling time limit exceeded: ${(timeDiff / 60).toFixed(2)} hours (limit: 4.75 hours)`;
+              }
+            }
+          }
+          
+          if (timeValidationError) {
+            console.error(`TIME VALIDATION ERROR in ${stage}: ${timeValidationError}`);
+            showToast('error', timeValidationError, rowIndex, stage);
+            
+            console.log(`=== UPDATING FORM STATUS TO ERROR (TIME VALIDATION) ===`);
+            console.log(`Form ID: ${form.id}, Current status: ${form.status}`);
+            console.log(`Time validation error: ${timeValidationError}`);
+            
+            // Update form status to 'Error' when time validation fails
+            if (onFormUpdate) {
+              console.log('Calling onFormUpdate with status: Error (time validation)');
+              onFormUpdate(form.id, { status: 'Error' });
+            }
+            
+            if (isAdminForm) {
+              console.log('Updating admin form status to Error (time validation)');
+              updateAdminForm(form.id, { status: 'Error' });
+            } else {
+              console.log('Updating regular form status to Error via store (time validation)');
+              // Use the store's updateFormStatus function directly for immediate effect
+              updateFormStatus(form.id, 'Error');
+              // Also update the current form status locally for immediate UI update
+              updateFormField('status', 'Error');
+              // Save the form to persist the status change
+              setTimeout(() => saveForm(), 100);
+            }
+            
+            console.log(`=== FORM STATUS UPDATE COMPLETED (TIME VALIDATION) ===`);
+            
+            // Reset the resolvedDataSnapshot when a new time validation error is detected
+            if (resolvedDataSnapshot) {
+              console.log('Resetting resolvedDataSnapshot due to new time validation error');
+              setResolvedDataSnapshot(null);
+            }
+          }
+        }
+      }
+      
+      // NEW: Always run validation regardless of form status or snapshot state
+      // This ensures that new errors are caught even after previous errors were resolved
+      console.log('=== ALWAYS RUNNING VALIDATION FOR NEW ERRORS ===');
+      console.log('Modified cell:', field, 'at row:', rowIndex);
+      console.log('Current form status:', form.status);
+      console.log('Has resolvedDataSnapshot:', !!resolvedDataSnapshot);
+      
+      // Check if the current value has validation errors based on column requirements
+      let currentHasError = false;
+      
+      if (field.includes('.temp')) {
+        // Temperature validation based on column requirements
+        const tempValue = parseFloat(String(value || ''));
+        if (isNaN(tempValue)) {
+          currentHasError = true;
+          console.log(`Temperature validation failed: NaN value`);
+        } else {
+          // Check against specific column requirements
+          if (field.includes('ccp1.temp')) {
+            // CCP 1: Temperature Must reach 166°F or greater
+            currentHasError = tempValue < 166;
+            console.log(`CCP1 validation: ${tempValue}°F >= 166°F = ${tempValue >= 166}`);
+          } else if (field.includes('ccp2.temp')) {
+            // CCP 2: 127°F or greater
+            currentHasError = tempValue < 127;
+            console.log(`CCP2 validation: ${tempValue}°F >= 127°F = ${tempValue >= 127}`);
+          } else if (field.includes('coolingTo80.temp')) {
+            // 80°F Cooling: 80°F or below within 105 minutes
+            currentHasError = tempValue > 80;
+            console.log(`80°F Cooling validation: ${tempValue}°F <= 80°F = ${tempValue <= 80}`);
+          } else if (field.includes('coolingTo54.temp')) {
+            // 54°F Cooling: 54°F or below within 4.75 hr
+            currentHasError = tempValue > 54;
+            console.log(`54°F Cooling validation: ${tempValue}°F <= 54°F = ${tempValue <= 54}`);
+          } else if (field.includes('finalChill.temp')) {
+            // Final Chill: 39°F or below
+            currentHasError = tempValue > 39;
+            console.log(`Final Chill validation: ${tempValue}°F <= 39°F = ${tempValue <= 39}`);
+          }
+        }
+      } else if (field.includes('.time')) {
+        // Time validation - must not be empty
+        currentHasError = !value || String(value).trim() === '';
+        console.log(`Time validation: empty = ${currentHasError}`);
+      } else if (field.includes('.initial')) {
+        // Initial validation - must not be empty
+        currentHasError = !value || String(value).trim() === '';
+        console.log(`Initial validation: empty = ${currentHasError}`);
+      } else if (field === 'type') {
+        // Type validation - must not be empty
+        currentHasError = !value || String(value).trim() === '';
+        console.log(`Type validation: empty = ${currentHasError}`);
+      }
+      
+      console.log(`Current cell has validation error: ${currentHasError}`);
+      
+      // If there's a validation error, update the form status to Error
+      if (currentHasError) {
+        console.log('=== VALIDATION ERROR DETECTED - UPDATING STATUS ===');
+        console.log('Validation error in field:', field, 'at row:', rowIndex);
+        
+        // Update form status to 'Error' when validation fails
+        if (onFormUpdate) {
+          console.log('Calling onFormUpdate with status: Error');
+          onFormUpdate(form.id, { status: 'Error' });
+        }
+        
+        if (isAdminForm) {
+          console.log('Updating admin form status to Error');
+          updateAdminForm(form.id, { status: 'Error' });
+        } else {
+          console.log('Updating regular form status to Error');
+          // Use the store's updateFormStatus function directly for immediate effect
+          updateFormStatus(form.id, 'Error');
+          // Also update the current form status locally for immediate UI update
+          updateFormField('status', 'Error');
+          // Save the form to persist the status change
+          setTimeout(() => saveForm(), 100);
+        }
+        
+        console.log('=== VALIDATION STATUS UPDATE COMPLETED ===');
+        
+        // Reset the resolvedDataSnapshot when a new error is detected
+        // This ensures that new errors can be properly tracked after previous ones were resolved
+        if (resolvedDataSnapshot) {
+          console.log('Resetting resolvedDataSnapshot due to new validation error');
+          setResolvedDataSnapshot(null);
+        }
+      }
+      
+      // LEGACY: Keep the old logic for backward compatibility but make it less restrictive
+      console.log('=== CHECKING SPECIFIC CELL FOR NEW ERRORS (LEGACY) ===');
       console.log('Modified cell:', field, 'at row:', rowIndex);
       
       if (form.status === 'In Progress' && resolvedDataSnapshot) {
@@ -1084,7 +1405,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             </svg>
             <div>
               <h3 className="text-lg font-semibold text-green-800">Form Successfully Resolved!</h3>
-              <p className="text-green-700">All validation errors have been marked as resolved. The form status has been updated to 'In Progress'.</p>
+              <p className="text-green-700">All validation errors have been marked as resolved. The form status has been updated to &apos;In Progress&apos;.</p>
             </div>
           </div>
         </div>
@@ -1135,7 +1456,43 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         return null;
       })()}
 
-
+      {/* Toast Notifications */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {toasts.map(toast => (
+          <div
+            key={toast.id}
+            className={`px-4 py-3 rounded-lg shadow-lg text-white max-w-md transition-all duration-300 ${
+              toast.type === 'success' ? 'bg-green-500' :
+              toast.type === 'error' ? 'bg-red-500' :
+              toast.type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="font-medium">
+                  {toast.type === 'error' ? 'Validation Error' :
+                   toast.type === 'warning' ? 'Warning' :
+                   toast.type === 'success' ? 'Success' : 'Info'}
+                </div>
+                <div className="text-sm mt-1">{toast.message}</div>
+                {toast.rowIndex !== undefined && toast.stage && (
+                  <div className="text-xs mt-1 opacity-90">
+                    Row {toast.rowIndex + 1}, {toast.stage}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                className="ml-3 text-white hover:text-gray-200 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
 
     </div>
   );
