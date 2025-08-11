@@ -925,7 +925,6 @@ export default function AdminDashboard() {
             <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200 mt-6">
               <div className="text-6xl mb-4">📋</div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No Pending Forms</h3>
-              <p className="text-gray-500">All forms are either completed or have no pending issues.</p>
             </div>
           )}
 
@@ -1058,13 +1057,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {savedForms.filter(form => !isFormBlank(form)).length > 0 && savedForms.filter(form => !isFormBlank(form) && form.status !== 'Complete').length === 0 && (
-            <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200 mt-6">
-              <div className="text-6xl mb-4">✅</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">All Forms Completed!</h3>
-              <p className="text-gray-500">All submitted forms have been successfully completed. Check the "Completed Forms" section below.</p>
-            </div>
-          )}
+
         </div>
       </main>
 
