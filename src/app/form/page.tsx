@@ -14,45 +14,99 @@ export default function FormPage() {
   const [showPinModal, setShowPinModal] = useState(false);
   const [pendingInitial, setPendingInitial] = useState<string>('');
   const [formUpdateKey, setFormUpdateKey] = useState(0); // Force re-render when form updates
+  const [isLoadingForm, setIsLoadingForm] = useState(false);
 
   // Check if current initial is authenticated
   const isCurrentInitialAuthenticated = selectedInitial ? isAuthenticated(selectedInitial) : false;
 
+  // Effect to handle form loading when initial changes
   useEffect(() => {
-    // Always ensure there's a form for the current day when authenticated
-    if (selectedInitial && isCurrentInitialAuthenticated) {
-      // Check if there's a form for today
-      const today = new Date();
-      const todayString = today.toISOString().split('T')[0];
-      
-      // Look for an existing form for today
-      const existingForm = savedForms.find((form: PaperFormEntry) => {
-        const formDateString = form.date.toISOString().split('T')[0];
-        return form.formInitial === selectedInitial && formDateString === todayString;
-      });
-      
-      if (existingForm) {
-        // Load the existing form for today
-        if (!currentForm || currentForm.id !== existingForm.id) {
-          loadForm(existingForm.id);
-        }
-      } else if (!currentForm) {
-        // Create a new form for today if none exists
-        createNewForm();
-      }
+    console.log('Form page useEffect triggered:', {
+      selectedInitial,
+      isCurrentInitialAuthenticated,
+      currentFormId: currentForm?.id,
+      currentFormInitial: currentForm?.formInitial,
+      savedFormsCount: savedForms.length
+    });
+
+    if (!selectedInitial) {
+      // No initial selected, clear any current form
+      console.log('No initial selected, clearing form');
+      return;
     }
+
+    if (!isCurrentInitialAuthenticated) {
+      // Not authenticated, don't load forms yet
+      console.log('Initial not authenticated yet:', selectedInitial);
+      return;
+    }
+
+    // Clear current form when initial changes to ensure clean state
+    if (currentForm && currentForm.formInitial !== selectedInitial) {
+      // Force clear the current form when switching to a different initial
+      console.log('Switching to different initial, clearing current form');
+      setFormUpdateKey(prev => prev + 1);
+      return;
+    }
+
+    // Load or create form for the current initial
+    const loadFormForInitial = async () => {
+      console.log('Loading form for initial:', selectedInitial);
+      setIsLoadingForm(true);
+      
+      try {
+        // Check if there's a form for today
+        const today = new Date();
+        const todayString = today.toISOString().split('T')[0];
+        
+        // Look for an existing form for today
+        const existingForm = savedForms.find((form: PaperFormEntry) => {
+          const formDateString = form.date.toISOString().split('T')[0];
+          return form.formInitial === selectedInitial && formDateString === todayString;
+        });
+        
+        if (existingForm) {
+          // Load the existing form for today
+          console.log('Found existing form for today:', existingForm.id);
+          if (!currentForm || currentForm.id !== existingForm.id) {
+            loadForm(existingForm.id);
+          }
+        } else if (!currentForm) {
+          // Create a new form for today if none exists
+          console.log('Creating new form for initial:', selectedInitial);
+          createNewForm(selectedInitial);
+        }
+      } catch (error) {
+        console.error('Error loading form for initial:', error);
+      } finally {
+        setIsLoadingForm(false);
+      }
+    };
+
+    loadFormForInitial();
   }, [selectedInitial, isCurrentInitialAuthenticated, savedForms, currentForm, createNewForm, loadForm]);
 
   // Handle initial selection with PIN authentication
   const handleInitialChange = (newInitial: string) => {
+    console.log('handleInitialChange called:', { newInitial, currentInitial: selectedInitial });
+    
     if (newInitial === selectedInitial) return;
+
+    // Clear current form when changing initials to force refresh
+    if (currentForm) {
+      console.log('Clearing current form for initial change');
+      // Reset the current form to trigger a clean state
+      setFormUpdateKey(prev => prev + 1);
+    }
 
     // If selecting a new initial, check if it needs authentication
     if (newInitial && !isAuthenticated(newInitial)) {
+      console.log('New initial requires authentication:', newInitial);
       setPendingInitial(newInitial);
       setShowPinModal(true);
     } else {
       // Already authenticated or no initial selected
+      console.log('Setting new initial (already authenticated):', newInitial);
       setSelectedInitial(newInitial);
     }
   };
@@ -62,6 +116,8 @@ export default function FormPage() {
     setShowPinModal(false);
     setSelectedInitial(pendingInitial);
     setPendingInitial('');
+    // Force a refresh after successful authentication
+    setFormUpdateKey(prev => prev + 1);
   };
 
   // Handle PIN authentication cancel
@@ -75,6 +131,8 @@ export default function FormPage() {
     if (selectedInitial) {
       clearAuthentication(selectedInitial);
       setSelectedInitial('');
+      // Clear current form and force refresh
+      setFormUpdateKey(prev => prev + 1);
     }
   };
 
@@ -116,7 +174,7 @@ export default function FormPage() {
             </button>
           </div>
         </div>
-      ) : !currentForm ? (
+      ) : isLoadingForm || !currentForm ? (
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200">
             <div className="text-6xl mb-4">⏳</div>

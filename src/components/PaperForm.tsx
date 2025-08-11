@@ -26,16 +26,131 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
     ? savedForms.find(f => f.id === formData.id) || formData
     : (formData || currentForm);
     
+  // Track the resolved data snapshot to compare against new changes
+  const [resolvedDataSnapshot, setResolvedDataSnapshot] = React.useState<any>(null);
+
   // Monitor form status changes
   React.useEffect(() => {
     if (form) {
       console.log('Form status changed to:', form.status, 'Form ID:', form.id);
+      
+      // If form ID changes, clear the snapshot (different form)
+      if (resolvedDataSnapshot && resolvedDataSnapshot.id !== form.id) {
+        console.log('Form ID changed, clearing resolved snapshot');
+        setResolvedDataSnapshot(null);
+      }
     }
-  }, [form?.status, form?.id]);
+  }, [form?.status, form?.id, form?.id, resolvedDataSnapshot]);
+
+  // Monitor resolvedDataSnapshot changes
+  React.useEffect(() => {
+    console.log('resolvedDataSnapshot changed:', !!resolvedDataSnapshot);
+    if (resolvedDataSnapshot) {
+      console.log('Snapshot has entries:', resolvedDataSnapshot.entries?.length);
+    }
+  }, [resolvedDataSnapshot]);
+
+  // Function to check if there are new errors compared to the resolved snapshot
+  const hasNewErrors = (currentForm: any, resolvedSnapshot: any) => {
+    console.log('=== hasNewErrors FUNCTION CALLED ===');
+    if (!resolvedSnapshot) {
+      console.log('No resolved snapshot, returning false');
+      return false;
+    }
+    
+    console.log('Checking for new errors against resolved snapshot...');
+    
+    // Compare entries to see if there are new errors in newly modified data
+    const currentEntries = currentForm.entries || [];
+    const resolvedEntries = resolvedSnapshot.entries || [];
+    
+    for (let i = 0; i < currentEntries.length; i++) {
+      const currentEntry = currentEntries[i];
+      const resolvedEntry = resolvedEntries[i];
+      
+      if (!resolvedEntry) continue;
+      
+      // Check if this row has been modified since resolution
+      const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+      
+      for (const stage of stages) {
+        const currentStage = currentEntry[stage];
+        const resolvedStage = resolvedEntry[stage];
+        
+        if (!currentStage || !resolvedStage) continue;
+        
+        // Check if any field in this stage has been modified
+        const fields = ['temp', 'time', 'initial'];
+        for (const field of fields) {
+          if (currentStage[field] !== resolvedStage[field]) {
+            console.log(`Field ${stage}.${field} at row ${i + 1} was modified: "${resolvedStage[field]}" -> "${currentStage[field]}"`);
+            
+            // This field was modified, check if it now has validation errors
+            const validation = shouldHighlightCell(currentForm, i, `${stage}.${field}`);
+            
+            // Only flag as new error if:
+            // 1. Current field has validation errors AND
+            // 2. Resolved field didn't have validation errors (or was empty/invalid)
+            const resolvedValidation = shouldHighlightCell(resolvedSnapshot, i, `${stage}.${field}`);
+            
+            if (validation.highlight && validation.severity === 'error' && 
+                (!resolvedValidation.highlight || resolvedValidation.severity !== 'error')) {
+              console.log(`New error detected in ${stage}.${field} at row ${i + 1}`);
+              console.log(`Resolved field had errors: ${resolvedValidation.highlight && resolvedValidation.severity === 'error'}`);
+              return true;
+            } else {
+              console.log(`No new validation errors in modified field ${stage}.${field} at row ${i + 1}`);
+              console.log(`Current validation: ${validation.highlight ? validation.severity : 'none'}`);
+              console.log(`Resolved validation: ${resolvedValidation.highlight ? resolvedValidation.severity : 'none'}`);
+            }
+          }
+        }
+      }
+      
+      // Check if type field was modified
+      if (currentEntry.type !== resolvedEntry.type) {
+        console.log(`Type field at row ${i + 1} was modified: "${resolvedEntry.type}" -> "${currentEntry.type}"`);
+        
+        const validation = shouldHighlightCell(currentForm, i, 'type');
+        
+        // Only flag as new error if:
+        // 1. Current field has validation errors AND
+        // 2. Resolved field didn't have validation errors (or was empty/invalid)
+        const resolvedValidation = shouldHighlightCell(resolvedSnapshot, i, 'type');
+        
+        if (validation.highlight && validation.severity === 'error' && 
+            (!resolvedValidation.highlight || resolvedValidation.severity !== 'error')) {
+          console.log(`New error detected in type field at row ${i + 1}`);
+          console.log(`Resolved type field had errors: ${resolvedValidation.highlight && resolvedValidation.severity === 'error'}`);
+          return true;
+        } else {
+          console.log(`No new validation errors in modified type field at row ${i + 1}`);
+          console.log(`Current type validation: ${validation.highlight ? validation.severity : 'none'}`);
+          console.log(`Resolved type validation: ${resolvedValidation.highlight ? resolvedValidation.severity : 'none'}`);
+        }
+      }
+    }
+    
+    // Check form-level fields
+    const formFields = ['thermometerNumber', 'lotNumbers'];
+    for (const field of formFields) {
+      if (JSON.stringify(currentForm[field]) !== JSON.stringify(resolvedSnapshot[field])) {
+        console.log(`Form field ${field} was modified`);
+        // For form-level fields, we'll be more conservative and only flag if there are actual validation errors
+        // rather than just any change
+        return false; // Don't immediately flag form field changes as errors
+      }
+    }
+    
+    console.log('No new errors detected in modified data');
+    return false;
+  };
 
   if (!form) return null;
 
   const handleCellChange = (rowIndex: number, field: string, value: string) => {
+    console.log('handleCellChange called:', { rowIndex, field, value, readOnly });
+    
     if (!readOnly) {
       if (isAdminForm) {
         // For admin forms, update the specific form directly
@@ -101,6 +216,209 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         });
       }
       
+      // Check for new errors ONLY in the specific cell that was modified
+      console.log('=== CHECKING SPECIFIC CELL FOR NEW ERRORS ===');
+      console.log('Modified cell:', field, 'at row:', rowIndex);
+      
+      if (form.status === 'In Progress' && resolvedDataSnapshot) {
+        // Get the resolved value for this specific cell only
+        let resolvedValue;
+        if (field.includes('.')) {
+          const [section, subField] = field.split('.');
+          resolvedValue = resolvedDataSnapshot.entries[rowIndex]?.[section]?.[subField];
+        } else {
+          resolvedValue = resolvedDataSnapshot.entries[rowIndex]?.[field];
+        }
+        
+        console.log('Resolved cell value:', resolvedValue, 'Current cell value:', value);
+        
+        // Only check for errors if this specific cell actually changed
+        if (resolvedValue !== value) {
+          console.log('Cell value changed, checking ONLY this cell for validation errors...');
+          
+          // Smart validation: Check if this cell went from valid to invalid
+          let hasNewError = false;
+          
+          // Get the resolved value for this specific cell
+          let resolvedValue;
+          if (field.includes('.')) {
+            const [section, subField] = field.split('.');
+            const resolvedEntry = resolvedDataSnapshot.entries[rowIndex];
+            if (resolvedEntry && resolvedEntry[section as keyof typeof resolvedEntry]) {
+              const resolvedSectionData = resolvedEntry[section as keyof typeof resolvedEntry] as any;
+              resolvedValue = resolvedSectionData?.[subField];
+            }
+          } else {
+            resolvedValue = resolvedDataSnapshot.entries[rowIndex]?.[field as keyof any];
+          }
+          
+          console.log(`=== CELL COMPARISON DEBUG ===`);
+          console.log(`Field: ${field}, Row: ${rowIndex}`);
+          console.log(`Resolved value: "${resolvedValue}"`);
+          console.log(`Current value: "${value}"`);
+          console.log(`Values are different: ${resolvedValue !== value}`);
+          console.log(`=== END CELL COMPARISON DEBUG ===`);
+          
+          // Check if the current value has validation errors based on column requirements
+          let currentHasError = false;
+          
+          if (field.includes('.temp')) {
+            // Temperature validation based on column requirements
+            const tempValue = parseFloat(String(value || ''));
+            if (isNaN(tempValue)) {
+              currentHasError = true;
+              console.log(`Temperature validation failed: NaN value`);
+            } else {
+              // Check against specific column requirements
+              if (field.includes('ccp1.temp')) {
+                // CCP 1: Temperature Must reach 166°F or greater
+                currentHasError = tempValue < 166;
+                console.log(`CCP1 validation: ${tempValue}°F >= 166°F = ${tempValue >= 166}`);
+              } else if (field.includes('ccp2.temp')) {
+                // CCP 2: 127°F or greater
+                currentHasError = tempValue < 127;
+                console.log(`CCP2 validation: ${tempValue}°F >= 127°F = ${tempValue >= 127}`);
+              } else if (field.includes('coolingTo80.temp')) {
+                // 80°F Cooling: 80°F or below within 105 minutes
+                currentHasError = tempValue > 80;
+                console.log(`80°F Cooling validation: ${tempValue}°F <= 80°F = ${tempValue <= 80}`);
+              } else if (field.includes('coolingTo54.temp')) {
+                // 54°F Cooling: 54°F or below within 4.75 hr
+                currentHasError = tempValue > 54;
+                console.log(`54°F Cooling validation: ${tempValue}°F <= 54°F = ${tempValue <= 54}`);
+              } else if (field.includes('finalChill.temp')) {
+                // Final Chill: 39°F or below
+                currentHasError = tempValue > 39;
+                console.log(`Final Chill validation: ${tempValue}°F <= 39°F = ${tempValue <= 39}`);
+              }
+            }
+          } else if (field.includes('.time')) {
+            // Time validation - must not be empty
+            currentHasError = !value || String(value).trim() === '';
+            console.log(`Time validation: empty = ${currentHasError}`);
+          } else if (field.includes('.initial')) {
+            // Initial validation - must not be empty
+            currentHasError = !value || String(value).trim() === '';
+            console.log(`Initial validation: empty = ${currentHasError}`);
+          } else if (field === 'type') {
+            // Type validation - must not be empty
+            currentHasError = !value || String(value).trim() === '';
+            console.log(`Type validation: empty = ${currentHasError}`);
+          }
+          
+          console.log(`Current cell has error: ${currentHasError}`);
+          
+          // Check if the resolved value had validation errors based on column requirements
+          let resolvedHadError = false;
+          
+          if (field.includes('.temp')) {
+            const resolvedTempValue = parseFloat(String(resolvedValue || ''));
+            if (isNaN(resolvedTempValue)) {
+              resolvedHadError = true;
+              console.log(`Resolved temperature validation failed: NaN value`);
+            } else {
+              // Check against specific column requirements
+              if (field.includes('ccp1.temp')) {
+                // CCP 1: Temperature Must reach 166°F or greater
+                resolvedHadError = resolvedTempValue < 166;
+                console.log(`Resolved CCP1 validation: ${resolvedTempValue}°F >= 166°F = ${resolvedTempValue >= 166}`);
+              } else if (field.includes('ccp2.temp')) {
+                // CCP 2: 127°F or greater
+                resolvedHadError = resolvedTempValue < 127;
+                console.log(`Resolved CCP2 validation: ${resolvedTempValue}°F >= 127°F = ${resolvedTempValue >= 127}`);
+              } else if (field.includes('coolingTo80.temp')) {
+                // 80°F Cooling: 80°F or below within 105 minutes
+                resolvedHadError = resolvedTempValue > 80;
+                console.log(`Resolved 80°F Cooling validation: ${resolvedTempValue}°F <= 80°F = ${resolvedTempValue <= 80}`);
+              } else if (field.includes('coolingTo54.temp')) {
+                // 54°F Cooling: 54°F or below within 4.75 hr
+                resolvedHadError = resolvedTempValue > 54;
+                console.log(`Resolved 54°F Cooling validation: ${resolvedTempValue}°F <= 54°F = ${resolvedTempValue <= 54}`);
+              } else if (field.includes('finalChill.temp')) {
+                // Final Chill: 39°F or below
+                resolvedHadError = resolvedTempValue > 39;
+                console.log(`Resolved Final Chill validation: ${resolvedTempValue}°F <= 39°F = ${resolvedTempValue <= 39}`);
+              }
+            }
+          } else if (field.includes('.time')) {
+            resolvedHadError = !resolvedValue || String(resolvedValue).trim() === '';
+            console.log(`Resolved time validation: empty = ${resolvedHadError}`);
+          } else if (field.includes('.initial')) {
+            resolvedHadError = !resolvedValue || String(resolvedValue).trim() === '';
+            console.log(`Resolved initial validation: empty = ${resolvedHadError}`);
+          } else if (field === 'type') {
+            resolvedHadError = !resolvedValue || String(resolvedValue).trim() === '';
+            console.log(`Resolved type validation: empty = ${resolvedHadError}`);
+          }
+          
+          // Only flag as new error if: current has error AND resolved didn't have error
+          hasNewError = currentHasError && !resolvedHadError;
+          
+          console.log(`Current cell has error: ${currentHasError}, Resolved cell had error: ${resolvedHadError}`);
+          console.log(`New error detected: ${hasNewError}`);
+          
+          if (hasNewError) {
+            console.log('=== STATUS UPDATE ATTEMPT ===');
+            console.log('New error detected in this specific cell, updating status back to Error');
+            console.log('Current form status before update:', form.status);
+            console.log('Form ID:', form.id);
+            console.log('isAdminForm:', isAdminForm);
+            console.log('onFormUpdate exists:', !!onFormUpdate);
+            
+            // Update form status back to 'Error' when new errors occur
+            if (onFormUpdate) {
+              console.log('Calling onFormUpdate with status: Error');
+              try {
+                onFormUpdate(form.id, { status: 'Error' });
+                console.log('onFormUpdate call completed successfully');
+              } catch (error) {
+                console.error('Error calling onFormUpdate:', error);
+              }
+            }
+            
+            if (isAdminForm) {
+              console.log('Updating admin form status to Error');
+              try {
+                updateAdminForm(form.id, { status: 'Error' });
+                console.log('updateAdminForm call completed successfully');
+              } catch (error) {
+                console.error('Error calling updateAdminForm:', error);
+              }
+            } else {
+              console.log('Updating regular form status to Error');
+              try {
+                // Use direct update to avoid potential issues with handleFormFieldChange
+                updateFormField('status', 'Error');
+                console.log('updateFormField call completed successfully');
+                // Also save the form to persist the status change
+                saveForm();
+                console.log('saveForm call completed successfully');
+              } catch (error) {
+                console.error('Error calling updateFormField or saveForm:', error);
+              }
+            }
+            
+            console.log('All status update calls completed');
+            
+            // Check if the status actually changed
+            setTimeout(() => {
+              console.log('=== STATUS CHECK AFTER UPDATE ===');
+              console.log('Form status after update attempt:', form.status);
+              console.log('Form ID after update:', form.id);
+              console.log('=== END STATUS CHECK ===');
+            }, 100);
+            
+            console.log('=== END STATUS UPDATE ATTEMPT ===');
+          } else {
+            console.log('No new errors in this specific cell, status remains In Progress');
+          }
+        } else {
+          console.log('Cell value unchanged, no need to check for errors');
+        }
+      } else {
+        console.log('Not checking for new errors - status:', form.status, 'has snapshot:', !!resolvedDataSnapshot);
+      }
+      
       // Auto-save after updating entry (only if form has data and not admin form)
       if (!isAdminForm) {
         setTimeout(() => saveForm(), 100);
@@ -144,6 +462,41 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
           console.log('Regular form update - field:', field, 'value:', value, 'current status:', form.status);
           updateFormField(field, value);
           console.log('updateFormField called, new status should be:', value);
+          
+          // Check for new errors ONLY in the specific form field that was modified
+          if (form.status === 'In Progress' && resolvedDataSnapshot) {
+            console.log('=== CHECKING SPECIFIC FORM FIELD FOR NEW ERRORS ===');
+            console.log('Modified form field:', field, 'new value:', value);
+            
+            // Get the resolved value for this specific form field only
+            const resolvedValue = resolvedDataSnapshot[field];
+            console.log('Resolved form field value:', resolvedValue, 'Current form field value:', value);
+            
+            // Only check for errors if this specific form field actually changed
+            if (JSON.stringify(resolvedValue) !== JSON.stringify(value)) {
+              console.log('Form field value changed, checking ONLY this form field for validation...');
+              
+              // Validate ONLY this specific form field - no other fields, no other validation
+              if (field === 'thermometerNumber' && !value) {
+                console.log('Thermometer number is empty, updating status back to Error');
+                
+                // Update form status back to 'Error' when new errors occur
+                if (onFormUpdate) {
+                  onFormUpdate(form.id, { status: 'Error' });
+                }
+                
+                // Use direct update to avoid infinite loop
+                updateFormField('status', 'Error');
+              } else {
+                console.log('No validation errors in this specific form field, status remains In Progress');
+              }
+            } else {
+              console.log('Form field value unchanged, no need to check for errors');
+            }
+          } else {
+            console.log('Form field change - not checking for new errors - status:', form.status, 'has snapshot:', !!resolvedDataSnapshot);
+          }
+          
           // Auto-save after updating field (only if form has data)
           setTimeout(() => saveForm(), 100);
         }
@@ -526,6 +879,21 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                   console.log('Form ID:', form.id, 'isAdminForm:', isAdminForm);
                   console.log('Corrective actions:', form.correctiveActionsComments);
                   
+                  // Save a snapshot of the current data when resolving
+                  // Use the actual form data that's currently displayed, not the potentially stale form object
+                  const currentFormData = isAdminForm ? 
+                    savedForms.find(f => f.id === form.id) || form :
+                    form;
+                  
+                  const snapshot = JSON.parse(JSON.stringify(currentFormData));
+                  setResolvedDataSnapshot(snapshot);
+                  console.log('=== RESOLVE BUTTON CLICKED ===');
+                  console.log('Resolved data snapshot saved');
+                  console.log('Snapshot entries length:', snapshot.entries?.length);
+                  console.log('Current form status:', form.status);
+                  console.log('Snapshot sample data - Row 0 type:', snapshot.entries?.[0]?.type);
+                  console.log('Snapshot sample data - Row 0 ccp1.temp:', snapshot.entries?.[0]?.ccp1?.temp);
+                  
                   // Always notify parent component of the status update to ensure UI consistency
                   if (onFormUpdate) {
                     console.log('Calling onFormUpdate with status: In Progress');
@@ -605,50 +973,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         return null;
       })()}
 
-      {/* Complete Button - Show at the bottom of the form */}
-      <div className="mt-6 flex justify-center">
-        <button
-          onClick={() => {
-            console.log('Complete button clicked for form:', form.id);
-            
-            // Update form status to 'Complete'
-            if (onFormUpdate) {
-              onFormUpdate(form.id, { status: 'Complete' });
-            }
-            
-            // For admin forms, use updateAdminForm to ensure proper persistence
-            if (isAdminForm) {
-              updateAdminForm(form.id, { status: 'Complete' });
-            } else {
-              // For regular forms, update the current form and save it
-              handleFormFieldChange('status', 'Complete');
-              saveForm();
-            }
-          }}
-          disabled={form.status === 'Complete'}
-          className={`px-8 py-3 text-lg font-semibold rounded-lg transition-colors shadow-lg flex items-center space-x-3 ${
-            form.status === 'Complete'
-              ? 'bg-green-100 text-green-600 cursor-not-allowed'
-              : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-xl'
-          }`}
-        >
-          {form.status === 'Complete' ? (
-            <>
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span>Form Completed</span>
-            </>
-          ) : (
-            <>
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Complete</span>
-            </>
-          )}
-        </button>
-      </div>
+
 
     </div>
   );

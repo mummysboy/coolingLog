@@ -28,7 +28,7 @@ export function InitialSelector({ className = '', onInitialChange }: InitialSele
   const selectedInitialData = activeInitials.find(i => i.initials === selectedInitial);
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className}`} key={selectedInitial || 'no-initial'}>
       {/* Initial Dropdown */}
       <div className="relative">
         <button

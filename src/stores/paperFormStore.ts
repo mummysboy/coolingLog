@@ -50,6 +50,12 @@ export const usePaperFormStore = create<PaperFormStore>()(
       createNewForm: (initial) => {
         const { selectedInitial } = get();
         const formInitial = initial || selectedInitial;
+        
+        if (!formInitial) {
+          console.warn('No initial provided for new form');
+          return;
+        }
+        
         const newForm = createEmptyForm(formInitial);
         set({ currentForm: newForm });
       },
@@ -229,7 +235,22 @@ export const usePaperFormStore = create<PaperFormStore>()(
       },
 
       setSelectedInitial: (initial) => {
-        set({ selectedInitial: initial });
+        const { currentForm } = get();
+        
+        console.log('setSelectedInitial called:', {
+          newInitial: initial,
+          currentFormInitial: currentForm?.formInitial,
+          currentFormId: currentForm?.id
+        });
+        
+        // If switching to a different initial, clear the current form
+        if (currentForm && currentForm.formInitial !== initial) {
+          console.log('Clearing current form due to initial change');
+          set({ selectedInitial: initial, currentForm: null });
+        } else {
+          console.log('Setting initial without clearing form');
+          set({ selectedInitial: initial });
+        }
       },
 
       getFormsByInitial: (initial) => {
