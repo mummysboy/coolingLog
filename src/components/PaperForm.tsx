@@ -47,6 +47,16 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
     stage?: string;
   }>>([]);
   
+  // Check if there are unresolved validation errors
+  const hasUnresolvedErrors = React.useMemo(() => {
+    if (!form) return false;
+    const validation = validateForm(form);
+    return validation.errors.some(error => {
+      const errorId = `${error.rowIndex}-${error.field}-${error.message}`;
+      return !(form.resolvedErrors || []).includes(errorId);
+    });
+  }, [form]);
+  
   // Keep typing indicator visible once admin starts typing (until resolved)
 
   // NEW: Function to show toast notifications
@@ -1309,8 +1319,8 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
               readOnly={readOnly}
             />
             
-            {/* Resolve Button - Show only when not resolved AND admin is actively typing */}
-            {!isFormResolved && isTypingCorrectiveActions && (
+            {/* Resolve Button - Show when there are validation errors OR when admin is actively typing */}
+            {(!isFormResolved && (isTypingCorrectiveActions || hasUnresolvedErrors)) && (
               <button
                 onClick={() => {
                   console.log('Resolve button clicked, current status:', form.status);
@@ -1330,7 +1340,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                   console.log('Snapshot entries length:', snapshot.entries?.length);
                   console.log('Current form status:', form.status);
                   console.log('Snapshot sample data - Row 0 type:', snapshot.entries?.[0]?.type);
-                  console.log('Snapshot sample data - Row 0 ccp1.temp:', snapshot.entries?.[0]?.ccp1?.temp);
+                  console.log('Snapshot sample data - Row 0 ccp1.temp:', snapshot.entries?.[0]?.ccp1?.ccp1?.temp);
                   
                   // Always notify parent component of the status update to ensure UI consistency
                   if (onFormUpdate) {

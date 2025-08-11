@@ -53,8 +53,52 @@ export function AdminCommentSection({ form, isAdmin }: AdminCommentSectionProps)
     });
   };
 
-  if (!isAdmin) return null;
+  // Allow regular users to access resolve functionality, but restrict comment functionality to admins
+  if (!isAdmin) {
+    // For regular users, only show the resolve functionality when there are errors
+    if (!hasUnresolvedErrors) return null;
+    
+    return (
+      <div className="mt-6 p-4 border-2 border-green-300 bg-green-50 rounded-lg">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-green-800 flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            Resolve Validation Errors
+          </h3>
+          
+          {hasUnresolvedErrors && (
+            <button
+              onClick={handleResolveAll}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+            >
+              Resolve All Errors
+            </button>
+          )}
+        </div>
+        
+        <div className="text-sm text-green-700 mb-4">
+          <p>This form has validation errors that need to be resolved. Click the button above to mark all errors as resolved.</p>
+        </div>
 
+        {/* Resolved Button - Bottom Right for regular users */}
+        <div className="fixed bottom-6 right-6 z-50">
+          <button
+            onClick={handleResolveAll}
+            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-lg flex items-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <span>Resolve All Errors</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Original admin functionality
   return (
     <div className="mt-6 p-4 border-2 border-blue-300 bg-blue-50 rounded-lg" data-admin-comments>
       <div className="flex justify-between items-center mb-4">
@@ -160,8 +204,8 @@ export function AdminCommentSection({ form, isAdmin }: AdminCommentSectionProps)
             </svg>
             <span>Resolve All Errors</span>
           </button>
-        </div>
-      )}
-    </div>
-  );
-}
+          </div>
+        )}
+      </div>
+    );
+  }

@@ -245,7 +245,18 @@ export default function FormPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Food Chilling Log Form</h1>
           </div>
-          <InitialSelector onInitialChange={handleInitialChange} />
+          <div className="flex items-center space-x-4">
+            {selectedInitial && isCurrentInitialAuthenticated && (
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                title={`Logout from ${selectedInitial}`}
+              >
+                Logout {selectedInitial}
+              </button>
+            )}
+            <InitialSelector onInitialChange={handleInitialChange} />
+          </div>
         </div>
       </div>
 
@@ -338,6 +349,8 @@ export default function FormPage() {
           
           <PaperForm 
             key={formUpdateKey}
+            formData={currentForm} // Pass formData to make it work like admin page
+            readOnly={false}
             onFormUpdate={(formId, updates) => {
               console.log('Form updated in form page:', formId, updates);
               // Handle status updates by calling the store's updateFormStatus function
