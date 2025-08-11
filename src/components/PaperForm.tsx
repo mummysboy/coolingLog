@@ -65,15 +65,20 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         updateEntry(rowIndex, field, value);
       }
       
-      // Auto-fill initial when both temp and time are entered
+      // Auto-fill initial when type, temp, and time are all entered
       const entry = form.entries[rowIndex];
       if (entry) {
-        // Check each stage and auto-fill initial if both temp and time are present
+        // Check each stage and auto-fill initial if type, temp, and time are all present
         const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
         
         stages.forEach(stage => {
           const stageData = entry[stage as keyof typeof entry] as any;
-          if (stageData && stageData.temp && stageData.time && !stageData.initial && selectedInitial) {
+          if (stageData && 
+              entry.type && 
+              stageData.temp && 
+              stageData.time && 
+              !stageData.initial && 
+              selectedInitial) {
             // Auto-fill the initial for this stage
             if (isAdminForm) {
               // For admin forms, update the specific form
