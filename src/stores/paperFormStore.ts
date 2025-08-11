@@ -29,6 +29,15 @@ interface PaperFormStore {
   
   // Admin form updates
   updateAdminForm: (formId: string, updates: Partial<PaperFormEntry>) => void;
+  
+  // Debug function to export current state
+  exportState: () => {
+    savedFormsCount: number;
+    savedFormIds: string[];
+    currentFormId: string | null;
+    currentFormStatus: 'Complete' | 'In Progress' | 'Error' | null;
+    selectedInitial: string;
+  };
 }
 
 export const usePaperFormStore = create<PaperFormStore>()(
@@ -122,12 +131,50 @@ export const usePaperFormStore = create<PaperFormStore>()(
 
       deleteForm: (formId) => {
         const { savedForms, currentForm } = get();
+        
+        // Find the form being deleted for logging
+        const formToDelete = savedForms.find(form => form.id === formId);
+        if (formToDelete) {
+          console.log('Deleting form completely:', {
+            id: formToDelete.id,
+            date: formToDelete.date,
+            initial: formToDelete.formInitial,
+            status: formToDelete.status,
+            entriesCount: formToDelete.entries.length,
+            hasAdminComments: formToDelete.adminComments?.length > 0,
+            hasResolvedErrors: formToDelete.resolvedErrors?.length > 0
+          });
+        }
+        
+        // Remove the form from savedForms
         const updatedForms = savedForms.filter(form => form.id !== formId);
         
         // Clear current form if it's the one being deleted
         const updatedCurrentForm = currentForm?.id === formId ? null : currentForm;
         
+        // Update the state
         set({ savedForms: updatedForms, currentForm: updatedCurrentForm });
+        
+        console.log('Form deletion completed. Remaining forms:', updatedForms.length);
+        
+        // Verify deletion was complete
+        setTimeout(() => {
+          const { savedForms: verifyForms } = get();
+          const formStillExists = verifyForms.some(form => form.id === formId);
+          if (formStillExists) {
+            console.error('Form deletion verification failed - form still exists:', formId);
+          } else {
+            console.log('Form deletion verification successful - form completely removed:', formId);
+          }
+          
+          // Additional cleanup check - ensure no orphaned references
+          const { currentForm: currentFormCheck } = get();
+          if (currentFormCheck?.id === formId) {
+            console.error('Orphaned currentForm reference found after deletion:', formId);
+            // Force clear any orphaned references
+            set({ currentForm: null });
+          }
+        }, 100);
       },
 
       isFormBlank: (form) => {
@@ -340,6 +387,18 @@ export const usePaperFormStore = create<PaperFormStore>()(
           const updatedForm = newSavedForms.find(form => form.id === formId);
           console.log('Verification - form status after update:', updatedForm?.status);
         }, 50);
+      },
+      
+      // Debug function to export current state
+      exportState: () => {
+        const state = get();
+        return {
+          savedFormsCount: state.savedForms.length,
+          savedFormIds: state.savedForms.map(form => form.id),
+          currentFormId: state.currentForm?.id || null,
+          currentFormStatus: state.currentForm?.status || null,
+          selectedInitial: state.selectedInitial
+        };
       },
     }),
     {

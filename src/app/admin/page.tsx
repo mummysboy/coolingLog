@@ -12,7 +12,7 @@ import { getFormValidationSummary } from '@/lib/validation';
 
 
 export default function AdminDashboard() {
-  const { savedForms, currentForm, loadForm, updateFormStatus, deleteForm, isFormBlank } = usePaperFormStore();
+  const { savedForms, currentForm, loadForm, updateFormStatus, deleteForm, isFormBlank, exportState } = usePaperFormStore();
   const { initials, addInitial, removeInitial, toggleInitialStatus } = useInitialsStore();
   const { createPin, updatePin, deletePin, getAllPins, getPinForInitials } = usePinStore();
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
@@ -23,6 +23,7 @@ export default function AdminDashboard() {
   const [newInitialData, setNewInitialData] = useState({ initials: '', name: '', pin: '' });
   const [pinModalData, setPinModalData] = useState({ initials: '', pin: '', isEdit: false });
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0); // Force dashboard refresh
+  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
 
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
   const initialModalRef = useRef<HTMLDivElement>(null);
@@ -56,6 +57,17 @@ export default function AdminDashboard() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showInitialModal, showPinModal]);
+
+  // Auto-clear success message after 5 seconds
+  useEffect(() => {
+    if (deleteSuccessMessage) {
+      const timer = setTimeout(() => {
+        setDeleteSuccessMessage(null);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [deleteSuccessMessage]);
 
   const handleViewForm = (form: PaperFormEntry) => {
     setSelectedForm(form);
@@ -469,9 +481,47 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteForm = (formId: string) => {
-    if (confirm('Are you sure you want to delete this form? This action cannot be undone.')) {
+    const formToDelete = savedForms.find(form => form.id === formId);
+    if (!formToDelete) return;
+
+    const formDate = new Date(formToDelete.date).toLocaleDateString();
+    const formInitial = formToDelete.formInitial || 'Unknown';
+    
+    if (confirm(`Are you sure you want to delete Form #${formToDelete.id.slice(-6)}?\n\nForm Details:\n• Date: ${formDate}\n• Initial: ${formInitial}\n• Status: ${formToDelete.status}\n\nThis will permanently delete ALL form data including:\n• All temperature and time entries\n• Thermometer number\n• Ingredients and lot numbers\n• Corrective actions and comments\n• Admin comments\n• Validation errors\n\nThis action cannot be undone.`)) {
+      console.log('Deleting form:', formToDelete.id, 'with all associated data');
+      
+      // Log state before deletion
+      console.log('State before deletion:', exportState());
+      
       deleteForm(formId);
+      
+      // Force dashboard refresh to update the UI immediately
+      setDashboardRefreshKey(prev => prev + 1);
+      setDeleteSuccessMessage(`Form #${formToDelete.id.slice(-6)} deleted successfully.`);
+      
+      // If this was the selected form in the modal, close the modal
+      if (selectedForm?.id === formId) {
+        setShowFormModal(false);
+        setSelectedForm(null);
+      }
+      
+      // Log state after deletion
+      setTimeout(() => {
+        console.log('State after deletion:', exportState());
+      }, 200);
     }
+  };
+
+  const handleDebugExport = () => {
+    const state = exportState();
+    console.log('Current Form Store State:', state);
+    
+    // Copy to clipboard for easy sharing
+    navigator.clipboard.writeText(JSON.stringify(state, null, 2)).then(() => {
+      alert('State exported to clipboard! Check console for details.');
+    }).catch(() => {
+      alert('State exported to console! Check browser console for details.');
+    });
   };
 
   const hasCompleteData = (form: PaperFormEntry) => {
@@ -532,11 +582,18 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
             <p className="text-gray-600">Food Safety Form Management</p>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="font-medium text-gray-900">{adminUser?.name}</p>
-              <p className="text-sm text-gray-600">{adminUser?.role}</p>
-            </div>
+                      <div className="flex items-center space-x-4">
+              <button
+                onClick={handleDebugExport}
+                className="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
+                title="Export current state for debugging"
+              >
+                Debug
+              </button>
+              <div className="text-right">
+                <p className="font-medium text-gray-900">{adminUser?.name}</p>
+                <p className="text-sm text-gray-600">{adminUser?.role}</p>
+              </div>
             <div className="relative" ref={settingsDropdownRef}>
               <button
                 onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
@@ -679,6 +736,32 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main className="px-6 py-6">
         <div className="max-w-7xl mx-auto">
+          {/* Success Message */}
+          {deleteSuccessMessage && (
+            <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-green-800">{deleteSuccessMessage}</p>
+                </div>
+                <div className="ml-auto pl-3">
+                  <button
+                    onClick={() => setDeleteSuccessMessage(null)}
+                    className="text-green-400 hover:text-green-600"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Form Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
