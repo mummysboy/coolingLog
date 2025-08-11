@@ -69,6 +69,8 @@ export default function FormPage() {
         if (existingForm) {
           // Load the existing form for today
           console.log('Found existing form for today:', existingForm.id);
+          console.log('Form status:', existingForm.status, 'Resolved errors:', existingForm.resolvedErrors?.length || 0);
+          
           if (!currentForm || currentForm.id !== existingForm.id) {
             loadForm(existingForm.id);
           }
@@ -91,30 +93,44 @@ export default function FormPage() {
   useEffect(() => {
     if (!currentForm) return;
 
-    // Function to check and update form status based on validation
-    const checkAndUpdateStatus = () => {
-      // Only check for errors when all three fields (temp, time, initial) are complete for a cell
-      let hasErrors = false;
-      let hasCompleteEntries = false;
-      
-      currentForm.entries.forEach((entry, rowIndex) => {
-        const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+          // Function to check and update form status based on validation
+      const checkAndUpdateStatus = () => {
+        // Only check for errors when all three fields (temp, time, initial) are complete for a cell
+        let hasErrors = false;
+        let hasCompleteEntries = false;
         
-        stages.forEach(stage => {
-          const stageData = entry[stage as keyof typeof entry] as any;
+        currentForm.entries.forEach((entry, rowIndex) => {
+          const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
           
-          // Only validate if all three fields are present
-          if (stageData && stageData.temp && stageData.time && stageData.initial) {
-            hasCompleteEntries = true;
+          stages.forEach(stage => {
+            const stageData = entry[stage as keyof typeof entry] as any;
             
-            // Check if this specific cell has validation errors
-            const validation = shouldHighlightCell(currentForm, rowIndex, `${stage}.temp`);
-            if (validation.highlight && validation.severity === 'error') {
-              hasErrors = true;
+            // Only validate if all three fields are present
+            if (stageData && stageData.temp && stageData.time && stageData.initial) {
+              hasCompleteEntries = true;
+              
+              // Check if this specific cell has validation errors
+              const validation = shouldHighlightCell(currentForm, rowIndex, `${stage}.temp`);
+              if (validation.highlight && validation.severity === 'error') {
+                // Get the full validation to find the error message
+                const fullValidation = validateForm(currentForm);
+                const cellError = fullValidation.errors.find(
+                  error => error.rowIndex === rowIndex && error.field === `${stage}.temp`
+                );
+                
+                if (cellError) {
+                  // Check if this error has been resolved by admin
+                  const errorId = `${rowIndex}-${stage}.temp-${cellError.message}`;
+                  const isResolved = currentForm.resolvedErrors?.includes(errorId);
+                  
+                  if (!isResolved) {
+                    hasErrors = true;
+                  }
+                }
+              }
             }
-          }
+          });
         });
-      });
 
       let newStatus: 'Complete' | 'In Progress' | 'Error';
       
@@ -140,12 +156,18 @@ export default function FormPage() {
       }
 
       // Only update if status has changed and we're not overriding a manually set 'Complete' status
-      if (newStatus !== currentForm.status && currentForm.status !== 'Complete') {
+      // Also don't override if admin has resolved errors and set status to 'In Progress'
+      const adminHasResolvedErrors = currentForm.resolvedErrors && currentForm.resolvedErrors.length > 0;
+      const shouldRespectAdminResolution = adminHasResolvedErrors && currentForm.status === 'In Progress';
+      
+      if (newStatus !== currentForm.status && currentForm.status !== 'Complete' && !shouldRespectAdminResolution) {
         console.log('Real-time status update: Form', currentForm.id, 'status changed from', currentForm.status, 'to', newStatus);
         updateFormStatus(currentForm.id, newStatus);
         
         // Save the form to persist the status change
         setTimeout(() => saveForm(), 100);
+      } else if (shouldRespectAdminResolution) {
+        console.log('Skipping status update: Admin has resolved errors and set status to In Progress');
       }
     };
 

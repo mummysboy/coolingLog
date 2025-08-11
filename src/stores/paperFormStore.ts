@@ -424,7 +424,11 @@ export const usePaperFormStore = create<PaperFormStore>()(
     }),
     {
       name: 'paper-form-storage',
-      partialize: (state) => ({ savedForms: state.savedForms, selectedInitial: state.selectedInitial }),
+      partialize: (state) => ({ 
+        savedForms: state.savedForms, 
+        selectedInitial: state.selectedInitial,
+        currentForm: state.currentForm 
+      }),
       onRehydrateStorage: () => (state) => {
         if (state?.savedForms) {
           // Convert date strings back to Date objects and ensure all required fields exist
@@ -434,6 +438,15 @@ export const usePaperFormStore = create<PaperFormStore>()(
             adminComments: form.adminComments || [],
             resolvedErrors: form.resolvedErrors || [],
           }));
+        }
+        if (state?.currentForm) {
+          // Convert date strings back to Date objects for currentForm as well
+          state.currentForm = {
+            ...state.currentForm,
+            date: new Date(state.currentForm.date),
+            adminComments: state.currentForm.adminComments || [],
+            resolvedErrors: state.currentForm.resolvedErrors || [],
+          };
         }
       },
     }
