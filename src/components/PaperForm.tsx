@@ -28,6 +28,17 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
     
   // Track the resolved data snapshot to compare against new changes
   const [resolvedDataSnapshot, setResolvedDataSnapshot] = React.useState<any>(null);
+  
+  // Track when admin is actively typing in corrective actions section
+  const [isTypingCorrectiveActions, setIsTypingCorrectiveActions] = React.useState(false);
+  
+  // Track when the form has been resolved to hide the resolve button
+  const [isFormResolved, setIsFormResolved] = React.useState(false);
+  
+  // Track when form is successfully resolved to show success message
+  const [showResolutionSuccess, setShowResolutionSuccess] = React.useState(false);
+  
+  // Keep typing indicator visible once admin starts typing (until resolved)
 
   // Monitor form status changes
   React.useEffect(() => {
@@ -942,17 +953,43 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
 
           {/* Right side - Corrective Actions */}
           <div className="p-4 relative">
-            <h3 className="font-semibold mb-2">Corrective Actions & comments:</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold">Corrective Actions & comments:</h3>
+              {isTypingCorrectiveActions && (
+                <div className="flex items-center space-x-2 text-sm text-blue-600">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span>Typing...</span>
+                </div>
+              )}
+            </div>
             <textarea
               value={form.correctiveActionsComments}
               onChange={(e) => handleFormFieldChange('correctiveActionsComments', e.target.value)}
+              onFocus={() => {
+                setIsTypingCorrectiveActions(true);
+                // Reset resolved state when admin starts typing again
+                setIsFormResolved(false);
+              }}
+              onBlur={() => {
+                // Don't hide typing indicator on blur - keep button visible
+              }}
+              onKeyDown={() => {
+                setIsTypingCorrectiveActions(true);
+                // Reset resolved state when admin starts typing again
+                setIsFormResolved(false);
+              }}
+              onInput={() => {
+                setIsTypingCorrectiveActions(true);
+                // Reset resolved state when admin starts typing again
+                setIsFormResolved(false);
+              }}
               className="w-full h-32 border border-gray-300 p-2 text-sm resize-none"
               placeholder="Enter any corrective actions taken or additional comments..."
               readOnly={readOnly}
             />
             
-            {/* Resolve Button - Only show when admin has entered text and form status is not 'In Progress' */}
-            {form.status !== 'In Progress' && form.correctiveActionsComments && form.correctiveActionsComments.trim() && (
+            {/* Resolve Button - Show only when not resolved AND admin is actively typing */}
+            {!isFormResolved && isTypingCorrectiveActions && (
               <button
                 onClick={() => {
                   console.log('Resolve button clicked, current status:', form.status);
@@ -998,6 +1035,33 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                     saveForm();
                   }
                   console.log('Status update completed');
+                  
+                  // Mark all current validation errors as resolved by admin
+                  // This will suppress validation errors since admin has taken corrective action
+                  const currentValidation = validateForm(form);
+                  const resolvedErrorIds = currentValidation.errors.map(error => 
+                    `${error.rowIndex}-${error.field}-${error.message}`
+                  );
+                  
+                  if (isAdminForm) {
+                    updateAdminForm(form.id, { 
+                      status: 'In Progress',
+                      resolvedErrors: resolvedErrorIds
+                    });
+                  } else {
+                    handleFormFieldChange('resolvedErrors', resolvedErrorIds);
+                    saveForm();
+                  }
+                  
+                  // Show success message and hide the resolve button after it's clicked
+                  setShowResolutionSuccess(true);
+                  setIsTypingCorrectiveActions(false);
+                  setIsFormResolved(true);
+                  
+                  // Auto-hide success message after 3 seconds
+                  setTimeout(() => {
+                    setShowResolutionSuccess(false);
+                  }, 3000);
                 }}
                 className="absolute bottom-6 right-6 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-lg flex items-center space-x-2"
               >
@@ -1011,40 +1075,58 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         </div>
       </div>
 
-      {/* Validation Summary - Hide when form status is 'In Progress' */}
+      {/* Resolution Success Message */}
+      {showResolutionSuccess && (
+        <div className="mt-4 p-4 border-2 border-green-300 bg-green-50 rounded-lg">
+          <div className="flex items-center space-x-3">
+            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <div>
+              <h3 className="text-lg font-semibold text-green-800">Form Successfully Resolved!</h3>
+              <p className="text-green-700">All validation errors have been marked as resolved. The form status has been updated to 'In Progress'.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Validation Summary - Hide when form status is 'In Progress' or when errors are resolved by admin */}
       {form && form.status !== 'In Progress' && (() => {
         const validation = validateForm(form);
-        if (validation.errors.length > 0) {
+        
+        // Filter out errors that have been resolved by admin
+        const unresolvedErrors = validation.errors.filter(error => {
+          const errorId = `${error.rowIndex}-${error.field}-${error.message}`;
+          return !form.resolvedErrors?.includes(errorId);
+        });
+        
+        if (unresolvedErrors.length > 0) {
           return (
             <div className="mt-4 p-4 border-2 border-red-300 bg-red-50 rounded-lg">
               <h3 className="text-lg font-semibold text-red-800 mb-2 flex items-center">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
                 Validation Issues Found
               </h3>
               <div className="space-y-2">
-                {validation.errors.map((error, index) => {
-
-                  
-                  return (
-                    <div 
-                      key={index} 
-                      className={`text-sm p-2 rounded ${
-                        error.severity === 'error' 
-                          ? 'bg-red-100 text-red-800 border border-red-200' 
-                          : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                      }`}
-                    >
-                      <div>
-                        <span className="font-medium">Row {error.rowIndex + 1}:</span> {error.message}
-                      </div>
+                {unresolvedErrors.map((error, index) => (
+                  <div 
+                    key={index} 
+                    className={`text-sm p-2 rounded ${
+                      error.severity === 'error' 
+                        ? 'bg-red-100 text-red-800 border border-red-200' 
+                        : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                    }`}
+                  >
+                    <div>
+                      <span className="font-medium">Row {error.rowIndex + 1}:</span> {error.message}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
               <div className="mt-3 text-sm text-red-700">
-                <strong>Summary:</strong> {validation.summary.totalErrors} errors, {validation.summary.totalWarnings} warnings. 
+                <strong>Summary:</strong> {unresolvedErrors.filter(e => e.severity === 'error').length} errors, {unresolvedErrors.filter(e => e.severity === 'warning').length} warnings. 
                 Compliance rate: {validation.summary.totalEntries > 0 ? Math.round((validation.summary.compliantEntries / validation.summary.totalEntries) * 100) : 0}%
               </div>
             </div>
