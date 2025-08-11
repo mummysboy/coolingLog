@@ -39,8 +39,18 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         console.log('Form ID changed, clearing resolved snapshot');
         setResolvedDataSnapshot(null);
       }
+      
+      // Auto-fill initials when form is first loaded
+      if (selectedInitial && form.entries) {
+        console.log('Form loaded, auto-filling initials for all rows');
+        setTimeout(() => {
+          form.entries.forEach((_, rowIndex) => {
+            autoFillInitialsForRow(rowIndex);
+          });
+        }, 200);
+      }
     }
-  }, [form?.status, form?.id, form?.id, resolvedDataSnapshot]);
+  }, [form?.status, form?.id, form?.id, resolvedDataSnapshot, selectedInitial]);
 
   // Monitor resolvedDataSnapshot changes
   React.useEffect(() => {
@@ -49,6 +59,55 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
       console.log('Snapshot has entries:', resolvedDataSnapshot.entries?.length);
     }
   }, [resolvedDataSnapshot]);
+
+  // Auto-fill initials for all rows when form data changes or selectedInitial changes
+  React.useEffect(() => {
+    if (form && selectedInitial && form.entries) {
+      console.log('Auto-filling initials for all rows - selectedInitial:', selectedInitial);
+      // Add a small delay to ensure the form data is fully loaded
+      setTimeout(() => {
+        form.entries.forEach((_, rowIndex) => {
+          autoFillInitialsForRow(rowIndex);
+        });
+      }, 100);
+    }
+  }, [form?.entries, selectedInitial]);
+
+  // Auto-fill initials when selectedInitial changes
+  React.useEffect(() => {
+    if (form && selectedInitial && form.entries) {
+      console.log('selectedInitial changed, auto-filling initials for all rows');
+      setTimeout(() => {
+        form.entries.forEach((_, rowIndex) => {
+          autoFillInitialsForRow(rowIndex);
+        });
+      }, 150);
+    }
+  }, [selectedInitial]);
+
+  // Auto-fill initials when component mounts
+  React.useEffect(() => {
+    if (form && selectedInitial && form.entries) {
+      console.log('Component mounted, auto-filling initials for all rows');
+      setTimeout(() => {
+        form.entries.forEach((_, rowIndex) => {
+          autoFillInitialsForRow(rowIndex);
+        });
+      }, 300);
+    }
+  }, []);
+
+  // Auto-fill initials when form is first loaded
+  React.useEffect(() => {
+    if (form && selectedInitial && form.entries) {
+      console.log('Form first loaded, auto-filling initials for all rows');
+      setTimeout(() => {
+        form.entries.forEach((_, rowIndex) => {
+          autoFillInitialsForRow(rowIndex);
+        });
+      }, 250);
+    }
+  }, [form?.id]);
 
   // Function to check if there are new errors compared to the resolved snapshot
   const hasNewErrors = (currentForm: any, resolvedSnapshot: any) => {
@@ -148,6 +207,50 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
 
   if (!form) return null;
 
+    // Helper function to auto-fill initials for a specific row
+  const autoFillInitialsForRow = (rowIndex: number) => {
+    if (!selectedInitial) return;
+    
+    const entry = form.entries[rowIndex];
+    if (!entry) return;
+    
+    const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+    
+    stages.forEach(stage => {
+      const stageData = entry[stage as keyof typeof entry] as any;
+      if (stageData && 
+          entry.type && 
+          entry.type.trim() !== '' && 
+          stageData.temp && 
+          stageData.temp.toString().trim() !== '' && 
+          stageData.time && 
+          stageData.time.trim() !== '' && 
+          (!stageData.initial || stageData.initial.trim() === '')) {
+        
+        console.log(`Auto-filling initial for ${stage} at row ${rowIndex + 1} - Type: "${entry.type}", Temp: "${stageData.temp}", Time: "${stageData.time}"`);
+        
+        // Auto-fill the initial for this stage
+        if (isAdminForm) {
+          // For admin forms, update the specific form
+          const updatedEntries = [...form.entries];
+          const entry = updatedEntries[rowIndex];
+          const sectionData = entry[stage as keyof typeof entry] as any;
+          updatedEntries[rowIndex] = {
+            ...entry,
+            [stage]: {
+              ...sectionData,
+              initial: selectedInitial,
+            },
+          };
+          updateAdminForm(form.id, { entries: updatedEntries });
+        } else {
+          // For regular forms, use the store's updateEntry
+          updateEntry(rowIndex, `${stage}.initial`, selectedInitial);
+        }
+      }
+    });
+  };
+
   const handleCellChange = (rowIndex: number, field: string, value: string) => {
     console.log('handleCellChange called:', { rowIndex, field, value, readOnly });
     
@@ -181,37 +284,14 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
       }
       
       // Auto-fill initial when type, temp, and time are all entered
-      const entry = form.entries[rowIndex];
-      if (entry) {
-        // Check each stage and auto-fill initial if type, temp, and time are all present
-        const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
-        
-        stages.forEach(stage => {
-          const stageData = entry[stage as keyof typeof entry] as any;
-          if (stageData && 
-              entry.type && 
-              stageData.temp && 
-              stageData.time && 
-              !stageData.initial && 
-              selectedInitial) {
-            // Auto-fill the initial for this stage
-            if (isAdminForm) {
-              // For admin forms, update the specific form
-              const updatedEntries = [...form.entries];
-              const entry = updatedEntries[rowIndex];
-              const sectionData = entry[stage as keyof typeof entry] as any;
-              updatedEntries[rowIndex] = {
-                ...entry,
-                [stage]: {
-                  ...sectionData,
-                  initial: selectedInitial,
-                },
-              };
-              updateAdminForm(form.id, { entries: updatedEntries });
-            } else {
-              // For regular forms, use the store's updateEntry
-              updateEntry(rowIndex, `${stage}.initial`, selectedInitial);
-            }
+      autoFillInitialsForRow(rowIndex);
+      
+      // If this was a type field change, also check other rows that might now have all three fields
+      if (field === 'type' && value.trim() !== '') {
+        // Check all other rows to see if they now have all three fields
+        form.entries.forEach((_, otherRowIndex) => {
+          if (otherRowIndex !== rowIndex) {
+            autoFillInitialsForRow(otherRowIndex);
           }
         });
       }

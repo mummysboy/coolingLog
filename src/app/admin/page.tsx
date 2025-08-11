@@ -8,7 +8,7 @@ import { MOCK_USERS } from '@/lib/types';
 import { PaperFormEntry } from '@/lib/paperFormTypes';
 import { PaperForm } from '@/components/PaperForm';
 
-import { getFormValidationSummary } from '@/lib/validation';
+import { shouldHighlightCell } from '@/lib/validation';
 
 
 export default function AdminDashboard() {
@@ -24,12 +24,65 @@ export default function AdminDashboard() {
   const [pinModalData, setPinModalData] = useState({ initials: '', pin: '', isEdit: false });
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0); // Force dashboard refresh
   const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
+  // NEW: Toast notification state
+  const [toasts, setToasts] = useState<Array<{
+    id: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+    message: string;
+    formId?: string;
+    timestamp: Date;
+  }>>([]);
 
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
   const initialModalRef = useRef<HTMLDivElement>(null);
   const pinModalRef = useRef<HTMLDivElement>(null);
 
   const adminUser = MOCK_USERS.find(user => user.role === 'admin');
+
+  // NEW: Real-time dashboard refresh effect with status change detection
+  useEffect(() => {
+    // Store previous form statuses to detect changes
+    const previousStatuses = new Map(savedForms.map(form => [form.id, form.status]));
+    
+    // Refresh dashboard every 2 seconds to show real-time status updates
+    const refreshInterval = setInterval(() => {
+      setDashboardRefreshKey(prev => prev + 1);
+      
+      // Check for status changes and show notifications
+      savedForms.forEach(form => {
+        const previousStatus = previousStatuses.get(form.id);
+        if (previousStatus && previousStatus !== form.status) {
+          // Status changed - show notification
+          const toast: {
+            id: string;
+            type: 'success' | 'error' | 'warning' | 'info';
+            message: string;
+            formId?: string;
+            timestamp: Date;
+          } = {
+            id: `${form.id}-${Date.now()}`,
+            type: form.status === 'Error' ? 'error' : 
+                  form.status === 'Complete' ? 'success' : 'warning',
+            message: `Form #${form.id.slice(-6)} status changed from ${previousStatus} to ${form.status}`,
+            formId: form.id,
+            timestamp: new Date()
+          };
+          
+          setToasts(prev => [...prev, toast]);
+          
+          // Auto-remove toast after 5 seconds
+          setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== toast.id));
+          }, 5000);
+          
+          // Update the previous status
+          previousStatuses.set(form.id, form.status);
+        }
+      });
+    }, 2000);
+
+    return () => clearInterval(refreshInterval);
+  }, [savedForms]);
 
   // Close dropdown and modals when clicking outside
   useEffect(() => {
@@ -564,11 +617,17 @@ export default function AdminDashboard() {
     const styles = getStatusStyles(form.status);
 
     return (
-      <div className={`
-        px-3 py-2 text-sm font-medium 
-        ${styles.text}
-      `}>
-        {styles.icon} {form.status}
+      <div className="space-y-1">
+        <div className={`
+          px-3 py-2 text-sm font-medium 
+          ${styles.text}
+        `}>
+          {styles.icon} {form.status}
+        </div>
+        {/* NEW: Show last update time */}
+        <div className="text-xs text-gray-500 px-3">
+          Last updated: {new Date().toLocaleTimeString()}
+        </div>
       </div>
     );
   };
@@ -581,19 +640,32 @@ export default function AdminDashboard() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
             <p className="text-gray-600">Food Safety Form Management</p>
+            {/* NEW: Real-time status indicator */}
+            <div className="flex items-center mt-1 text-xs text-green-600">
+              <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+              <span>Real-time monitoring active</span>
+            </div>
           </div>
-                      <div className="flex items-center space-x-4">
-              <button
-                onClick={handleDebugExport}
-                className="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
-                title="Export current state for debugging"
-              >
-                Debug
-              </button>
-              <div className="text-right">
-                <p className="font-medium text-gray-900">{adminUser?.name}</p>
-                <p className="text-sm text-gray-600">{adminUser?.role}</p>
-              </div>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={handleDebugExport}
+              className="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
+              title="Export current state for debugging"
+            >
+              Debug
+            </button>
+            {/* NEW: Manual refresh button */}
+            <button
+              onClick={() => setDashboardRefreshKey(prev => prev + 1)}
+              className="px-3 py-1 text-xs bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+              title="Manually refresh dashboard"
+            >
+              🔄 Refresh
+            </button>
+            <div className="text-right">
+              <p className="font-medium text-gray-900">{adminUser?.name}</p>
+              <p className="text-sm text-gray-600">{adminUser?.role}</p>
+            </div>
             <div className="relative" ref={settingsDropdownRef}>
               <button
                 onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
@@ -815,28 +887,54 @@ export default function AdminDashboard() {
 
           {/* Controls */}
           <div className="bg-white rounded-xl border-2 border-gray-200 p-6 mb-6">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Pending Forms</h2>
-                  <p className="text-gray-600">Monitor and review forms that require attention or are in progress</p>
-                </div>
-                <div className="mt-4 sm:mt-0 flex items-center space-x-4">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-                    {savedForms.filter(form => !isFormBlank(form) && form.status !== 'Complete').length} Pending
-                  </span>
-                  <div className="flex items-center space-x-4 text-sm">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
-                      <span className="text-gray-600">In Progress: {savedForms.filter(form => !isFormBlank(form) && form.status === 'In Progress').length}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-orange-400 rounded-full"></div>
-                      <span className="text-gray-600">Errors: {savedForms.filter(form => !isFormBlank(form) && form.status === 'Error').length}</span>
-                    </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Pending Forms</h2>
+                <p className="text-gray-600">Monitor and review forms that require attention or are in progress</p>
+              </div>
+              <div className="mt-4 sm:mt-0 flex items-center space-x-4 text-sm">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                  {savedForms.filter(form => !isFormBlank(form) && form.status !== 'Complete').length} Pending
+                </span>
+                <div className="flex items-center space-x-4 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                    <span className="text-gray-600">In Progress: {savedForms.filter(form => !isFormBlank(form) && form.status === 'In Progress').length}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-orange-400 rounded-full"></div>
+                    <span className="text-gray-600">Errors: {savedForms.filter(form => !isFormBlank(form) && form.status === 'Error').length}</span>
                   </div>
                 </div>
               </div>
+            </div>
           </div>
+
+          {/* NEW: Real-time Alerts Section */}
+          {savedForms.filter(form => !isFormBlank(form) && form.status === 'Error').length > 0 && (
+            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 mb-6">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-red-800">
+                    ⚠️ Forms Requiring Immediate Attention
+                  </h3>
+                  <p className="text-red-700">
+                    {savedForms.filter(form => !isFormBlank(form) && form.status === 'Error').length} form(s) have validation errors that need to be resolved.
+                  </p>
+                </div>
+                <div className="flex-shrink-0">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                    {savedForms.filter(form => !isFormBlank(form) && form.status === 'Error').length} Error(s)
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Pending Forms Table */}
           <div key={dashboardRefreshKey} className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
@@ -864,16 +962,31 @@ export default function AdminDashboard() {
                       entry.type && entry.ccp1.temp && entry.ccp2.temp && 
                       entry.coolingTo80.temp && entry.coolingTo54.temp && entry.finalChill.temp
                     ).length;
-                    const validation = getFormValidationSummary(form);
                     
                     // Debug: Log current form status before auto-update logic
-                    console.log('Form status check for form:', form.id, 'current status:', form.status, 'validation errors:', validation.hasErrors);
+                    console.log('Form status check for form:', form.id, 'current status:', form.status);
                     
                     // Auto-determine and update status based on form data and validation
                     // Only auto-update if the current status is not manually set to 'In Progress'
                     let newStatus: 'Complete' | 'In Progress' | 'Error';
                     
-                    if (validation.hasErrors) {
+                    // Check for errors only in cells that have all three fields (temp, time, initial)
+                    let hasErrors = false;
+                    form.entries.forEach((entry, rowIndex) => {
+                      const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+                      stages.forEach(stage => {
+                        const stageData = entry[stage as keyof typeof entry] as any;
+                        // Only validate if all three fields are present
+                        if (stageData && stageData.temp && stageData.time && stageData.initial) {
+                          const validation = shouldHighlightCell(form, rowIndex, `${stage}.temp`);
+                          if (validation.highlight && validation.severity === 'error') {
+                            hasErrors = true;
+                          }
+                        }
+                      });
+                    });
+                    
+                    if (hasErrors) {
                       newStatus = 'Error';
                     } else if (completeEntries === form.entries.length && form.entries.length > 0) {
                       // All entries are complete with data
@@ -939,6 +1052,10 @@ export default function AdminDashboard() {
                             </div>
                             <div className="text-sm text-blue-600 font-medium">
                               Initial: {form.formInitial || 'No initial'}
+                            </div>
+                            {/* NEW: Show last modified time */}
+                            <div className="text-xs text-gray-400 mt-1">
+                              Last modified: {new Date().toLocaleTimeString()}
                             </div>
                           </div>
                         </td>
@@ -1371,6 +1488,25 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Toast Notifications */}
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 p-3 rounded-lg shadow-lg text-white font-medium ${
+            toast.type === 'success' ? 'bg-green-500' :
+            toast.type === 'error' ? 'bg-red-500' :
+            toast.type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+          }`}
+        >
+          {toast.message}
+          {toast.formId && (
+            <span className="ml-2 text-xs font-normal">
+              (Form #{toast.formId.slice(-6)})
+            </span>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
