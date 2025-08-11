@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [newInitialData, setNewInitialData] = useState({ initials: '', name: '', pin: '' });
   const [pinModalData, setPinModalData] = useState({ initials: '', pin: '', isEdit: false });
+  const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0); // Force dashboard refresh
 
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
   const initialModalRef = useRef<HTMLDivElement>(null);
@@ -687,7 +688,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Forms Table */}
-          <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
+          <div key={dashboardRefreshKey} className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -714,6 +715,9 @@ export default function AdminDashboard() {
                     ).length;
                     const validation = getFormValidationSummary(form);
                     
+                    // Debug: Log current form status before auto-update logic
+                    console.log('Form status check for form:', form.id, 'current status:', form.status, 'validation errors:', validation.hasErrors);
+                    
                     // Auto-determine and update status based on form data and validation
                     // Only auto-update if the current status is not manually set to 'In Progress'
                     let newStatus: 'Complete' | 'In Progress' | 'Error';
@@ -736,6 +740,7 @@ export default function AdminDashboard() {
                     // 2. Allow updates from 'In Progress' to 'Complete' (when all issues are resolved)
                     // 3. Don't override 'In Progress' with 'In Progress' (prevents unnecessary updates)
                     // 4. Don't override 'In Progress' with 'Error' if admin has manually resolved (has corrective actions)
+                    // 5. NEVER override manually set 'Complete' status (respect user's decision)
                     const shouldUpdate = newStatus !== form.status && (
                       newStatus === 'Error' || // Always show new errors
                       form.status !== 'In Progress' || // Allow updates from other statuses
@@ -748,13 +753,22 @@ export default function AdminDashboard() {
                       form.correctiveActionsComments.trim() && 
                       newStatus === 'Error';
                     
-                    if (shouldUpdate && !adminManuallyResolved) {
+                    // CRITICAL: Never override manually set 'Complete' status
+                    const manuallyCompleted = form.status === 'Complete';
+                    
+                    if (shouldUpdate && !adminManuallyResolved && !manuallyCompleted) {
                       console.log('Auto-updating form status from', form.status, 'to', newStatus, 'for form:', form.id);
                       setTimeout(() => {
                         updateFormStatus(form.id, newStatus);
                       }, 0);
                     } else {
-                      console.log('Skipping auto-status update for form:', form.id, 'current status:', form.status, 'would update to:', newStatus, 'adminManuallyResolved:', adminManuallyResolved);
+                      if (manuallyCompleted) {
+                        console.log('Skipping auto-status update for form:', form.id, 'because status is manually set to Complete');
+                      } else if (adminManuallyResolved) {
+                        console.log('Skipping auto-status update for form:', form.id, 'because admin has manually resolved issues');
+                      } else {
+                        console.log('Skipping auto-status update for form:', form.id, 'current status:', form.status, 'would update to:', newStatus, 'adminManuallyResolved:', adminManuallyResolved);
+                      }
                     }
                     
                     console.log('Rendering form:', form.id, 'with status:', form.status, 'hasComments:', !!form.correctiveActionsComments?.trim(), 'correctiveActions:', form.correctiveActionsComments?.substring(0, 50));
@@ -857,9 +871,8 @@ export default function AdminDashboard() {
                   console.log('Closing admin modal, forcing dashboard refresh');
                   setShowFormModal(false);
                   // Force a re-render of the dashboard to show updated status
-                  setTimeout(() => {
-                    console.log('Dashboard refresh triggered');
-                  }, 100);
+                  setDashboardRefreshKey(prev => prev + 1);
+                  console.log('Dashboard refresh triggered on modal close');
                 }}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
               >
@@ -879,6 +892,10 @@ export default function AdminDashboard() {
                   if (updates.status) {
                     console.log('Admin modal: Updating form status to:', updates.status);
                     updateFormStatus(formId, updates.status);
+                    
+                    // Force dashboard refresh to show updated status
+                    setDashboardRefreshKey(prev => prev + 1);
+                    console.log('Dashboard refresh triggered for status update');
                   }
                   
                   // Force re-render of the admin page by updating the selectedForm state
@@ -886,6 +903,15 @@ export default function AdminDashboard() {
                     const updatedForm = { ...selectedForm, ...updates };
                     setSelectedForm(updatedForm);
                     console.log('Admin modal: Updated selectedForm state');
+                    
+                    // Also update the form in the savedForms array to ensure consistency
+                    if (updates.status) {
+                      // Small delay to ensure the store update is processed
+                      setTimeout(() => {
+                        setDashboardRefreshKey(prev => prev + 1);
+                        console.log('Additional dashboard refresh for consistency');
+                      }, 50);
+                    }
                   }
                 }}
               />

@@ -600,8 +600,50 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         return null;
       })()}
 
-
-
+      {/* Complete Button - Show at the bottom of the form */}
+      <div className="mt-6 flex justify-center">
+        <button
+          onClick={() => {
+            console.log('Complete button clicked for form:', form.id);
+            
+            // Update form status to 'Complete'
+            if (onFormUpdate) {
+              onFormUpdate(form.id, { status: 'Complete' });
+            }
+            
+            // For admin forms, use updateAdminForm to ensure proper persistence
+            if (isAdminForm) {
+              updateAdminForm(form.id, { status: 'Complete' });
+            } else {
+              // For regular forms, update the current form and save it
+              handleFormFieldChange('status', 'Complete');
+              saveForm();
+            }
+          }}
+          disabled={form.status === 'Complete'}
+          className={`px-8 py-3 text-lg font-semibold rounded-lg transition-colors shadow-lg flex items-center space-x-3 ${
+            form.status === 'Complete'
+              ? 'bg-green-100 text-green-600 cursor-not-allowed'
+              : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-xl'
+          }`}
+        >
+          {form.status === 'Complete' ? (
+            <>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Form Completed</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Complete</span>
+            </>
+          )}
+        </button>
+      </div>
 
     </div>
   );
