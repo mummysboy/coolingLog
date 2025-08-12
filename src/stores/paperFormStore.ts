@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { PaperFormEntry, createEmptyForm } from '@/lib/paperFormTypes';
+import { PaperFormEntry, createEmptyForm, FormType } from '@/lib/paperFormTypes';
 import { validateForm, generateErrorId } from '@/lib/validation';
 
 interface PaperFormStore {
@@ -9,7 +9,7 @@ interface PaperFormStore {
   selectedInitial: string;
   
   // Actions
-  createNewForm: (initial?: string) => void;
+  createNewForm: (formType?: FormType, initial?: string) => void;
   updateEntry: (rowIndex: number, field: string, value: string) => void;
   updateFormField: (field: string, value: any) => void;
   updateFormStatus: (formId: string, status: 'Complete' | 'In Progress' | 'Error') => void;
@@ -47,8 +47,8 @@ export const usePaperFormStore = create<PaperFormStore>()(
       savedForms: [],
       selectedInitial: '',
 
-      createNewForm: (initial) => {
-        const { selectedInitial } = get();
+      createNewForm: (formType = FormType.FOOD_CHILLING_LOG, initial) => {
+        const { selectedInitial, savedForms } = get();
         const formInitial = initial || selectedInitial;
         
         if (!formInitial) {
@@ -56,8 +56,14 @@ export const usePaperFormStore = create<PaperFormStore>()(
           return;
         }
         
-        const newForm = createEmptyForm(formInitial);
-        set({ currentForm: newForm });
+        const newForm = createEmptyForm(formType, formInitial);
+        
+        // Add the new form to savedForms and set it as currentForm
+        const updatedSavedForms = [...savedForms, newForm];
+        set({ 
+          currentForm: newForm,
+          savedForms: updatedSavedForms
+        });
       },
 
       updateEntry: (rowIndex, field, value) => {

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
-import { PaperFormEntry } from '@/lib/paperFormTypes';
+import { PaperFormEntry, FormType } from '@/lib/paperFormTypes';
 import { shouldHighlightCell, validateForm, getTimeDifferenceMinutes } from '@/lib/validation';
 import { TimePicker } from './TimePicker';
 
@@ -871,7 +871,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             loadForm(existingForm.id);
           } else if (!existingForm) {
             // No existing form for this date, create a new one
-            createNewForm(selectedInitial);
+            createNewForm(FormType.FOOD_CHILLING_LOG, selectedInitial);
             // Set the date on the new form
             setTimeout(() => {
               updateFormField(field, value);
