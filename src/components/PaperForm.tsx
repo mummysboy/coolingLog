@@ -952,15 +952,28 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
           <h1 className="text-xl font-bold">Cooking and Cooling for Meat & Non Meat Ingredients</h1>
         </div>
         <div className="p-4">
-          <div>
-            <span className="font-semibold">Date: </span>
-            <input
-              type="date"
-              value={form.date.toISOString().split('T')[0]}
-              onChange={(e) => handleFormFieldChange('date', new Date(e.target.value))}
-              className="border-b border-black bg-transparent"
-              readOnly={readOnly}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <span className="font-semibold">Title: </span>
+              <input
+                type="text"
+                value={form.title || ''}
+                onChange={(e) => handleFormFieldChange('title', e.target.value)}
+                placeholder="Enter form title (e.g., 'Morning Batch', 'Chicken Prep')"
+                className="border-b border-black bg-transparent w-full"
+                readOnly={readOnly}
+              />
+            </div>
+            <div>
+              <span className="font-semibold">Date: </span>
+              <input
+                type="date"
+                value={form.date.toISOString().split('T')[0]}
+                onChange={(e) => handleFormFieldChange('date', new Date(e.target.value))}
+                className="border-b border-black bg-transparent"
+                readOnly={readOnly}
+              />
+            </div>
           </div>
         </div>
       </div>

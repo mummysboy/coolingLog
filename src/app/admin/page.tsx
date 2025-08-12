@@ -223,7 +223,7 @@ export default function AdminDashboard() {
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Food Chilling Log - Form #${form.id.slice(-6)}</title>
+          <title>${form.title ? form.title : 'Food Chilling Log'} - Form #${form.id.slice(-6)}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body { 
@@ -347,9 +347,9 @@ export default function AdminDashboard() {
           <div class="form-container">
             <!-- Header -->
             <div class="header-section">
-              <div class="header-title">
-                <h1>Cooking and Cooling for Meat & Non Meat Ingredients</h1>
-              </div>
+                          <div class="header-title">
+              <h1>${form.title ? form.title : 'Cooking and Cooling for Meat & Non Meat Ingredients'}</h1>
+            </div>
               <div class="header-content">
                 <div>
                   <strong>Date: </strong>${new Date(form.date).toLocaleDateString()}
@@ -1043,7 +1043,9 @@ export default function AdminDashboard() {
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm font-medium text-gray-900">Form #{form.id.slice(-6)}</div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {form.title ? form.title : `Form #${form.id.slice(-6)}`}
+                            </div>
                             <div className="text-sm text-gray-500">
                               {new Date(form.date).toLocaleDateString()}
                             </div>
@@ -1053,6 +1055,11 @@ export default function AdminDashboard() {
                             <div className="text-sm text-blue-600 font-medium">
                               Initial: {form.formInitial || 'No initial'}
                             </div>
+                            {form.title && (
+                              <div className="text-xs text-gray-400">
+                                Form #{form.id.slice(-6)}
+                              </div>
+                            )}
                             {/* NEW: Show last modified time */}
                             <div className="text-xs text-gray-400 mt-1">
                               Last modified: {new Date().toLocaleTimeString()}
@@ -1172,16 +1179,23 @@ export default function AdminDashboard() {
                           >
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
-                                <div className="text-sm font-medium text-gray-900">Form #{form.id.slice(-6)}</div>
-                                <div className="text-sm text-gray-500">
-                                  {new Date(form.date).toLocaleDateString()}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  Therm: {form.thermometerNumber || 'Not set'}
-                                </div>
-                                <div className="text-sm text-blue-600 font-medium">
-                                  Initial: {form.formInitial || 'No initial'}
-                                </div>
+                                                            <div className="text-sm font-medium text-gray-900">
+                              {form.title ? form.title : `Form #${form.id.slice(-6)}`}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {new Date(form.date).toLocaleDateString()}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Therm: {form.thermometerNumber || 'Not set'}
+                            </div>
+                            <div className="text-sm text-blue-600 font-medium">
+                              Initial: {form.formInitial || 'No initial'}
+                            </div>
+                            {form.title && (
+                              <div className="text-xs text-gray-400">
+                                Form #{form.id.slice(-6)}
+                              </div>
+                            )}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -1267,7 +1281,9 @@ export default function AdminDashboard() {
           <div className="bg-gray-50 rounded-2xl w-full h-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-4 bg-white border-b">
               <div>
-                <h3 className="text-xl font-semibold">Edit Form - {new Date(selectedForm.date).toLocaleDateString()}</h3>
+                <h3 className="text-xl font-semibold">
+                  {selectedForm.title ? selectedForm.title : 'Edit Form'} - {new Date(selectedForm.date).toLocaleDateString()}
+                </h3>
                 <div className="text-sm text-gray-600 mt-1">
                   Status: <span className={`font-medium ${
                     selectedForm.status === 'Complete' ? 'text-green-600' :

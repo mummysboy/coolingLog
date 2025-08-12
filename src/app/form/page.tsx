@@ -8,13 +8,13 @@ import { PaperForm } from '@/components/PaperForm';
 import { validateForm, shouldHighlightCell } from '@/lib/validation';
 
 export default function FormPage() {
-  const { currentForm, createNewForm, updateFormStatus, saveForm, savedForms, loadForm } = usePaperFormStore();
+  const { currentForm, createNewForm, updateFormStatus, saveForm, savedForms, loadForm, deleteForm } = usePaperFormStore();
   const [formUpdateKey, setFormUpdateKey] = useState(0); // Force re-render when form updates
   const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [lastValidationUpdate, setLastValidationUpdate] = useState<number>(0); // Track when validation last updated status
-  const [isFormExpanded, setIsFormExpanded] = useState(false); // New state for expandable form
+  const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
+  const [showFormModal, setShowFormModal] = useState(false);
   const [isAddFormDropdownOpen, setIsAddFormDropdownOpen] = useState(false); // State for add form dropdown
-  const [expandedForms, setExpandedForms] = useState<Set<string>>(new Set()); // Track which forms are expanded
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -29,17 +29,32 @@ export default function FormPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isAddFormDropdownOpen]);
 
-  // Function to toggle form expansion
-  const toggleFormExpanded = (formId: string) => {
-    setExpandedForms(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(formId)) {
-        newSet.delete(formId);
-      } else {
-        newSet.add(formId);
+  // Function to open form in modal
+  const handleViewForm = (form: PaperFormEntry) => {
+    setSelectedForm(form);
+    setShowFormModal(true);
+  };
+
+  // Function to delete form
+  const handleDeleteForm = (formId: string) => {
+    const formToDelete = savedForms.find(form => form.id === formId);
+    if (!formToDelete) return;
+
+    const formDate = new Date(formToDelete.date).toLocaleDateString();
+    const formInitial = formToDelete.formInitial || 'Unknown';
+    
+    if (confirm(`Are you sure you want to delete Form #${formToDelete.id.slice(-6)}?\n\nForm Details:\n• Date: ${formDate}\n• Initial: ${formInitial}\n• Status: ${formToDelete.status}\n\nThis will permanently delete ALL form data including:\n• All temperature and time entries\n• Thermometer number\n• Ingredients and lot numbers\n• Corrective actions and comments\n• Admin comments\n• Validation errors\n\nThis action cannot be undone.`)) {
+      console.log('Deleting form:', formToDelete.id, 'with all associated data');
+      
+      // Delete the form using the store
+      deleteForm(formId);
+      
+      // If this was the selected form in the modal, close the modal
+      if (selectedForm?.id === formId) {
+        setShowFormModal(false);
+        setSelectedForm(null);
       }
-      return newSet;
-    });
+    }
   };
 
   // Create a default form on page load
@@ -232,29 +247,6 @@ export default function FormPage() {
                   <div className="px-4 py-2 text-xs text-gray-400 border-t border-gray-100">
                     More form types coming soon...
                   </div>
-                  
-                  {/* Example of how to add a new form type:
-                  <button
-                    onClick={() => {
-                      createNewForm(FormType.TEMPERATURE_LOG);
-                      setIsAddFormDropdownOpen(false);
-                    }}
-                    className={`block w-full text-left px-4 py-2 text-sm text-gray-700 ${getFormTypeColors(FormType.TEMPERATURE_LOG).hover} hover:text-gray-900`}
-                    role="menuitem"
-                  >
-                    <div className="flex items-center">
-                      <div className={`w-8 h-8 ${getFormTypeColors(FormType.TEMPERATURE_LOG).bg} rounded-lg flex items-center justify-center mr-3`}>
-                        <svg className={`w-4 h-4 ${getFormTypeColors(FormType.TEMPERATURE_LOG).text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={getFormTypeIcon(FormType.TEMPERATURE_LOG)} />
-                        </svg>
-                      </div>
-                      <div>
-                        <div className="font-medium">{getFormTypeDisplayName(FormType.TEMPERATURE_LOG)}</div>
-                        <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.TEMPERATURE_LOG)}</div>
-                      </div>
-                    </div>
-                  </button>
-                  */}
                 </div>
               </div>
             )}
@@ -285,10 +277,7 @@ export default function FormPage() {
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Sort by date, newest first
               .map((form, index) => (
               <div key={form.id} className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6">
-                <div 
-                  className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() => toggleFormExpanded(form.id)}
-                >
+                <div className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       {/* Status Indicator */}
@@ -301,7 +290,7 @@ export default function FormPage() {
                       {/* Form Info */}
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {getFormTypeDisplayName(form.formType)} - {new Date(form.date).toLocaleDateString()}
+                          {form.title ? form.title : getFormTypeDisplayName(form.formType)} - {new Date(form.date).toLocaleDateString()}
                         </h3>
                         <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                           <span>Form #{form.id.slice(-6)}</span>
@@ -309,11 +298,16 @@ export default function FormPage() {
                           <span>Initial: {form.formInitial || 'Not set'}</span>
                           <span>•</span>
                           <span>Thermometer: {form.thermometerNumber || 'Not set'}</span>
+                          {form.title && (
+                            <>
+                              <span>•</span>
+                              <span className="text-blue-600 font-medium">"{form.title}"</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
                     
-                    {/* Expand/Collapse Indicator */}
                     <div className="flex items-center space-x-3">
                       {/* New Badge - Show on the first form (newest) */}
                       {index === 0 && (
@@ -333,15 +327,30 @@ export default function FormPage() {
                          '⏳ In Progress'}
                       </span>
                       
-                      {/* Expand/Collapse Arrow */}
-                      <svg 
-                        className={`w-5 h-5 text-gray-400 transition-transform ${expandedForms.has(form.id) ? 'rotate-180' : ''}`}
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
+                      {/* View Form Button */}
+                      <button
+                        onClick={() => handleViewForm(form)}
+                        className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                        title="View and edit form details"
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        View Form
+                      </button>
+                      
+                      {/* Delete Form Button */}
+                      <button
+                        onClick={() => handleDeleteForm(form.id)}
+                        className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors"
+                        title="Delete form"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Delete
+                      </button>
                     </div>
                   </div>
                   
@@ -377,86 +386,73 @@ export default function FormPage() {
                     </div>
                   </div>
                 </div>
-                
-                {/* Expanded Form Content */}
-                {expandedForms.has(form.id) && (
-                  <div className="border-t border-gray-200">
-                    {/* Real-time Status Indicator */}
-                    <div className="bg-gray-50 p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${
-                            form.status === 'Complete' ? 'bg-green-500' :
-                            form.status === 'Error' ? 'bg-red-500' :
-                            'bg-yellow-500'
-                          }`}></div>
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">Form Status</h3>
-                            <p className={`text-sm font-medium ${
-                              form.status === 'Complete' ? 'text-green-600' :
-                              form.status === 'Error' ? 'text-red-600' :
-                              'text-yellow-600'
-                            }`}>
-                              {form.status === 'Complete' ? '✓ Complete' :
-                               form.status === 'Error' ? '⚠️ Has Errors' :
-                               '⏳ In Progress'}
-                            </p>
-                            {/* Show error count when there are validation errors */}
-                            {form.status === 'Error' && (() => {
-                              let errorCount = 0;
-                              form.entries.forEach((entry, rowIndex) => {
-                                const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
-                                stages.forEach(stage => {
-                                  const stageData = entry[stage as keyof typeof entry] as any;
-                                  // Only count errors for cells that have all three fields
-                                  if (stageData && stageData.temp && stageData.time && stageData.initial) {
-                                    const validation = shouldHighlightCell(form, rowIndex, `${stage}.temp`);
-                                    if (validation.highlight && validation.severity === 'error') {
-                                      errorCount++;
-                                    }
-                                  }
-                                });
-                              });
-                              return errorCount > 0 ? (
-                                <p className="text-xs text-red-600 mt-1">
-                                  {errorCount} validation error{errorCount !== 1 ? 's' : ''} found
-                                </p>
-                              ) : null;
-                            })()}
-                          </div>
-                        </div>
-                        <div className="text-right text-xs text-gray-500">
-                          <div>Real-time monitoring active</div>
-                          <div>Last updated: {new Date().toLocaleTimeString()}</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* The Actual Form */}
-                    <div className="p-4">
-                      <PaperForm 
-                        key={`${form.id}-${formUpdateKey}`}
-                        formData={form}
-                        readOnly={false}
-                        onFormUpdate={(formId, updates) => {
-                          console.log('Form updated in form page:', formId, updates);
-                          // Handle status updates by calling the store's updateFormStatus function
-                          if (updates.status) {
-                            console.log('Status updated to:', updates.status, 'updating store');
-                            updateFormStatus(formId, updates.status);
-                            // Track when validation last updated the status
-                            setLastValidationUpdate(Date.now());
-                            // Ensure the form is saved to persist the status change
-                            setTimeout(() => saveForm(), 100);
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {/* Form Details Modal - Exactly like admin page */}
+      {showFormModal && selectedForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-50 rounded-2xl w-full h-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-4 bg-white border-b">
+              <div>
+                <h3 className="text-xl font-semibold">
+                  {selectedForm.title ? selectedForm.title : 'Edit Form'} - {new Date(selectedForm.date).toLocaleDateString()}
+                </h3>
+                <div className="text-sm text-gray-600 mt-1">
+                  Status: <span className={`font-medium ${
+                    selectedForm.status === 'Complete' ? 'text-green-600' :
+                    selectedForm.status === 'In Progress' ? 'text-yellow-600' :
+                    'text-orange-600'
+                  }`}>
+                    {selectedForm.status}
+                  </span>
+                  {selectedForm.title && (
+                    <div className="text-blue-600 font-medium mt-1">
+                      Form Title: "{selectedForm.title}"
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowFormModal(false);
+                  setSelectedForm(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto">
+              <PaperForm 
+                key={`${selectedForm.id}-${formUpdateKey}`}
+                formData={selectedForm}
+                readOnly={false}
+                onFormUpdate={(formId, updates) => {
+                  console.log('Form updated in form modal:', formId, updates);
+                  // Handle status updates by calling the store's updateFormStatus function
+                  if (updates.status) {
+                    console.log('Status updated to:', updates.status, 'updating store');
+                    updateFormStatus(formId, updates.status);
+                    // Track when validation last updated the status
+                    setLastValidationUpdate(Date.now());
+                    // Ensure the form is saved to persist the status change
+                    setTimeout(() => saveForm(), 100);
+                  }
+                  
+                  // Update the selectedForm state to reflect changes
+                  if (selectedForm && selectedForm.id === formId) {
+                    const updatedForm = { ...selectedForm, ...updates };
+                    setSelectedForm(updatedForm);
+                  }
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

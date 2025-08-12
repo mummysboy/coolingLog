@@ -75,6 +75,7 @@ export interface PaperFormEntry {
   formType: FormType; // The type of form
   formInitial: string; // The initial this form is associated with
   status: 'Complete' | 'In Progress' | 'Error'; // Automatically determined status
+  title: string; // Custom title for the form
   
   // Row entries (1-9)
   entries: PaperFormRow[];
@@ -152,6 +153,7 @@ export const createEmptyForm = (formType: FormType = FormType.FOOD_CHILLING_LOG,
   formType,
   formInitial,
   status: 'In Progress', // Default status for new forms
+  title: '', // Default empty title for new forms
   entries: Array(9).fill(null).map(() => ({ ...EMPTY_ROW })),
   thermometerNumber: '',
   ingredients: {
