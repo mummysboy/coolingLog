@@ -18,7 +18,7 @@ export enum FormType {
 export const getFormTypeDisplayName = (formType: FormType): string => {
   switch (formType) {
     case FormType.FOOD_CHILLING_LOG:
-      return 'Food Chilling Log';
+      return 'Cooking and Cooling for Meat & Non Meat Ingredients';
     default:
       return 'Unknown Form Type';
   }

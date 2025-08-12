@@ -234,8 +234,11 @@ export default function FormPage() {
                           {/* Form Info */}
                           <div>
                             <h3 className="text-lg font-semibold text-gray-900">
-                              {form.title ? form.title : getFormTypeDisplayName(form.formType)} - {new Date(form.date).toLocaleDateString()}
+                              {form.title ? form.title : getFormTypeDisplayName(form.formType)}
                             </h3>
+                            <div className="text-sm text-gray-600 mt-1">
+                              {getFormTypeDisplayName(form.formType)}
+                            </div>
                             <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                               <span>Form #{form.id.slice(-6)}</span>
                             </div>
@@ -303,7 +306,15 @@ export default function FormPage() {
                           </div>
                         </div>
                         
-
+                        {/* Corrective Actions and Comments - Always shown */}
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            {form.correctiveActionsComments && form.correctiveActionsComments.trim() 
+                              ? form.correctiveActionsComments 
+                              : '(no comments)'}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -323,7 +334,7 @@ export default function FormPage() {
               {savedForms.filter((form: PaperFormEntry) => form.status === 'Complete').length > 0 && (
                 <div className="mb-8">
                   <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Completed Forms
@@ -345,8 +356,11 @@ export default function FormPage() {
                             {/* Form Info */}
                             <div>
                               <h3 className="text-lg font-semibold text-gray-900">
-                                {form.title ? form.title : getFormTypeDisplayName(form.formType)} - {new Date(form.date).toLocaleDateString()}
+                                {form.title ? form.title : getFormTypeDisplayName(form.formType)}
                               </h3>
+                              <div className="text-sm text-gray-600 mt-1">
+                                {getFormTypeDisplayName(form.formType)}
+                              </div>
                               <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                                 <span>Form #{form.id.slice(-6)}</span>
                                 <span className="text-gray-600 font-medium">✓ Finalized</span>
@@ -377,7 +391,7 @@ export default function FormPage() {
                           </div>
                         </div>
                         
-                        {/* Additional Form Summary Info */}
+                                                {/* Additional Form Summary Info */}
                         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                           <div className="bg-gray-50 rounded-lg p-3">
                             <div className="font-medium text-gray-700">Date Created</div>
@@ -395,14 +409,17 @@ export default function FormPage() {
                               {new Date().toLocaleDateString()}
                             </div>
                             <div className="text-sm text-gray-600 mt-1">
-                              {new Date().toLocaleTimeString()}
+                              {new Date().toLocaleDateString()}
                             </div>
                           </div>
                           
+                          {/* Corrective Actions and Comments - Always shown */}
                           <div className="bg-gray-50 rounded-lg p-3">
-                            <div className="font-medium text-gray-700">Status</div>
-                            <div className="text-lg font-semibold text-gray-900">
-                              Finalized
+                            <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              {form.correctiveActionsComments && form.correctiveActionsComments.trim() 
+                                ? form.correctiveActionsComments 
+                                : '(no comments)'}
                             </div>
                           </div>
                         </div>
