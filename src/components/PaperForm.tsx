@@ -880,7 +880,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             <div>
               <span className="font-semibold">Title: </span>
               <input
-                key={`title-${form?.id || 'new'}-${form?.title || ''}`}
+                key={`title-${form?.id || 'new'}`}
                 type="text"
                 value={form?.title || ''}
                 onChange={(e) => {
@@ -889,7 +889,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                   handleFormFieldChange('title', newValue);
                 }}
                 placeholder="Enter form title (e.g., 'Morning Batch', 'Chicken Prep')"
-                className="border-b border-black bg-transparent w-full"
+                className="border-b-2 border-gray-300 bg-transparent w-full px-2 py-1 transition-all duration-200 ease-in-out focus:border-blue-500 focus:outline-none hover:border-gray-400"
                 readOnly={readOnly}
               />
             </div>

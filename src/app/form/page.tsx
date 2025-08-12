@@ -430,17 +430,7 @@ export default function FormPage() {
                     Completed Forms
                   </h2>
                   
-                  {/* Info Note */}
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center text-blue-800">
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="text-sm font-medium">
-                        Completed forms are protected from deletion to preserve finalized data for compliance and audit purposes.
-                      </span>
-                    </div>
-                  </div>
+
                   
                   {savedForms
                     .filter((form: PaperFormEntry) => form.status === 'Complete')
@@ -453,9 +443,6 @@ export default function FormPage() {
                       <div className={`p-6`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
-                            {/* Status Indicator */}
-                            <div className="w-4 h-4 rounded-full bg-gray-500"></div>
-                            
                             {/* Form Info */}
                             <div>
                               <h3 className="text-lg font-semibold text-gray-900">
@@ -470,7 +457,7 @@ export default function FormPage() {
                           
                           <div className="flex items-center space-x-3">
                             {/* Status Badge */}
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                               ✓ Complete
                             </span>
                             
@@ -494,6 +481,13 @@ export default function FormPage() {
                         {/* Additional Form Summary Info */}
                         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                           <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="font-medium text-gray-700">Date Created</div>
+                            <div className="text-lg font-semibold text-gray-900">
+                              {new Date(form.date).toLocaleDateString()}
+                            </div>
+                          </div>
+                          
+                          <div className="bg-gray-50 rounded-lg p-3">
                             <div className="font-medium text-gray-700">Completion Date</div>
                             <div className="text-lg font-semibold text-gray-900">
                               {new Date().toLocaleDateString()}
@@ -504,14 +498,6 @@ export default function FormPage() {
                             <div className="font-medium text-gray-700">Status</div>
                             <div className="text-lg font-semibold text-gray-900">
                               Finalized
-                            </div>
-                          </div>
-                          
-                          <div className="bg-gray-50 rounded-lg p-3">
-                            <div className="font-medium text-gray-700">Data Integrity</div>
-                            <div className="flex items-center text-gray-600">
-                              <div className="w-2 h-2 bg-gray-500 rounded-full mr-2"></div>
-                              <span className="text-sm">Protected</span>
                             </div>
                           </div>
                         </div>
