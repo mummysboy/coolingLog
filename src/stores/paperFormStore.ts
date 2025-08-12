@@ -78,11 +78,13 @@ export const usePaperFormStore = create<PaperFormStore>()(
           set({ savedForms: updatedSavedForms });
           
           // Save to AWS DynamoDB
+          console.log('About to save form to AWS:', currentForm.id);
           await awsStorageManager.savePaperForm(currentForm);
           
           console.log('Form saved successfully to AWS DynamoDB');
         } catch (error) {
           console.error('Error saving form to AWS:', error);
+          console.error('Form data that failed to save:', currentForm);
           throw error;
         }
       },
@@ -117,7 +119,43 @@ export const usePaperFormStore = create<PaperFormStore>()(
         try {
           // Load forms from AWS DynamoDB
           const forms = await awsStorageManager.getPaperForms();
-          set({ savedForms: forms });
+          
+          // Migrate existing forms to include rack field and dataLog field if missing
+          const migratedForms = forms.map(form => {
+            if (!form.entries) return form;
+            
+            const migratedEntries = form.entries.map(entry => {
+              let updatedEntry = { ...entry };
+              
+              // Add rack field if missing
+              if (!entry.rack) {
+                updatedEntry = { ...updatedEntry, rack: '1st Rack' as const };
+              }
+              
+              // Add dataLog field to each stage if missing
+              if (entry.ccp1 && !entry.ccp1.dataLog) {
+                updatedEntry.ccp1 = { ...entry.ccp1, dataLog: false };
+              }
+              if (entry.ccp2 && !entry.ccp2.dataLog) {
+                updatedEntry.ccp2 = { ...entry.ccp2, dataLog: false };
+              }
+              if (entry.coolingTo80 && !entry.coolingTo80.dataLog) {
+                updatedEntry.coolingTo80 = { ...entry.coolingTo80, dataLog: false };
+              }
+              if (entry.coolingTo54 && !entry.coolingTo54.dataLog) {
+                updatedEntry.coolingTo54 = { ...entry.coolingTo54, dataLog: false };
+              }
+              if (entry.finalChill && !entry.finalChill.dataLog) {
+                updatedEntry.finalChill = { ...entry.finalChill, dataLog: false };
+              }
+              
+              return updatedEntry;
+            });
+            
+            return { ...form, entries: migratedEntries };
+          });
+          
+          set({ savedForms: migratedForms });
           console.log('Forms loaded successfully from AWS DynamoDB');
         } catch (error) {
           console.error('Error loading forms from AWS:', error);
@@ -125,6 +163,8 @@ export const usePaperFormStore = create<PaperFormStore>()(
           console.log('Falling back to local storage');
         }
       },
+      
+
       
       updateFormField: (formId: string, field: string, value: any) => {
         set((state) => ({

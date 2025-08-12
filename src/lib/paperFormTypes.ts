@@ -100,6 +100,7 @@ export interface PaperFormEntry {
 }
 
 export interface PaperFormRow {
+  rack: '1st Rack' | 'Last Rack'; // Track whether this is 1st or Last rack
   type: string; // Product type
   
   // CCP 1 - Temperature Must reach 166°F or greater
@@ -107,6 +108,7 @@ export interface PaperFormRow {
     temp: string;
     time: string;
     initial: string;
+    dataLog: boolean;
   };
   
   // CCP 2 - 127°F or greater (Record Temperature of 1st and LAST rack/batch of the day)
@@ -114,6 +116,7 @@ export interface PaperFormRow {
     temp: string;
     time: string;
     initial: string;
+    dataLog: boolean;
   };
   
   // 80°F or below within 105 minutes (Record Temperature of 1st rack/batch of the day)
@@ -121,6 +124,7 @@ export interface PaperFormRow {
     temp: string;
     time: string;
     initial: string;
+    dataLog: boolean;
   };
   
   // 54°F or below within 4.75 hr
@@ -128,6 +132,7 @@ export interface PaperFormRow {
     temp: string;
     time: string;
     initial: string;
+    dataLog: boolean;
   };
   
   // Chill Continuously to 39°F or below
@@ -135,16 +140,18 @@ export interface PaperFormRow {
     temp: string;
     time: string;
     initial: string;
+    dataLog: boolean;
   };
 }
 
 export const EMPTY_ROW: PaperFormRow = {
+  rack: '1st Rack', // Default to 1st Rack for empty rows
   type: '',
-  ccp1: { temp: '', time: '', initial: '' },
-  ccp2: { temp: '', time: '', initial: '' },
-  coolingTo80: { temp: '', time: '', initial: '' },
-  coolingTo54: { temp: '', time: '', initial: '' },
-  finalChill: { temp: '', time: '', initial: '' },
+  ccp1: { temp: '', time: '', initial: '', dataLog: false },
+  ccp2: { temp: '', time: '', initial: '', dataLog: false },
+  coolingTo80: { temp: '', time: '', initial: '', dataLog: false },
+  coolingTo54: { temp: '', time: '', initial: '', dataLog: false },
+  finalChill: { temp: '', time: '', initial: '', dataLog: false },
 };
 
 export const createEmptyForm = (formType: FormType = FormType.FOOD_CHILLING_LOG, formInitial: string = ''): PaperFormEntry => ({
@@ -154,7 +161,7 @@ export const createEmptyForm = (formType: FormType = FormType.FOOD_CHILLING_LOG,
   formInitial,
   status: 'In Progress', // Default status for new forms
   title: '', // Default empty title for new forms
-  entries: Array(9).fill(null).map(() => ({ ...EMPTY_ROW })),
+  entries: Array.from({ length: 9 }, () => ({ ...EMPTY_ROW })),
   thermometerNumber: '',
   ingredients: {
     beef: '',

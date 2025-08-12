@@ -46,6 +46,7 @@ type PaperFormEntry @model {
 # Paper Form Row for individual entries
 type PaperFormRow {
   type: String
+  rack: String
   
   # CCP 1 - Temperature Must reach 166°F or greater
   ccp1: StageData
@@ -166,6 +167,7 @@ type StageData {
   correctiveAction: String
   employeeInitials: String
   notes: String
+  dataLog: Boolean
 }
 
 # Initial entry model for managing employee initials
@@ -230,10 +232,12 @@ input StageDataInput {
   correctiveAction: String
   employeeInitials: String
   notes: String
+  dataLog: Boolean
 }
 
 input PaperFormRowInput {
   type: String
+  rack: String
   ccp1: StageDataInput
   ccp2: StageDataInput
   coolingTo80: StageDataInput

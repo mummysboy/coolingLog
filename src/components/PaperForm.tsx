@@ -15,7 +15,7 @@ interface PaperFormProps {
 }
 
 export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: PaperFormProps = {}) {
-  const { currentForm, updateEntry, updateFormField, updateFormStatus, saveForm, getFormByDateAndInitial, loadForm, selectedInitial, createNewForm, updateAdminForm, savedForms } = usePaperFormStore();
+  const { currentForm, updateEntry, updateFormField, updateFormStatus, saveForm, updateAdminForm, savedForms } = usePaperFormStore();
 
   // Check if we're working with a form from the admin dashboard
   const isAdminForm = formData && formData !== currentForm;
@@ -33,14 +33,9 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
   // Track the resolved data snapshot to compare against new changes
   const [resolvedDataSnapshot, setResolvedDataSnapshot] = React.useState<any>(null);
   
-  // Track when admin is actively typing in corrective actions section
-  const [isTypingCorrectiveActions, setIsTypingCorrectiveActions] = React.useState(false);
+
   
-  // Track when the form has been resolved to hide the resolve button
-  const [isFormResolved, setIsFormResolved] = React.useState(false);
-  
-  // Track when form is successfully resolved to show success message
-  const [showResolutionSuccess, setShowResolutionSuccess] = React.useState(false);
+
   
   // NEW: Toast notification state for validation errors
   const [toasts, setToasts] = React.useState<Array<{
@@ -50,6 +45,46 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
     rowIndex?: number;
     stage?: string;
   }>>([]);
+
+  // Helper function to update corrective actions when dataLog is checked/unchecked
+  const updateCorrectiveActionsForDataLog = (rowIndex: number, stage: string, dataLog: boolean) => {
+    if (!form) return;
+    
+    const entry = form.entries[rowIndex];
+    const rowNumber = rowIndex + 1;
+    const type = entry.type || `Row ${rowNumber}`;
+    const displayText = entry.type ? `Row ${rowNumber} ${entry.type}` : `Row ${rowNumber}`;
+    const stageName = stage === 'ccp1' ? 'CCP1' : 
+                     stage === 'ccp2' ? 'CCP2' : 
+                     stage === 'coolingTo80' ? '80°F Cooling' : 
+                     stage === 'coolingTo54' ? '54°F Cooling' : 
+                     stage === 'finalChill' ? 'Final Chill' : stage;
+    
+    const targetComment = `Check datalog for ${displayText} (${stageName})`;
+    const existingComments = form.correctiveActionsComments || '';
+    
+    if (dataLog) {
+      // Add comment if it doesn't already exist
+      if (!existingComments.includes(targetComment)) {
+        const updatedComments = existingComments 
+          ? `${existingComments}\n${targetComment}`
+          : targetComment;
+        
+        handleFormFieldChange('correctiveActionsComments', updatedComments);
+      }
+    } else {
+      // Remove comment if it exists
+      if (existingComments.includes(targetComment)) {
+        const updatedComments = existingComments
+          .split('\n')
+          .filter(comment => comment.trim() !== targetComment)
+          .join('\n')
+          .trim();
+        
+        handleFormFieldChange('correctiveActionsComments', updatedComments);
+      }
+    }
+  };
   
   // Check if there are unresolved validation errors
   const hasUnresolvedErrors = React.useMemo(() => {
@@ -91,18 +126,8 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         console.log('Form ID changed, clearing resolved snapshot');
         setResolvedDataSnapshot(null);
       }
-      
-      // Auto-fill initials when form is first loaded
-      if (selectedInitial && form.entries) {
-        console.log('Form loaded, auto-filling initials for all rows');
-        setTimeout(() => {
-          form.entries.forEach((_, rowIndex) => {
-            autoFillInitialsForRow(rowIndex);
-          });
-        }, 200);
-      }
     }
-  }, [form?.status, form?.id, form?.id, resolvedDataSnapshot, selectedInitial]);
+  }, [form?.status, form?.id, form?.id, resolvedDataSnapshot]);
   
 
 
@@ -114,54 +139,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
     }
   }, [resolvedDataSnapshot]);
 
-  // Auto-fill initials for all rows when form data changes or selectedInitial changes
-  React.useEffect(() => {
-    if (form && selectedInitial && form.entries) {
-      console.log('Auto-filling initials for all rows - selectedInitial:', selectedInitial);
-      // Add a small delay to ensure the form data is fully loaded
-      setTimeout(() => {
-        form.entries.forEach((_, rowIndex) => {
-          autoFillInitialsForRow(rowIndex);
-        });
-      }, 100);
-    }
-  }, [form?.entries, selectedInitial]);
 
-  // Auto-fill initials when selectedInitial changes
-  React.useEffect(() => {
-    if (form && selectedInitial && form.entries) {
-      console.log('selectedInitial changed, auto-filling initials for all rows');
-      setTimeout(() => {
-        form.entries.forEach((_, rowIndex) => {
-          autoFillInitialsForRow(rowIndex);
-        });
-      }, 150);
-    }
-  }, [selectedInitial]);
-
-  // Auto-fill initials when component mounts
-  React.useEffect(() => {
-    if (form && selectedInitial && form.entries) {
-      console.log('Component mounted, auto-filling initials for all rows');
-      setTimeout(() => {
-        form.entries.forEach((_, rowIndex) => {
-          autoFillInitialsForRow(rowIndex);
-        });
-      }, 300);
-    }
-  }, []);
-
-  // Auto-fill initials when form is first loaded
-  React.useEffect(() => {
-    if (form && selectedInitial && form.entries) {
-      console.log('Form first loaded, auto-filling initials for all rows');
-      setTimeout(() => {
-        form.entries.forEach((_, rowIndex) => {
-          autoFillInitialsForRow(rowIndex);
-        });
-      }, 250);
-    }
-  }, [form?.id]);
 
   // Function to check if there are new errors compared to the resolved snapshot
   const hasNewErrors = (currentForm: any, resolvedSnapshot: any) => {
@@ -261,51 +239,9 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
 
   if (!form) return null;
 
-    // Helper function to auto-fill initials for a specific row
-  const autoFillInitialsForRow = (rowIndex: number) => {
-    if (!selectedInitial) return;
-    
-    const entry = form.entries[rowIndex];
-    if (!entry) return;
-    
-    const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
-    
-    stages.forEach(stage => {
-      const stageData = entry[stage as keyof typeof entry] as any;
-      if (stageData && 
-          entry.type && 
-          entry.type.trim() !== '' && 
-          stageData.temp && 
-          stageData.temp.toString().trim() !== '' && 
-          stageData.time && 
-          stageData.time.trim() !== '' && 
-          (!stageData.initial || stageData.initial.trim() === '')) {
-        
-        console.log(`Auto-filling initial for ${stage} at row ${rowIndex + 1} - Type: "${entry.type}", Temp: "${stageData.temp}", Time: "${stageData.time}"`);
-        
-        // Auto-fill the initial for this stage
-        if (isAdminForm) {
-          // For admin forms, update the specific form
-          const updatedEntries = [...form.entries];
-          const entry = updatedEntries[rowIndex];
-          const sectionData = entry[stage as keyof typeof entry] as any;
-          updatedEntries[rowIndex] = {
-            ...entry,
-            [stage]: {
-              ...sectionData,
-              initial: selectedInitial,
-            },
-          };
-          updateAdminForm(form.id, { entries: updatedEntries });
-        } else {
-          // For regular forms, use the store's updateEntry
-          updateEntry(rowIndex, `${stage}.initial`, selectedInitial);
-        }
-      }
-    });
-  };
 
-  const handleCellChange = (rowIndex: number, field: string, value: string) => {
+
+  const handleCellChange = (rowIndex: number, field: string, value: string | boolean) => {
     console.log('handleCellChange called:', { rowIndex, field, value, readOnly });
     
     if (!readOnly) {
@@ -337,18 +273,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         updateEntry(rowIndex, field, value);
       }
       
-      // Auto-fill initial when type, temp, and time are all entered
-      autoFillInitialsForRow(rowIndex);
-      
-      // If this was a type field change, also check other rows that might now have all three fields
-      if (field === 'type' && value.trim() !== '') {
-        // Check all other rows to see if they now have all three fields
-        form.entries.forEach((_, otherRowIndex) => {
-          if (otherRowIndex !== rowIndex) {
-            autoFillInitialsForRow(otherRowIndex);
-          }
-        });
-      }
+
       
       // NEW: Comprehensive validation check when all three fields (temp, time, initial) are complete
       const currentEntry = form.entries[rowIndex];
@@ -491,7 +416,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
       }
       
       // NEW: Additional validation when time field is completed to check time limits
-      if (field.includes('.time') && value.trim() !== '') {
+      if (field.includes('.time') && typeof value === 'string' && value.trim() !== '') {
         const [stage] = field.split('.');
         const stageData = currentEntry[stage as keyof typeof currentEntry] as any;
         
@@ -596,15 +521,15 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         }
       } else if (field.includes('.time')) {
         // Time validation - must not be empty
-        currentHasError = !value || String(value).trim() === '';
+        currentHasError = !value || (typeof value === 'string' && value.trim() === '');
         console.log(`Time validation: empty = ${currentHasError}`);
       } else if (field.includes('.initial')) {
         // Initial validation - must not be empty
-        currentHasError = !value || String(value).trim() === '';
+        currentHasError = !value || (typeof value === 'string' && value.trim() === '');
         console.log(`Initial validation: empty = ${currentHasError}`);
       } else if (field === 'type') {
         // Type validation - must not be empty
-        currentHasError = !value || String(value).trim() === '';
+        currentHasError = !value || (typeof value === 'string' && value.trim() === '');
         console.log(`Type validation: empty = ${currentHasError}`);
       }
       
@@ -722,15 +647,15 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             }
           } else if (field.includes('.time')) {
             // Time validation - must not be empty
-            currentHasError = !value || String(value).trim() === '';
+            currentHasError = !value || (typeof value === 'string' && value.trim() === '');
             console.log(`Time validation: empty = ${currentHasError}`);
           } else if (field.includes('.initial')) {
             // Initial validation - must not be empty
-            currentHasError = !value || String(value).trim() === '';
+            currentHasError = !value || (typeof value === 'string' && value.trim() === '');
             console.log(`Initial validation: empty = ${currentHasError}`);
           } else if (field === 'type') {
             // Type validation - must not be empty
-            currentHasError = !value || String(value).trim() === '';
+            currentHasError = !value || (typeof value === 'string' && value.trim() === '');
             console.log(`Type validation: empty = ${currentHasError}`);
           }
           
@@ -868,24 +793,10 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         }
       } else {
         // Special handling for date changes
-        if (field === 'date' && selectedInitial) {
+        if (field === 'date') {
           const newDate = new Date(value);
-          const existingForm = getFormByDateAndInitial(newDate, selectedInitial);
-          
-          if (existingForm && existingForm.id !== form?.id) {
-            // Load the existing form for this date
-            loadForm(existingForm.id);
-          } else if (!existingForm) {
-            // No existing form for this date, create a new one
-            createNewForm(FormType.FOOD_CHILLING_LOG, selectedInitial);
-            // Set the date on the new form
-            setTimeout(() => {
-              updateFormField(form.id, field, value);
-            }, 10);
-          } else {
-            // Update the current form's date
-            updateFormField(form.id, field, value);
-          }
+          // Update the current form's date
+          updateFormField(form.id, field, value);
         } else {
           console.log('Regular form update - field:', field, 'value:', value, 'current status:', form.status);
           updateFormField(form.id, field, value);
@@ -995,6 +906,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
           {/* Header Row 1 */}
           <thead>
             <tr className="bg-gray-100">
+              <th className="border border-black p-2 w-16">Rack</th>
               <th className="border border-black p-2 w-16">Date</th>
               <th className="border border-black p-2 w-32">
                 Temperature Must reach 166°F or greater<br/>
@@ -1020,6 +932,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             </tr>
             {/* Header Row 2 - Sub columns */}
             <tr className="bg-gray-50">
+              <th className="border border-black p-1 text-sm">Rack</th>
               <th className="border border-black p-1 text-sm">Type</th>
               <th className="border border-black p-1">
                 <div className="grid grid-cols-3 gap-1 text-xs">
@@ -1059,27 +972,40 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             </tr>
           </thead>
           
-          {/* Data Rows */}
-          <tbody>
-            {form.entries.map((entry, rowIndex) => (
-              <tr key={rowIndex} className={rowIndex === 5 ? 'border-t-4 border-black' : ''}>
-                {/* Row number and type */}
-                <td className="border border-black p-1 text-center">
-                  <div className="flex items-center justify-center space-x-1">
-                    <span className="font-bold text-sm">{rowIndex + 1}.</span>
-                    <input
-                      type="text"
-                      value={entry.type}
-                      onChange={(e) => handleCellChange(rowIndex, 'type', e.target.value)}
-                      className="w-full text-xs border-0 bg-transparent text-center"
-                      placeholder="Type"
-                      readOnly={readOnly}
-                    />
-                  </div>
-                </td>
+                      {/* Data Rows */}
+            <tbody>
+              {form.entries.map((entry: any, rowIndex: number) => (
+                <tr key={rowIndex} className={rowIndex === 5 ? 'border-t-4 border-black' : ''}>
+                  {/* Rack selection */}
+                  <td className="border border-black p-1 text-center">
+                    <select
+                      value={entry.rack || '1st Rack'}
+                      onChange={(e) => handleCellChange(rowIndex, 'rack', e.target.value)}
+                      className="w-full text-xs border-0 bg-transparent text-center cursor-pointer"
+                      disabled={readOnly}
+                    >
+                      <option value="1st Rack">1st Rack</option>
+                      <option value="Last Rack">Last Rack</option>
+                    </select>
+                  </td>
+                  
+                  {/* Row number and type */}
+                  <td className="border border-black p-1 text-center">
+                    <div className="flex items-center justify-center space-x-1">
+                      <span className="font-bold text-sm">{rowIndex + 1}.</span>
+                      <input
+                        type="text"
+                        value={entry.type}
+                        onChange={(e) => handleCellChange(rowIndex, 'type', e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1).toLowerCase())}
+                        className="w-full text-xs border-0 bg-transparent text-center"
+                        placeholder="Type"
+                        readOnly={readOnly}
+                      />
+                    </div>
+                  </td>
 
                 {/* CCP 1 */}
-                <td className="border border-black p-1">
+                <td className={`border border-black p-1 ${entry.ccp1.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
                     <input
                       type="text"
@@ -1097,11 +1023,46 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                       disabled={readOnly}
                       showQuickTimes={false}
                       compact={true}
+                      dataLog={entry.ccp1.dataLog || false}
+                                              onDataLogChange={(dataLog) => {
+                          console.log('CCP1 dataLog changed:', dataLog);
+                          // Update the local form state immediately
+                          if (form && form.entries[rowIndex]) {
+                            const updatedEntries = [...form.entries];
+                            updatedEntries[rowIndex] = {
+                              ...updatedEntries[rowIndex],
+                              ccp1: {
+                                ...updatedEntries[rowIndex].ccp1,
+                                dataLog: dataLog
+                              }
+                            };
+                            
+                            if (isAdminForm) {
+                              updateAdminForm(form.id, { entries: updatedEntries });
+                            } else {
+                              // Update the current form state directly
+                              const updatedForm = { ...form, entries: updatedEntries };
+                              // Force a re-render by updating the store
+                              updateFormField(form.id, 'entries', updatedEntries);
+                            }
+                          }
+                          
+                          // Update corrective actions when dataLog is checked
+                          updateCorrectiveActionsForDataLog(rowIndex, 'ccp1', dataLog);
+                          
+                          // Also call the original handleCellChange for consistency
+                          handleCellChange(rowIndex, 'ccp1.dataLog', dataLog);
+                          
+                          // Ensure form is saved after dataLog change
+                          if (!readOnly) {
+                            setTimeout(() => saveForm(), 100);
+                          }
+                        }}
                     />
                     <input
                       type="text"
                       value={entry.ccp1.initial}
-                      onChange={(e) => handleCellChange(rowIndex, 'ccp1.initial', e.target.value)}
+                      onChange={(e) => handleCellChange(rowIndex, 'ccp1.initial', e.target.value.toUpperCase())}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
@@ -1111,7 +1072,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 </td>
 
                 {/* CCP 2 */}
-                <td className="border border-black p-1">
+                <td className={`border border-black p-1 ${entry.ccp2.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
                     <input
                       type="text"
@@ -1129,11 +1090,46 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                       disabled={readOnly}
                       showQuickTimes={false}
                       compact={true}
+                      dataLog={entry.ccp2.dataLog || false}
+                                              onDataLogChange={(dataLog) => {
+                          console.log('CCP2 dataLog changed:', dataLog);
+                          // Update the local form state immediately
+                          if (form && form.entries[rowIndex]) {
+                            const updatedEntries = [...form.entries];
+                            updatedEntries[rowIndex] = {
+                              ...updatedEntries[rowIndex],
+                              ccp2: {
+                                ...updatedEntries[rowIndex].ccp2,
+                                dataLog: dataLog
+                              }
+                            };
+                            
+                            if (isAdminForm) {
+                              updateAdminForm(form.id, { entries: updatedEntries });
+                            } else {
+                              // Update the current form state directly
+                              const updatedForm = { ...form, entries: updatedEntries };
+                              // Force a re-render by updating the store
+                              updateFormField(form.id, 'entries', updatedEntries);
+                            }
+                          }
+                          
+                          // Update corrective actions when dataLog is checked
+                          updateCorrectiveActionsForDataLog(rowIndex, 'ccp2', dataLog);
+                          
+                          // Also call the original handleCellChange for consistency
+                          handleCellChange(rowIndex, 'ccp2.dataLog', dataLog);
+                          
+                          // Ensure form is saved after dataLog change
+                          if (!readOnly) {
+                            setTimeout(() => saveForm(), 100);
+                          }
+                        }}
                     />
                     <input
                       type="text"
                       value={entry.ccp2.initial}
-                      onChange={(e) => handleCellChange(rowIndex, 'ccp2.initial', e.target.value)}
+                      onChange={(e) => handleCellChange(rowIndex, 'ccp2.initial', e.target.value.toUpperCase())}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
@@ -1143,7 +1139,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 </td>
 
                 {/* 80°F Cooling */}
-                <td className="border border-black p-1">
+                <td className={`border border-black p-1 ${entry.coolingTo80.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
                     <input
                       type="text"
@@ -1161,11 +1157,46 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                       disabled={readOnly}
                       showQuickTimes={false}
                       compact={true}
+                      dataLog={entry.coolingTo80.dataLog || false}
+                                              onDataLogChange={(dataLog) => {
+                          console.log('80°F Cooling dataLog changed:', dataLog);
+                          // Update the local form state immediately
+                          if (form && form.entries[rowIndex]) {
+                            const updatedEntries = [...form.entries];
+                            updatedEntries[rowIndex] = {
+                              ...updatedEntries[rowIndex],
+                              coolingTo80: {
+                                ...updatedEntries[rowIndex].coolingTo80,
+                                dataLog: dataLog
+                              }
+                            };
+                            
+                            if (isAdminForm) {
+                              updateAdminForm(form.id, { entries: updatedEntries });
+                            } else {
+                              // Update the current form state directly
+                              const updatedForm = { ...form, entries: updatedEntries };
+                              // Force a re-render by updating the store
+                              updateFormField(form.id, 'entries', updatedEntries);
+                            }
+                          }
+                          
+                          // Update corrective actions when dataLog is checked
+                          updateCorrectiveActionsForDataLog(rowIndex, 'coolingTo80', dataLog);
+                          
+                          // Also call the original handleCellChange for consistency
+                          handleCellChange(rowIndex, 'coolingTo80.dataLog', dataLog);
+                          
+                          // Ensure form is saved after dataLog change
+                          if (!readOnly) {
+                            setTimeout(() => saveForm(), 100);
+                          }
+                        }}
                     />
                     <input
                       type="text"
                       value={entry.coolingTo80.initial}
-                      onChange={(e) => handleCellChange(rowIndex, 'coolingTo80.initial', e.target.value)}
+                      onChange={(e) => handleCellChange(rowIndex, 'coolingTo80.initial', e.target.value.toUpperCase())}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
@@ -1175,7 +1206,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 </td>
 
                 {/* 54°F Cooling */}
-                <td className="border border-black p-1">
+                <td className={`border border-black p-1 ${entry.coolingTo54.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
                     <input
                       type="text"
@@ -1193,11 +1224,46 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                       disabled={readOnly}
                       showQuickTimes={false}
                       compact={true}
+                      dataLog={entry.coolingTo54.dataLog || false}
+                                              onDataLogChange={(dataLog) => {
+                          console.log('54°F Cooling dataLog changed:', dataLog);
+                          // Update the local form state immediately
+                          if (form && form.entries[rowIndex]) {
+                            const updatedEntries = [...form.entries];
+                            updatedEntries[rowIndex] = {
+                              ...updatedEntries[rowIndex],
+                              coolingTo54: {
+                                ...updatedEntries[rowIndex].coolingTo54,
+                                dataLog: dataLog
+                              }
+                            };
+                            
+                            if (isAdminForm) {
+                              updateAdminForm(form.id, { entries: updatedEntries });
+                            } else {
+                              // Update the current form state directly
+                              const updatedForm = { ...form, entries: updatedEntries };
+                              // Force a re-render by updating the store
+                              updateFormField(form.id, 'entries', updatedEntries);
+                            }
+                          }
+                          
+                          // Update corrective actions when dataLog is checked
+                          updateCorrectiveActionsForDataLog(rowIndex, 'coolingTo54', dataLog);
+                          
+                          // Also call the original handleCellChange for consistency
+                          handleCellChange(rowIndex, 'coolingTo54.dataLog', dataLog);
+                          
+                          // Ensure form is saved after dataLog change
+                          if (!readOnly) {
+                            setTimeout(() => saveForm(), 100);
+                          }
+                        }}
                     />
                     <input
                       type="text"
                       value={entry.coolingTo54.initial}
-                      onChange={(e) => handleCellChange(rowIndex, 'coolingTo54.initial', e.target.value)}
+                      onChange={(e) => handleCellChange(rowIndex, 'coolingTo54.initial', e.target.value.toUpperCase())}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
@@ -1207,7 +1273,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 </td>
 
                 {/* Final Chill */}
-                <td className="border border-black p-1">
+                <td className={`border border-black p-1 ${entry.finalChill.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
                     <input
                       type="text"
@@ -1225,11 +1291,46 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                       disabled={readOnly}
                       showQuickTimes={false}
                       compact={true}
+                      dataLog={entry.finalChill.dataLog || false}
+                                              onDataLogChange={(dataLog) => {
+                          console.log('Final Chill dataLog changed:', dataLog);
+                          // Update the local form state immediately
+                          if (form && form.entries[rowIndex]) {
+                            const updatedEntries = [...form.entries];
+                            updatedEntries[rowIndex] = {
+                              ...updatedEntries[rowIndex],
+                              finalChill: {
+                                ...updatedEntries[rowIndex].finalChill,
+                                dataLog: dataLog
+                              }
+                            };
+                            
+                            if (isAdminForm) {
+                              updateAdminForm(form.id, { entries: updatedEntries });
+                            } else {
+                              // Update the current form state directly
+                              const updatedForm = { ...form, entries: updatedEntries };
+                              // Force a re-render by updating the store
+                              updateFormField(form.id, 'entries', updatedEntries);
+                            }
+                          }
+                          
+                          // Update corrective actions when dataLog is checked
+                          updateCorrectiveActionsForDataLog(rowIndex, 'finalChill', dataLog);
+                          
+                          // Also call the original handleCellChange for consistency
+                          handleCellChange(rowIndex, 'finalChill.dataLog', dataLog);
+                          
+                          // Ensure form is saved after dataLog change
+                          if (!readOnly) {
+                            setTimeout(() => saveForm(), 100);
+                          }
+                        }}
                     />
                     <input
                       type="text"
                       value={entry.finalChill.initial}
-                      onChange={(e) => handleCellChange(rowIndex, 'finalChill.initial', e.target.value)}
+                      onChange={(e) => handleCellChange(rowIndex, 'finalChill.initial', e.target.value.toUpperCase())}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
@@ -1308,140 +1409,63 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
 
           {/* Right side - Corrective Actions */}
           <div className="p-4 relative">
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2">
               <h3 className="font-semibold">Corrective Actions & comments:</h3>
-              {isTypingCorrectiveActions && (
-                <div className="flex items-center space-x-2 text-sm text-blue-600">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span>Typing...</span>
-                </div>
-              )}
             </div>
             <textarea
               value={form.correctiveActionsComments}
               onChange={(e) => handleFormFieldChange('correctiveActionsComments', e.target.value)}
-              onFocus={() => {
-                setIsTypingCorrectiveActions(true);
-                // Reset resolved state when admin starts typing again
-                setIsFormResolved(false);
-              }}
-              onBlur={() => {
-                // Don't hide typing indicator on blur - keep button visible
-              }}
-              onKeyDown={() => {
-                setIsTypingCorrectiveActions(true);
-                // Reset resolved state when admin starts typing again
-                setIsFormResolved(false);
-              }}
-              onInput={() => {
-                setIsTypingCorrectiveActions(true);
-                // Reset resolved state when admin starts typing again
-                setIsFormResolved(false);
-              }}
               className="w-full h-32 border border-gray-300 p-2 text-sm resize-none"
               placeholder="Enter any corrective actions taken or additional comments..."
               readOnly={readOnly}
             />
-            
-            {/* Resolve Button - Show when there are validation errors OR when admin is actively typing */}
-            {(!isFormResolved && (isTypingCorrectiveActions || hasUnresolvedErrors)) && (
-              <button
-                onClick={() => {
-                  console.log('Resolve button clicked, current status:', form.status);
-                  console.log('Form ID:', form.id, 'isAdminForm:', isAdminForm);
-                  console.log('Corrective actions:', form.correctiveActionsComments);
-                  
-                  // Save a snapshot of the current data when resolving
-                  // Use the actual form data that's currently displayed, not the potentially stale form object
-                  const currentFormData = isAdminForm ? 
-                    savedForms.find(f => f.id === form.id) || form :
-                    form;
-                  
-                  const snapshot = JSON.parse(JSON.stringify(currentFormData));
-                  setResolvedDataSnapshot(snapshot);
-                  console.log('=== RESOLVE BUTTON CLICKED ===');
-                  console.log('Resolved data snapshot saved');
-                  console.log('Snapshot entries length:', snapshot.entries?.length);
-                  console.log('Current form status:', form.status);
-                  console.log('Snapshot sample data - Row 0 type:', snapshot.entries?.[0]?.type);
-                  console.log('Snapshot sample data - Row 0 ccp1.temp:', snapshot.entries?.[0]?.ccp1?.ccp1?.temp);
-                  
-                  // Always notify parent component of the status update to ensure UI consistency
-                  if (onFormUpdate) {
-                    console.log('Calling onFormUpdate with status: In Progress');
-                    onFormUpdate(form.id, { status: 'In Progress' });
-                  }
-                  
-                  // Update form status to 'In Progress' when resolved
-                  if (isAdminForm) {
-                    // For admin forms, use updateAdminForm to ensure proper persistence
-                    console.log('Updating admin form status to In Progress');
-                    updateAdminForm(form.id, { status: 'In Progress' });
-                    
-                    // Add a small delay to ensure the status update is processed before any auto-updates
-                    setTimeout(() => {
-                      console.log('Status update delay completed for admin form');
-                    }, 100);
-                  } else {
-                    // For regular forms, update the current form and save it
-                    console.log('Updating regular form status to In Progress');
-                    handleFormFieldChange('status', 'In Progress');
-                    // Save the form to persist the status change
-                    saveForm();
-                  }
-                  console.log('Status update completed');
-                  
-                  // Mark all current validation errors as resolved by admin
-                  // This will suppress validation errors since admin has taken corrective action
-                  const currentValidation = validateForm(form);
-                  const resolvedErrorIds = currentValidation.errors.map(error => 
-                    `${error.rowIndex}-${error.field}-${error.message}`
-                  );
-                  
-                  if (isAdminForm) {
-                    updateAdminForm(form.id, { 
-                      status: 'In Progress',
-                      resolvedErrors: resolvedErrorIds
-                    });
-                  } else {
-                    handleFormFieldChange('resolvedErrors', resolvedErrorIds);
-                    saveForm();
-                  }
-                  
-                  // Show success message and hide the resolve button after it's clicked
-                  setShowResolutionSuccess(true);
-                  setIsTypingCorrectiveActions(false);
-                  setIsFormResolved(true);
-                  
-                  // Auto-hide success message after 3 seconds
-                  setTimeout(() => {
-                    setShowResolutionSuccess(false);
-                  }, 3000);
-                }}
-                className="absolute bottom-6 right-6 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-lg flex items-center space-x-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Resolve</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Resolution Success Message */}
-      {showResolutionSuccess && (
-        <div className="mt-4 p-4 border-2 border-green-300 bg-green-50 rounded-lg">
-          <div className="flex items-center space-x-3">
-            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      {/* Complete Button - Only show if form is not already complete and not read-only */}
+      {!readOnly && form.status !== 'Complete' && (
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => {
+              // Update form status to Complete
+              if (onFormUpdate) {
+                onFormUpdate(form.id, { status: 'Complete' });
+              }
+              
+              if (isAdminForm) {
+                updateAdminForm(form.id, { status: 'Complete' });
+              } else {
+                updateFormStatus(form.id, 'Complete');
+                updateFormField(form.id, 'status', 'Complete');
+                setTimeout(() => saveForm(), 100);
+              }
+            }}
+            className="inline-flex items-center px-8 py-4 text-lg font-semibold text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105"
+          >
+            <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <div>
-              <h3 className="text-lg font-semibold text-green-800">Form Successfully Resolved!</h3>
-              <p className="text-green-700">All validation errors have been marked as resolved. The form status has been updated to &apos;In Progress&apos;.</p>
-            </div>
+            Mark Form as Complete
+          </button>
+          <p className="text-sm text-gray-600 mt-2">
+            This will finalize the form and prevent further editing
+          </p>
+        </div>
+      )}
+
+      {/* Completion Notice - Show when form is complete */}
+      {form.status === 'Complete' && (
+        <div className="mt-6 p-4 bg-gray-50 border-2 border-gray-200 rounded-lg text-center">
+          <div className="flex items-center justify-center space-x-2 text-gray-800">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-lg font-semibold">Form Completed Successfully!</span>
           </div>
+          <p className="text-gray-700 mt-1">
+            This form has been finalized and can no longer be edited
+          </p>
         </div>
       )}
 

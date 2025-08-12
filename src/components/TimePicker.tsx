@@ -10,6 +10,8 @@ interface TimePickerProps {
   disabled?: boolean;
   showQuickTimes?: boolean;
   compact?: boolean;
+  dataLog?: boolean;
+  onDataLogChange?: (dataLog: boolean) => void;
 }
 
 export function TimePicker({ 
@@ -19,13 +21,16 @@ export function TimePicker({
   className = "", 
   disabled = false,
   showQuickTimes = true,
-  compact = false
+  compact = false,
+  dataLog = false,
+  onDataLogChange
 }: TimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value);
   const [selectedHour, setSelectedHour] = useState('12');
   const [selectedMinute, setSelectedMinute] = useState('00');
   const [selectedAMPM, setSelectedAMPM] = useState<'AM' | 'PM'>('AM');
+  const [dropdownPosition, setDropdownPosition] = useState<'left' | 'right'>('right');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const hourScrollRef = useRef<HTMLDivElement>(null);
   const minuteScrollRef = useRef<HTMLDivElement>(null);
@@ -134,9 +139,29 @@ export function TimePicker({
     }
   };
 
+  // Calculate optimal dropdown position to prevent overflow
+  const calculateDropdownPosition = () => {
+    if (!dropdownRef.current) return 'right';
+    
+    const rect = dropdownRef.current.getBoundingClientRect();
+    const dropdownWidth = 320; // w-80 = 20rem = 320px
+    const viewportWidth = window.innerWidth;
+    
+    // Check if dropdown would overflow to the right
+    if (rect.left + dropdownWidth > viewportWidth) {
+      return 'left';
+    }
+    
+    return 'right';
+  };
+
   const handleOpen = () => {
     if (!disabled) {
       if (!isOpen) {
+        // Calculate optimal position before opening
+        const position = calculateDropdownPosition();
+        setDropdownPosition(position);
+        
         // Set current time when opening if no value exists
         if (!value) {
           const currentTime = getCurrentTime();
@@ -210,9 +235,25 @@ export function TimePicker({
 
       {/* Scrollable Time Picker Dropdown */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 w-80 mt-2 bg-white border border-gray-300 rounded-xl shadow-2xl">
+        <div 
+          className={`absolute z-50 w-80 mt-2 bg-white border border-gray-300 rounded-xl shadow-2xl ${
+            dropdownPosition === 'left' ? 'right-0' : 'left-0'
+          }`}
+        >
           {/* Header with current selection */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
+          <div className="p-4 border-b border-gray-200 bg-gray-50 relative">
+            {/* Data Log Checkbox - Top Right */}
+            {onDataLogChange && (
+              <div className="absolute top-2 right-2 flex items-center">
+                <input
+                  type="checkbox"
+                  checked={dataLog || false}
+                  onChange={(e) => onDataLogChange(e.target.checked)}
+                  className="w-4 h-4 mr-2"
+                />
+                <span className="text-sm text-gray-600">Data Log</span>
+              </div>
+            )}
             <div className="text-center">
               <div className="text-2xl font-bold text-gray-900 mb-1">
                 {selectedHour}:{selectedMinute} {selectedAMPM}

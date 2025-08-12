@@ -186,13 +186,16 @@ export default function FormPage() {
       const adminHasResolvedErrors = currentForm.resolvedErrors && currentForm.resolvedErrors.length > 0;
       const shouldRespectAdminResolution = adminHasResolvedErrors && currentForm.status === 'In Progress';
       const validationRecentlyUpdated = Date.now() - lastValidationUpdate < 5000; // 5 seconds
+      const isManuallyCompleted = currentForm.status === 'Complete';
       
-      if (newStatus !== currentForm.status && currentForm.status !== 'Complete' && !shouldRespectAdminResolution && !validationRecentlyUpdated) {
+      if (newStatus !== currentForm.status && !isManuallyCompleted && !shouldRespectAdminResolution && !validationRecentlyUpdated) {
         console.log('Real-time status update: Form', currentForm.id, 'status changed from', currentForm.status, 'to', newStatus);
         updateFormStatus(currentForm.id, newStatus);
         
         // Save the form to persist the status change
         setTimeout(() => saveForm(), 100);
+      } else if (isManuallyCompleted) {
+        console.log('Skipping status update: Form is manually marked as Complete');
       } else if (shouldRespectAdminResolution) {
         console.log('Skipping status update: Admin has resolved errors and set status to In Progress');
       } else if (validationRecentlyUpdated) {
@@ -275,28 +278,6 @@ export default function FormPage() {
             )}
           </div>
           
-          {/* Load Existing Forms Button */}
-          {savedForms.length === 0 && (
-            <button
-              onClick={async () => {
-                try {
-                  const { loadFormsFromStorage } = usePaperFormStore.getState();
-                  await loadFormsFromStorage();
-                  console.log('Existing forms loaded from AWS');
-                } catch (error) {
-                  console.error('Error loading existing forms:', error);
-                  alert('Error loading existing forms. Please try again.');
-                }
-              }}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-              title="Load existing forms from AWS"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              Load Existing Forms
-            </button>
-          )}
         </div>
       </div>
 
@@ -321,107 +302,227 @@ export default function FormPage() {
             </div>
           ) : (
             <>
-              {savedForms
-                .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Sort by date, newest first
-                .map((form: PaperFormEntry, index: number) => (
-                <div 
-                  key={form.id} 
-                  className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
-                >
-                  <div className={`p-6`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        {/* Status Indicator */}
-                        <div className={`w-4 h-4 rounded-full ${
-                          form.status === 'Complete' ? 'bg-green-500' :
-                          form.status === 'Error' ? 'bg-red-500' :
-                          'bg-yellow-500'
-                        }`}></div>
-                        
-                        {/* Form Info */}
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {form.title ? form.title : getFormTypeDisplayName(form.formType)} - {new Date(form.date).toLocaleDateString()}
-                          </h3>
-                          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                            <span>Form #{form.id.slice(-6)}</span>
+              {/* Active Forms Section */}
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                  <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Active Forms
+                </h2>
+                {savedForms
+                  .filter((form: PaperFormEntry) => form.status !== 'Complete')
+                  .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .map((form: PaperFormEntry, index: number) => (
+                  <div 
+                    key={form.id} 
+                    className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
+                  >
+                    <div className={`p-6`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          {/* Status Indicator */}
+                          <div className={`w-4 h-4 rounded-full ${
+                            form.status === 'Complete' ? 'bg-green-500' :
+                            form.status === 'Error' ? 'bg-red-500' :
+                            'bg-yellow-500'
+                          }`}></div>
+                          
+                          {/* Form Info */}
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {form.title ? form.title : getFormTypeDisplayName(form.formType)} - {new Date(form.date).toLocaleDateString()}
+                            </h3>
+                            <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                              <span>Form #{form.id.slice(-6)}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-3">
-                        {/* Status Badge */}
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                          form.status === 'Complete' ? 'bg-green-100 text-green-800' :
-                          form.status === 'Error' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {form.status === 'Complete' ? '✓ Complete' :
-                           form.status === 'Error' ? '⚠️ Has Errors' :
-                           '⏳ In Progress'}
-                        </span>
                         
-                        {/* View Form Button */}
-                        <button
-                          onClick={() => handleViewForm(form)}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                          title="View and edit form details"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          View Form
-                        </button>
-                        
-                        {/* Delete Form Button */}
-                        <button
-                          onClick={() => handleDeleteForm(form.id)}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors"
-                          title="Delete form"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Additional Form Summary Info */}
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="font-medium text-gray-700">Entries with Data</div>
-                        <div className="text-lg font-semibold text-gray-900">
-                          {form.entries.filter(entry => 
-                            entry.type || 
-                            entry.ccp1.temp || 
-                            entry.ccp2.temp || 
-                            entry.coolingTo80.temp || 
-                            entry.coolingTo54.temp || 
-                            entry.finalChill.temp
-                          ).length} / {form.entries.length}
+                        <div className="flex items-center space-x-3">
+                          {/* Status Badge */}
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            form.status === 'Complete' ? 'bg-green-100 text-green-800' :
+                            form.status === 'Error' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {form.status === 'Complete' ? '✓ Complete' :
+                             form.status === 'Error' ? '⚠️ Has Errors' :
+                             '⏳ In Progress'}
+                          </span>
+                          
+                          {/* View Form Button */}
+                          <button
+                            onClick={() => handleViewForm(form)}
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                            title="View and edit form details"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            View Form
+                          </button>
+                          
+                          {/* Delete Form Button */}
+                          <button
+                            onClick={() => handleDeleteForm(form.id)}
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors"
+                            title="Delete form"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </button>
                         </div>
                       </div>
                       
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="font-medium text-gray-700">Last Updated</div>
-                        <div className="text-lg font-semibold text-gray-900">
-                          {new Date().toLocaleTimeString()}
+                      {/* Additional Form Summary Info */}
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="font-medium text-gray-700">Entries with Data</div>
+                          <div className="text-lg font-semibold text-gray-900">
+                            {form.entries.filter(entry => 
+                              entry.type || 
+                              entry.ccp1.temp || 
+                              entry.ccp2.temp || 
+                              entry.coolingTo80.temp || 
+                              entry.coolingTo54.temp || 
+                              entry.finalChill.temp
+                            ).length} / {form.entries.length}
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="font-medium text-gray-700">Real-time Monitoring</div>
-                        <div className="flex items-center text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                          <span className="text-sm">Active</span>
+                        
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="font-medium text-gray-700">Last Updated</div>
+                          <div className="text-lg font-semibold text-gray-900">
+                            {new Date().toLocaleTimeString()}
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="font-medium text-gray-700">Real-time Monitoring</div>
+                          <div className="flex items-center text-green-600">
+                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                            <span className="text-sm">Active</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
+                ))}
+                
+                {/* No Active Forms Message */}
+                {savedForms.filter((form: PaperFormEntry) => form.status !== 'Complete').length === 0 && (
+                  <div className="text-center py-8 bg-white rounded-xl border-2 border-gray-200">
+                    <div className="text-4xl mb-3">✅</div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">All Forms Completed!</h3>
+                    <p className="text-gray-600">Great job! All your forms have been marked as complete.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Completed Forms Section */}
+              {savedForms.filter((form: PaperFormEntry) => form.status === 'Complete').length > 0 && (
+                <div className="mb-8">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                    <svg className="w-6 h-6 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Completed Forms
+                  </h2>
+                  
+                  {/* Info Note */}
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center text-blue-800">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-sm font-medium">
+                        Completed forms are protected from deletion to preserve finalized data for compliance and audit purposes.
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {savedForms
+                    .filter((form: PaperFormEntry) => form.status === 'Complete')
+                    .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map((form: PaperFormEntry, index: number) => (
+                    <div 
+                      key={form.id} 
+                      className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
+                    >
+                      <div className={`p-6`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            {/* Status Indicator */}
+                            <div className="w-4 h-4 rounded-full bg-gray-500"></div>
+                            
+                            {/* Form Info */}
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                {form.title ? form.title : getFormTypeDisplayName(form.formType)} - {new Date(form.date).toLocaleDateString()}
+                              </h3>
+                              <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                                <span>Form #{form.id.slice(-6)}</span>
+                                <span className="text-gray-600 font-medium">✓ Finalized</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-3">
+                            {/* Status Badge */}
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                              ✓ Complete
+                            </span>
+                            
+                            {/* View Form Button - Read Only */}
+                            <button
+                              onClick={() => handleViewForm(form)}
+                              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                              title="View completed form (read-only)"
+                            >
+                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              View Form
+                            </button>
+                            
+                            {/* Delete Form Button - REMOVED for completed forms to protect finalized data */}
+                          </div>
+                        </div>
+                        
+                        {/* Additional Form Summary Info */}
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="font-medium text-gray-700">Completion Date</div>
+                            <div className="text-lg font-semibold text-gray-900">
+                              {new Date().toLocaleDateString()}
+                            </div>
+                          </div>
+                          
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="font-medium text-gray-700">Status</div>
+                            <div className="text-lg font-semibold text-gray-900">
+                              Finalized
+                            </div>
+                          </div>
+                          
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="font-medium text-gray-700">Data Integrity</div>
+                            <div className="flex items-center text-gray-600">
+                              <div className="w-2 h-2 bg-gray-500 rounded-full mr-2"></div>
+                              <span className="text-sm">Protected</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </>
           )}
         </div>
@@ -444,7 +545,9 @@ export default function FormPage() {
                   }`}>
                     {selectedForm.status}
                   </span>
-
+                  {selectedForm.status === 'Complete' && (
+                    <span className="ml-2 text-green-600 font-medium">(Read-Only)</span>
+                  )}
                 </div>
               </div>
               <button
@@ -463,7 +566,7 @@ export default function FormPage() {
               <PaperForm 
                 key={`${selectedForm.id}-${formUpdateKey}`}
                 formData={selectedForm}
-                readOnly={false}
+                readOnly={selectedForm.status === 'Complete'}
                 onFormUpdate={(formId, updates) => {
                   console.log('Form updated in form modal:', formId, updates);
                   // Handle status updates by calling the store's updateFormStatus function
@@ -474,12 +577,16 @@ export default function FormPage() {
                     setLastValidationUpdate(Date.now());
                     // Ensure the form is saved to persist the status change
                     setTimeout(() => saveForm(), 100);
+                    
+                    // Force a re-render of the form list by updating the formUpdateKey
+                    setFormUpdateKey(prev => prev + 1);
                   }
                   
                   // Update the selectedForm state to reflect changes
                   if (selectedForm && selectedForm.id === formId) {
                     const updatedForm = { ...selectedForm, ...updates };
                     setSelectedForm(updatedForm);
+                    console.log('SelectedForm updated to:', updatedForm.status);
                   }
                 }}
               />

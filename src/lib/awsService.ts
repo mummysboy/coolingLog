@@ -145,45 +145,51 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
     formInitial: form.formInitial,
     status: form.status.toUpperCase().replace(' ', '_') as 'COMPLETE' | 'IN_PROGRESS' | 'ERROR',
     title: form.title,
-    entries: form.entries.map(entry => ({
+    entries: form.entries.filter(entry => entry && typeof entry === 'object' && entry.type !== undefined).map(entry => ({
       type: entry.type,
-      ccp1: entry.ccp1.temp ? {
+      rack: entry.rack || '1st Rack',
+      ccp1: entry.ccp1.temp && !isNaN(parseFloat(entry.ccp1.temp)) ? {
         temperature: parseFloat(entry.ccp1.temp),
-        time: entry.ccp1.time,
-        employeeInitials: entry.ccp1.initial
+        time: entry.ccp1.time && entry.ccp1.time.trim() !== '' ? new Date(entry.ccp1.time).toISOString() : null,
+        employeeInitials: entry.ccp1.initial,
+        dataLog: entry.ccp1.dataLog || false
       } : null,
-      ccp2: entry.ccp2.temp ? {
+      ccp2: entry.ccp2.temp && !isNaN(parseFloat(entry.ccp2.temp)) ? {
         temperature: parseFloat(entry.ccp2.temp),
-        time: entry.ccp2.time,
-        employeeInitials: entry.ccp2.initial
+        time: entry.ccp2.time && entry.ccp2.time.trim() !== '' ? new Date(entry.ccp2.time).toISOString() : null,
+        employeeInitials: entry.ccp2.initial,
+        dataLog: entry.ccp2.dataLog || false
       } : null,
-      coolingTo80: entry.coolingTo80.temp ? {
+      coolingTo80: entry.coolingTo80.temp && !isNaN(parseFloat(entry.coolingTo80.temp)) ? {
         temperature: parseFloat(entry.coolingTo80.temp),
-        time: entry.coolingTo80.time,
-        employeeInitials: entry.coolingTo80.initial
+        time: entry.coolingTo80.time && entry.coolingTo80.time.trim() !== '' ? new Date(entry.coolingTo80.time).toISOString() : null,
+        employeeInitials: entry.coolingTo80.initial,
+        dataLog: entry.coolingTo80.dataLog || false
       } : null,
-      coolingTo54: entry.coolingTo54.temp ? {
+      coolingTo54: entry.coolingTo54.temp && !isNaN(parseFloat(entry.coolingTo54.temp)) ? {
         temperature: parseFloat(entry.coolingTo54.temp),
-        time: entry.coolingTo54.time,
-        employeeInitials: entry.coolingTo54.initial
+        time: entry.coolingTo54.time && entry.coolingTo54.time.trim() !== '' ? new Date(entry.coolingTo54.time).toISOString() : null,
+        employeeInitials: entry.coolingTo54.initial,
+        dataLog: entry.coolingTo54.dataLog || false
       } : null,
-      finalChill: entry.finalChill.temp ? {
+      finalChill: entry.finalChill.temp && !isNaN(parseFloat(entry.finalChill.temp)) ? {
         temperature: parseFloat(entry.finalChill.temp),
-        time: entry.finalChill.time,
-        employeeInitials: entry.finalChill.initial
+        time: entry.finalChill.time && entry.finalChill.time.trim() !== '' ? new Date(entry.finalChill.time).toISOString() : null,
+        employeeInitials: entry.finalChill.initial,
+        dataLog: entry.finalChill.dataLog || false
       } : null
     })),
-    thermometerNumber: form.thermometerNumber,
-    ingredients: form.ingredients,
-    lotNumbers: form.lotNumbers,
+    thermometerNumber: form.thermometerNumber || '',
+    ingredients: form.ingredients || { beef: '', chicken: '', liquidEggs: '' },
+    lotNumbers: form.lotNumbers || { beef: '', chicken: '', liquidEggs: '' },
     correctiveActionsComments: form.correctiveActionsComments,
-    adminComments: form.adminComments?.map(comment => ({
+    adminComments: form.adminComments?.filter(comment => comment && comment.id && comment.adminInitial && comment.comment)?.map(comment => ({
       id: comment.id,
       adminInitial: comment.adminInitial,
       timestamp: ensureDate(comment.timestamp).toISOString(),
       comment: comment.comment
     })) || [],
-    resolvedErrors: form.resolvedErrors || []
+    resolvedErrors: form.resolvedErrors?.filter(error => error && typeof error === 'string') || []
   };
 }
 
@@ -198,30 +204,36 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
     title: result.title || '',
     entries: result.entries.map((entry: any) => ({
       type: entry.type || '',
+      rack: entry.rack || '1st Rack',
       ccp1: {
         temp: entry.ccp1?.temperature?.toString() || '',
         time: entry.ccp1?.time || '',
-        initial: entry.ccp1?.employeeInitials || ''
+        initial: entry.ccp1?.employeeInitials || '',
+        dataLog: entry.ccp1?.dataLog || false
       },
       ccp2: {
         temp: entry.ccp2?.temperature?.toString() || '',
         time: entry.ccp2?.time || '',
-        initial: entry.ccp2?.employeeInitials || ''
+        initial: entry.ccp2?.employeeInitials || '',
+        dataLog: entry.ccp2?.dataLog || false
       },
       coolingTo80: {
         temp: entry.coolingTo80?.temperature?.toString() || '',
         time: entry.coolingTo80?.time || '',
-        initial: entry.coolingTo80?.employeeInitials || ''
+        initial: entry.coolingTo80?.employeeInitials || '',
+        dataLog: entry.coolingTo80?.dataLog || false
       },
       coolingTo54: {
         temp: entry.coolingTo54?.temperature?.toString() || '',
         time: entry.coolingTo54?.time || '',
-        initial: entry.coolingTo54?.employeeInitials || ''
+        initial: entry.coolingTo54?.employeeInitials || '',
+        dataLog: entry.coolingTo54?.dataLog || false
       },
       finalChill: {
         temp: entry.finalChill?.temperature?.toString() || '',
         time: entry.finalChill?.time || '',
-        initial: entry.finalChill?.employeeInitials || ''
+        initial: entry.finalChill?.employeeInitials || '',
+        dataLog: entry.finalChill?.dataLog || false
       }
     })),
     thermometerNumber: result.thermometerNumber || '',
@@ -469,26 +481,75 @@ class AWSStorageManager {
   // Paper Form Methods
   async savePaperForm(form: PaperFormEntry): Promise<void> {
     try {
+      // Validate form data before mapping
+      if (!form || !form.entries || !Array.isArray(form.entries)) {
+        throw new Error('Invalid form data: missing or invalid entries array');
+      }
+      
+      console.log('Original form data:', JSON.stringify(form, null, 2));
+      console.log('Form entries:', form.entries);
+      
       const input = mapPaperFormEntryToGraphQLInput(form);
+      console.log('Attempting to save paper form with input:', JSON.stringify(input, null, 2));
       
       // Check if form exists
       const existingForm = await this.getPaperForm(form.id);
       
       if (existingForm) {
         // Update existing form
-        await client.graphql({
+        console.log('Updating existing form:', form.id);
+        const result = await client.graphql({
           query: mutations.updatePaperFormEntry,
           variables: { input }
         });
+        console.log('Update result:', result);
       } else {
         // Create new form
-        await client.graphql({
+        console.log('Creating new form');
+        const result = await client.graphql({
           query: mutations.createPaperFormEntry,
           variables: { input }
         });
+        console.log('Create result:', result);
       }
     } catch (error) {
-      console.error('Error saving paper form:', error);
+      console.error('Error saving paper form:', {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorName: error instanceof Error ? error.name : 'Unknown',
+        errorStack: error instanceof Error ? error.stack : 'No stack trace',
+        formId: form.id,
+        formEntries: form.entries?.length || 0,
+        input: mapPaperFormEntryToGraphQLInput(form)
+      });
+      
+      // Log the specific GraphQL error if available
+      if (error && typeof error === 'object' && 'errors' in error) {
+        console.error('GraphQL errors:', (error as any).errors);
+      }
+      
+      // Log AWS-specific error details
+      if (error && typeof error === 'object' && 'message' in error) {
+        console.error('AWS Error message:', (error as any).message);
+      }
+      
+      // Log the full error object for debugging
+      console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      
+      // Check for network or authentication errors
+      if (error && typeof error === 'object' && 'name' in error) {
+        const errorName = (error as any).name;
+        if (errorName === 'UnauthorizedException' || errorName === 'ForbiddenException') {
+          console.error('Authentication/Authorization error:', errorName);
+        } else if (errorName === 'NetworkError' || errorName === 'TimeoutError') {
+          console.error('Network error:', errorName);
+        } else if (errorName === 'ValidationError') {
+          console.error('GraphQL validation error:', errorName);
+        } else if (errorName === 'ConflictException') {
+          console.error('Conflict error (duplicate ID):', errorName);
+        }
+      }
+      
       throw error;
     }
   }

@@ -362,6 +362,7 @@ export default function AdminDashboard() {
               <table class="main-table">
                 <thead>
                   <tr>
+                    <th style="width: 120px;">Rack</th>
                     <th style="width: 120px;">Date</th>
                     <th style="width: 160px;">
                       Temperature Must reach 166°F or greater<br/>
@@ -386,6 +387,7 @@ export default function AdminDashboard() {
                     </th>
                   </tr>
                   <tr>
+                    <th>Rack</th>
                     <th>Type</th>
                     <th>
                       <div class="cell-grid">
@@ -427,6 +429,11 @@ export default function AdminDashboard() {
                 <tbody>
                   ${form.entries.map((entry, index) => `
                     <tr${index === 5 ? ' class="row-separator"' : ''}>
+                      <td>
+                        <div style="text-align: center; font-size: 12px;">
+                          ${entry.rack || '1st Rack'}
+                        </div>
+                      </td>
                       <td>
                         <div style="display: flex; align-items: flex-start; text-align: left;">
                           <div class="row-number" style="margin-right: 8px;">${index + 1}</div>
