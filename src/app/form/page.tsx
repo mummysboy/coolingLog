@@ -11,6 +11,7 @@ export default function FormPage() {
   const [formUpdateKey, setFormUpdateKey] = useState(0); // Force re-render when form updates
   const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [lastValidationUpdate, setLastValidationUpdate] = useState<number>(0); // Track when validation last updated status
+  const [isFormExpanded, setIsFormExpanded] = useState(false); // New state for expandable form
 
   // Create a default form on page load
   useEffect(() => {
@@ -169,74 +170,171 @@ export default function FormPage() {
         </div>
       ) : (
         <div className="max-w-7xl mx-auto px-4">
-          {/* Real-time Status Indicator */}
-          <div className="mb-6 bg-white rounded-xl border-2 border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className={`w-3 h-3 rounded-full ${
-                  currentForm.status === 'Complete' ? 'bg-green-500' :
-                  currentForm.status === 'Error' ? 'bg-red-500' :
-                  'bg-yellow-500'
-                }`}></div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Form Status</h3>
-                  <p className={`text-sm font-medium ${
-                    currentForm.status === 'Complete' ? 'text-green-600' :
-                    currentForm.status === 'Error' ? 'text-red-600' :
-                    'text-yellow-600'
+          {/* Form Summary Box - Collapsed View */}
+          <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6">
+            <div 
+              className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => setIsFormExpanded(!isFormExpanded)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  {/* Status Indicator */}
+                  <div className={`w-4 h-4 rounded-full ${
+                    currentForm.status === 'Complete' ? 'bg-green-500' :
+                    currentForm.status === 'Error' ? 'bg-red-500' :
+                    'bg-yellow-500'
+                  }`}></div>
+                  
+                  {/* Form Info */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Today's Form - {new Date(currentForm.date).toLocaleDateString()}
+                    </h3>
+                    <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                      <span>Form #{currentForm.id.slice(-6)}</span>
+                      <span>•</span>
+                      <span>Initial: {currentForm.formInitial || 'Not set'}</span>
+                      <span>•</span>
+                      <span>Thermometer: {currentForm.thermometerNumber || 'Not set'}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Expand/Collapse Indicator */}
+                <div className="flex items-center space-x-3">
+                  {/* Status Badge */}
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    currentForm.status === 'Complete' ? 'bg-green-100 text-green-800' :
+                    currentForm.status === 'Error' ? 'bg-red-100 text-red-800' :
+                    'bg-yellow-100 text-yellow-800'
                   }`}>
                     {currentForm.status === 'Complete' ? '✓ Complete' :
                      currentForm.status === 'Error' ? '⚠️ Has Errors' :
                      '⏳ In Progress'}
-                  </p>
-                  {/* Show error count when there are validation errors */}
-                  {currentForm.status === 'Error' && (() => {
-                    let errorCount = 0;
-                    currentForm.entries.forEach((entry, rowIndex) => {
-                      const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
-                      stages.forEach(stage => {
-                        const stageData = entry[stage as keyof typeof entry] as any;
-                        // Only count errors for cells that have all three fields
-                        if (stageData && stageData.temp && stageData.time && stageData.initial) {
-                          const validation = shouldHighlightCell(currentForm, rowIndex, `${stage}.temp`);
-                          if (validation.highlight && validation.severity === 'error') {
-                            errorCount++;
-                          }
-                        }
-                      });
-                    });
-                    return errorCount > 0 ? (
-                      <p className="text-xs text-red-600 mt-1">
-                        {errorCount} validation error{errorCount !== 1 ? 's' : ''} found
-                      </p>
-                    ) : null;
-                  })()}
+                  </span>
+                  
+                  {/* Expand/Collapse Arrow */}
+                  <svg 
+                    className={`w-5 h-5 text-gray-400 transition-transform ${isFormExpanded ? 'rotate-180' : ''}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </div>
               </div>
-              <div className="text-right text-xs text-gray-500">
-                <div>Real-time monitoring active</div>
-                <div>Last updated: {new Date().toLocaleTimeString()}</div>
+              
+              {/* Additional Form Summary Info */}
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="font-medium text-gray-700">Entries with Data</div>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {currentForm.entries.filter(entry => 
+                      entry.type || 
+                      entry.ccp1.temp || 
+                      entry.ccp2.temp || 
+                      entry.coolingTo80.temp || 
+                      entry.coolingTo54.temp || 
+                      entry.finalChill.temp
+                    ).length} / {currentForm.entries.length}
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="font-medium text-gray-700">Last Updated</div>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {new Date().toLocaleTimeString()}
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="font-medium text-gray-700">Real-time Monitoring</div>
+                  <div className="flex items-center text-green-600">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                    <span className="text-sm">Active</span>
+                  </div>
+                </div>
               </div>
             </div>
+            
+            {/* Expanded Form Content */}
+            {isFormExpanded && (
+              <div className="border-t border-gray-200">
+                {/* Real-time Status Indicator */}
+                <div className="bg-gray-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-3 h-3 rounded-full ${
+                        currentForm.status === 'Complete' ? 'bg-green-500' :
+                        currentForm.status === 'Error' ? 'bg-red-500' :
+                        'bg-yellow-500'
+                      }`}></div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Form Status</h3>
+                        <p className={`text-sm font-medium ${
+                          currentForm.status === 'Complete' ? 'text-green-600' :
+                          currentForm.status === 'Error' ? 'text-red-600' :
+                          'text-yellow-600'
+                        }`}>
+                          {currentForm.status === 'Complete' ? '✓ Complete' :
+                           currentForm.status === 'Error' ? '⚠️ Has Errors' :
+                           '⏳ In Progress'}
+                        </p>
+                        {/* Show error count when there are validation errors */}
+                        {currentForm.status === 'Error' && (() => {
+                          let errorCount = 0;
+                          currentForm.entries.forEach((entry, rowIndex) => {
+                            const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+                            stages.forEach(stage => {
+                              const stageData = entry[stage as keyof typeof entry] as any;
+                              // Only count errors for cells that have all three fields
+                              if (stageData && stageData.temp && stageData.time && stageData.initial) {
+                                const validation = shouldHighlightCell(currentForm, rowIndex, `${stage}.temp`);
+                                if (validation.highlight && validation.severity === 'error') {
+                                  errorCount++;
+                                }
+                              }
+                            });
+                          });
+                          return errorCount > 0 ? (
+                            <p className="text-xs text-red-600 mt-1">
+                              {errorCount} validation error{errorCount !== 1 ? 's' : ''} found
+                            </p>
+                          ) : null;
+                        })()}
+                      </div>
+                    </div>
+                    <div className="text-right text-xs text-gray-500">
+                      <div>Real-time monitoring active</div>
+                      <div>Last updated: {new Date().toLocaleTimeString()}</div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* The Actual Form */}
+                <div className="p-4">
+                  <PaperForm 
+                    key={formUpdateKey}
+                    formData={currentForm}
+                    readOnly={false}
+                    onFormUpdate={(formId, updates) => {
+                      console.log('Form updated in form page:', formId, updates);
+                      // Handle status updates by calling the store's updateFormStatus function
+                      if (updates.status) {
+                        console.log('Status updated to:', updates.status, 'updating store');
+                        updateFormStatus(formId, updates.status);
+                        // Track when validation last updated the status
+                        setLastValidationUpdate(Date.now());
+                        // Ensure the form is saved to persist the status change
+                        setTimeout(() => saveForm(), 100);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
-          
-          <PaperForm 
-            key={formUpdateKey}
-            formData={currentForm}
-            readOnly={false}
-            onFormUpdate={(formId, updates) => {
-              console.log('Form updated in form page:', formId, updates);
-              // Handle status updates by calling the store's updateFormStatus function
-              if (updates.status) {
-                console.log('Status updated to:', updates.status, 'updating store');
-                updateFormStatus(formId, updates.status);
-                // Track when validation last updated the status
-                setLastValidationUpdate(Date.now());
-                // Ensure the form is saved to persist the status change
-                setTimeout(() => saveForm(), 100);
-              }
-            }}
-          />
         </div>
       )}
     </div>
