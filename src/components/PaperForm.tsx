@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
-import { PaperFormEntry, FormType } from '@/lib/paperFormTypes';
+import { PaperFormEntry, FormType, ensureDate } from '@/lib/paperFormTypes';
 import { shouldHighlightCell, validateForm, getTimeDifferenceMinutes } from '@/lib/validation';
 import { TimePicker } from './TimePicker';
 
@@ -22,9 +22,13 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
   
   // For admin forms, always get the latest data from the store
   // For regular forms, use provided formData or fall back to currentForm from store
-  const form = isAdminForm && formData 
-    ? savedForms.find(f => f.id === formData.id) || formData
-    : (formData || currentForm);
+  const form = React.useMemo(() => {
+    if (isAdminForm && formData) {
+      return savedForms.find(f => f.id === formData.id) || formData;
+    }
+    // Always prioritize currentForm from store for real-time updates
+    return currentForm || formData;
+  }, [isAdminForm, formData, savedForms, currentForm]);
     
   // Track the resolved data snapshot to compare against new changes
   const [resolvedDataSnapshot, setResolvedDataSnapshot] = React.useState<any>(null);
@@ -99,6 +103,8 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
       }
     }
   }, [form?.status, form?.id, form?.id, resolvedDataSnapshot, selectedInitial]);
+  
+
 
   // Monitor resolvedDataSnapshot changes
   React.useEffect(() => {
@@ -432,7 +438,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 // Use the store's updateFormStatus function directly for immediate effect
                 updateFormStatus(form.id, 'Error');
                 // Also update the current form status locally for immediate UI update
-                updateFormField('status', 'Error');
+                updateFormField(form.id, 'status', 'Error');
                 // Save the form to persist the status change
                 setTimeout(() => saveForm(), 100);
               }
@@ -462,7 +468,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                     updateAdminForm(form.id, { status: 'In Progress' });
                   } else {
                     updateFormStatus(form.id, 'In Progress');
-                    updateFormField('status', 'In Progress');
+                    updateFormField(form.id, 'status', 'In Progress');
                     setTimeout(() => saveForm(), 100);
                   }
                 }
@@ -532,7 +538,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
               // Use the store's updateFormStatus function directly for immediate effect
               updateFormStatus(form.id, 'Error');
               // Also update the current form status locally for immediate UI update
-              updateFormField('status', 'Error');
+              updateFormField(form.id, 'status', 'Error');
               // Save the form to persist the status change
               setTimeout(() => saveForm(), 100);
             }
@@ -622,8 +628,8 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
           console.log('Updating regular form status to Error');
           // Use the store's updateFormStatus function directly for immediate effect
           updateFormStatus(form.id, 'Error');
-          // Also update the current form status locally for immediate UI update
-          updateFormField('status', 'Error');
+                        // Also update the current form status locally for immediate UI update
+              updateFormField(form.id, 'status', 'Error');
           // Save the form to persist the status change
           setTimeout(() => saveForm(), 100);
         }
@@ -810,7 +816,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
               console.log('Updating regular form status to Error');
               try {
                 // Use direct update to avoid potential issues with handleFormFieldChange
-                updateFormField('status', 'Error');
+                updateFormField(form.id, 'status', 'Error');
                 console.log('updateFormField call completed successfully');
                 // Also save the form to persist the status change
                 saveForm();
@@ -874,15 +880,15 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             createNewForm(FormType.FOOD_CHILLING_LOG, selectedInitial);
             // Set the date on the new form
             setTimeout(() => {
-              updateFormField(field, value);
+              updateFormField(form.id, field, value);
             }, 10);
           } else {
             // Update the current form's date
-            updateFormField(field, value);
+            updateFormField(form.id, field, value);
           }
         } else {
           console.log('Regular form update - field:', field, 'value:', value, 'current status:', form.status);
-          updateFormField(field, value);
+          updateFormField(form.id, field, value);
           console.log('updateFormField called, new status should be:', value);
           
           // Check for new errors ONLY in the specific form field that was modified
@@ -908,7 +914,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 }
                 
                 // Use direct update to avoid infinite loop
-                updateFormField('status', 'Error');
+                updateFormField(form.id, 'status', 'Error');
               } else {
                 console.log('No validation errors in this specific form field, status remains In Progress');
               }
@@ -956,9 +962,14 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             <div>
               <span className="font-semibold">Title: </span>
               <input
+                key={`title-${form?.id || 'new'}-${form?.title || ''}`}
                 type="text"
-                value={form.title || ''}
-                onChange={(e) => handleFormFieldChange('title', e.target.value)}
+                value={form?.title || ''}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  console.log('Title input onChange:', newValue);
+                  handleFormFieldChange('title', newValue);
+                }}
                 placeholder="Enter form title (e.g., 'Morning Batch', 'Chicken Prep')"
                 className="border-b border-black bg-transparent w-full"
                 readOnly={readOnly}
@@ -968,7 +979,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
               <span className="font-semibold">Date: </span>
               <input
                 type="date"
-                value={form.date.toISOString().split('T')[0]}
+                value={ensureDate(form.date).toISOString().split('T')[0]}
                 onChange={(e) => handleFormFieldChange('date', new Date(e.target.value))}
                 className="border-b border-black bg-transparent"
                 readOnly={readOnly}

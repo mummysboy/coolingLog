@@ -551,6 +551,173 @@ export const getLogsByShift = /* GraphQL */ `
     }
   }
 `;
+export const getPaperFormsByDateRange = /* GraphQL */ `
+  query GetPaperFormsByDateRange(
+    $startDate: AWSDateTime!
+    $endDate: AWSDateTime!
+  ) {
+    getPaperFormsByDateRange(startDate: $startDate, endDate: $endDate) {
+      id
+      date
+      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        __typename
+      }
+      thermometerNumber
+      ingredients {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      lotNumbers {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const getTodaysPaperForms = /* GraphQL */ `
+  query GetTodaysPaperForms {
+    getTodaysPaperForms {
+      id
+      date
+      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        __typename
+      }
+      thermometerNumber
+      ingredients {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      lotNumbers {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const getPaperFormsByStatus = /* GraphQL */ `
+  query GetPaperFormsByStatus($status: FormStatus!) {
+    getPaperFormsByStatus(status: $status) {
+      id
+      date
+      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        __typename
+      }
+      thermometerNumber
+      ingredients {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      lotNumbers {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const getPaperFormsByInitial = /* GraphQL */ `
+  query GetPaperFormsByInitial($initial: String!) {
+    getPaperFormsByInitial(initial: $initial) {
+      id
+      date
+      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        __typename
+      }
+      thermometerNumber
+      ingredients {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      lotNumbers {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const getUser = /* GraphQL */ `
   query GetUser($id: ID!) {
     getUser(id: $id) {
@@ -586,6 +753,77 @@ export const listUsers = /* GraphQL */ `
         certificationNumber
         email
         isActive
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getPaperFormEntry = /* GraphQL */ `
+  query GetPaperFormEntry($id: ID!) {
+    getPaperFormEntry(id: $id) {
+      id
+      date
+      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        __typename
+      }
+      thermometerNumber
+      ingredients {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      lotNumbers {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listPaperFormEntries = /* GraphQL */ `
+  query ListPaperFormEntries(
+    $filter: ModelPaperFormEntryFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listPaperFormEntries(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        date
+        formType
+        formInitial
+        status
+        title
+        thermometerNumber
+        correctiveActionsComments
+        resolvedErrors
         createdAt
         updatedAt
         __typename

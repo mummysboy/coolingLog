@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import type { PaperFormEntry } from '@/lib/paperFormTypes';
-import { FormType, getFormTypeDisplayName, getFormTypeDescription, getFormTypeIcon, getFormTypeColors } from '@/lib/paperFormTypes';
+import { FormType, getFormTypeDisplayName, getFormTypeDescription, getFormTypeIcon, getFormTypeColors, ensureDate } from '@/lib/paperFormTypes';
 import { PaperForm } from '@/components/PaperForm';
 import { validateForm, shouldHighlightCell } from '@/lib/validation';
 
@@ -70,43 +70,32 @@ export default function FormPage() {
   // Create a default form on page load
   useEffect(() => {
     const loadDefaultForm = async () => {
-      console.log('Loading default form');
+      console.log('Loading forms from storage');
       setIsLoadingForm(true);
       
       try {
-        // Check if there's a form for today
-        const today = new Date();
-        const todayString = today.toISOString().split('T')[0];
-        
-        // Look for an existing form for today
-        const existingForm = savedForms.find((form: PaperFormEntry) => {
-          const formDateString = form.date.toISOString().split('T')[0];
-          return formDateString === todayString;
-        });
-        
-        if (existingForm) {
-          // Load the existing form for today
-          console.log('Found existing form for today:', existingForm.id);
-          console.log('Form status:', existingForm.status, 'Resolved errors:', existingForm.resolvedErrors?.length || 0);
-          
-          if (!currentForm || currentForm.id !== existingForm.id) {
-            loadForm(existingForm.id);
+        // Load existing forms from storage but don't create new ones automatically
+        // Only show forms that the user has explicitly created
+        if (savedForms.length === 0) {
+          // If no forms exist, don't create any automatically
+          console.log('No forms found - user must create forms manually');
+        } else {
+          // If forms exist, load the most recent one as current
+          const mostRecentForm = savedForms[0]; // Forms are sorted by date, newest first
+          if (!currentForm || currentForm.id !== mostRecentForm.id) {
+            console.log('Loading most recent form:', mostRecentForm.id);
+            loadForm(mostRecentForm.id);
           }
-        } else if (!currentForm) {
-          // Create a new form for today if none exists
-          console.log('Creating new form for today');
-          createNewForm(FormType.FOOD_CHILLING_LOG, 'USER'); // Use a default initial
-          // Don't automatically open forms created on page load
         }
       } catch (error) {
-        console.error('Error loading form:', error);
+        console.error('Error loading forms:', error);
       } finally {
         setIsLoadingForm(false);
       }
     };
 
     loadDefaultForm();
-  }, [savedForms, currentForm, createNewForm, loadForm]);
+  }, [savedForms, currentForm, loadForm]);
 
   // Automatically open newly created forms
   useEffect(() => {
@@ -285,6 +274,29 @@ export default function FormPage() {
               </div>
             )}
           </div>
+          
+          {/* Load Existing Forms Button */}
+          {savedForms.length === 0 && (
+            <button
+              onClick={async () => {
+                try {
+                  const { loadFormsFromStorage } = usePaperFormStore.getState();
+                  await loadFormsFromStorage();
+                  console.log('Existing forms loaded from AWS');
+                } catch (error) {
+                  console.error('Error loading existing forms:', error);
+                  alert('Error loading existing forms. Please try again.');
+                }
+              }}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              title="Load existing forms from AWS"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Load Existing Forms
+            </button>
+          )}
         </div>
       </div>
 
@@ -304,12 +316,14 @@ export default function FormPage() {
             <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200">
               <div className="text-6xl mb-4">📝</div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">No Forms Yet</h2>
-              <p className="text-gray-600">Click the &quot;Add Form&quot; button above to create your first form.</p>
+              <p className="text-gray-600 mb-4">Click the &quot;Add Form&quot; button above to create your first form.</p>
+              <p className="text-sm text-gray-500">Forms are only created when you explicitly choose to create them.</p>
             </div>
           ) : (
-            savedForms
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Sort by date, newest first
-              .map((form, index) => (
+            <>
+              {savedForms
+                .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Sort by date, newest first
+                .map((form: PaperFormEntry, index: number) => (
                 <div 
                   key={form.id} 
                   className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
@@ -407,7 +421,8 @@ export default function FormPage() {
                     </div>
                   </div>
                 </div>
-              ))
+              ))}
+            </>
           )}
         </div>
       )}

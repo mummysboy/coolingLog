@@ -1,6 +1,7 @@
 import { generateClient } from 'aws-amplify/api';
 import { GraphQLResult } from '@aws-amplify/api-graphql';
 import { type LogEntry, type User, type InitialEntry, type StageType } from './types';
+import { type PaperFormEntry, FormType, ensureDate } from './paperFormTypes';
 import * as queries from '../graphql/queries';
 import * as mutations from '../graphql/mutations';
 
@@ -135,6 +136,108 @@ function mapLogEntryToGraphQLInput(log: LogEntry): any {
   };
 }
 
+// Map frontend PaperFormEntry to GraphQL input
+function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
+  return {
+    id: form.id,
+    date: ensureDate(form.date).toISOString(),
+    formType: form.formType,
+    formInitial: form.formInitial,
+    status: form.status.toUpperCase().replace(' ', '_') as 'COMPLETE' | 'IN_PROGRESS' | 'ERROR',
+    title: form.title,
+    entries: form.entries.map(entry => ({
+      type: entry.type,
+      ccp1: entry.ccp1.temp ? {
+        temperature: parseFloat(entry.ccp1.temp),
+        time: entry.ccp1.time,
+        employeeInitials: entry.ccp1.initial
+      } : null,
+      ccp2: entry.ccp2.temp ? {
+        temperature: parseFloat(entry.ccp2.temp),
+        time: entry.ccp2.time,
+        employeeInitials: entry.ccp2.initial
+      } : null,
+      coolingTo80: entry.coolingTo80.temp ? {
+        temperature: parseFloat(entry.coolingTo80.temp),
+        time: entry.coolingTo80.time,
+        employeeInitials: entry.coolingTo80.initial
+      } : null,
+      coolingTo54: entry.coolingTo54.temp ? {
+        temperature: parseFloat(entry.coolingTo54.temp),
+        time: entry.coolingTo54.time,
+        employeeInitials: entry.coolingTo54.initial
+      } : null,
+      finalChill: entry.finalChill.temp ? {
+        temperature: parseFloat(entry.finalChill.temp),
+        time: entry.finalChill.time,
+        employeeInitials: entry.finalChill.initial
+      } : null
+    })),
+    thermometerNumber: form.thermometerNumber,
+    ingredients: form.ingredients,
+    lotNumbers: form.lotNumbers,
+    correctiveActionsComments: form.correctiveActionsComments,
+    adminComments: form.adminComments?.map(comment => ({
+      id: comment.id,
+      adminInitial: comment.adminInitial,
+      timestamp: ensureDate(comment.timestamp).toISOString(),
+      comment: comment.comment
+    })) || [],
+    resolvedErrors: form.resolvedErrors || []
+  };
+}
+
+// Map GraphQL result to frontend PaperFormEntry
+function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
+  return {
+    id: result.id,
+    date: new Date(result.date),
+    formType: result.formType as FormType,
+    formInitial: result.formInitial,
+    status: result.status.toLowerCase().replace('_', ' ') as 'Complete' | 'In Progress' | 'Error',
+    title: result.title || '',
+    entries: result.entries.map((entry: any) => ({
+      type: entry.type || '',
+      ccp1: {
+        temp: entry.ccp1?.temperature?.toString() || '',
+        time: entry.ccp1?.time || '',
+        initial: entry.ccp1?.employeeInitials || ''
+      },
+      ccp2: {
+        temp: entry.ccp2?.temperature?.toString() || '',
+        time: entry.ccp2?.time || '',
+        initial: entry.ccp2?.employeeInitials || ''
+      },
+      coolingTo80: {
+        temp: entry.coolingTo80?.temperature?.toString() || '',
+        time: entry.coolingTo80?.time || '',
+        initial: entry.coolingTo80?.employeeInitials || ''
+      },
+      coolingTo54: {
+        temp: entry.coolingTo54?.temperature?.toString() || '',
+        time: entry.coolingTo54?.time || '',
+        initial: entry.coolingTo54?.employeeInitials || ''
+      },
+      finalChill: {
+        temp: entry.finalChill?.temperature?.toString() || '',
+        time: entry.finalChill?.time || '',
+        initial: entry.finalChill?.employeeInitials || ''
+      }
+    })),
+    thermometerNumber: result.thermometerNumber || '',
+    ingredients: result.ingredients || { beef: '', chicken: '', liquidEggs: '' },
+    lotNumbers: result.lotNumbers || { beef: '', chicken: '', liquidEggs: '' },
+    correctiveActionsComments: result.correctiveActionsComments || '',
+    adminComments: result.adminComments?.map((comment: any) => ({
+      id: comment.id,
+      adminInitial: comment.adminInitial,
+      timestamp: new Date(comment.timestamp),
+      comment: comment.comment
+    })) || [],
+    resolvedErrors: result.resolvedErrors || []
+  };
+}
+
 // Map GraphQL result to frontend LogEntry
 function mapGraphQLResultToLogEntry(result: any): LogEntry {
   return {
@@ -252,6 +355,25 @@ function mapGraphQLResultToLogEntry(result: any): LogEntry {
 }
 
 class AWSStorageManager {
+  // Test AWS connection
+  async testConnection(): Promise<boolean> {
+    try {
+      console.log('Testing AWS connection...');
+      
+      // Try a simple query to see if we can connect
+      const result = await client.graphql({
+        query: queries.listPaperFormEntries,
+        variables: { limit: 1 } // Just get 1 item to test
+      }) as GraphQLResult<any>;
+      
+      console.log('AWS connection test successful:', result);
+      return true;
+    } catch (error) {
+      console.error('AWS connection test failed:', error);
+      return false;
+    }
+  }
+
   // Log Entry Methods
   async saveLog(log: LogEntry): Promise<void> {
     try {
@@ -340,6 +462,269 @@ class AWSStorageManager {
       await Promise.all(logs.map(log => this.deleteLog(log.id)));
     } catch (error) {
       console.error('Error clearing all logs:', error);
+      throw error;
+    }
+  }
+
+  // Paper Form Methods
+  async savePaperForm(form: PaperFormEntry): Promise<void> {
+    try {
+      const input = mapPaperFormEntryToGraphQLInput(form);
+      
+      // Check if form exists
+      const existingForm = await this.getPaperForm(form.id);
+      
+      if (existingForm) {
+        // Update existing form
+        await client.graphql({
+          query: mutations.updatePaperFormEntry,
+          variables: { input }
+        });
+      } else {
+        // Create new form
+        await client.graphql({
+          query: mutations.createPaperFormEntry,
+          variables: { input }
+        });
+      }
+    } catch (error) {
+      console.error('Error saving paper form:', error);
+      throw error;
+    }
+  }
+
+  async savePaperForms(forms: PaperFormEntry[]): Promise<void> {
+    try {
+      // Save forms one by one (could be optimized with batch operations)
+      await Promise.all(forms.map(form => this.savePaperForm(form)));
+    } catch (error) {
+      console.error('Error saving paper forms:', error);
+      throw error;
+    }
+  }
+
+  async getPaperForm(id: string): Promise<PaperFormEntry | undefined> {
+    try {
+      const result = await client.graphql({
+        query: queries.getPaperFormEntry,
+        variables: { id }
+      }) as GraphQLResult<any>;
+
+      if (result.data?.getPaperFormEntry) {
+        return mapGraphQLResultToPaperFormEntry(result.data.getPaperFormEntry);
+      }
+      return undefined;
+    } catch (error) {
+      console.error('Error getting paper form:', error);
+      return undefined;
+    }
+  }
+
+  async getPaperForms(): Promise<PaperFormEntry[]> {
+    try {
+      console.log('Attempting to fetch paper forms from AWS...');
+      
+      const result = await client.graphql({
+        query: queries.listPaperFormEntries
+      }) as GraphQLResult<any>;
+
+      console.log('GraphQL result:', result);
+      console.log('Result data:', result.data);
+      console.log('List paper form entries:', result.data?.listPaperFormEntries);
+
+      if (result.data?.listPaperFormEntries?.items) {
+        const forms = result.data.listPaperFormEntries.items.map(mapGraphQLResultToPaperFormEntry);
+        console.log('Successfully mapped forms:', forms);
+        return forms;
+      }
+      
+      console.log('No forms found in result');
+      return [];
+    } catch (error) {
+      console.error('Error getting paper forms:', error);
+      console.error('Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        details: error
+      });
+      // Return empty array instead of throwing to prevent cascading failures
+      return [];
+    }
+  }
+
+  async deletePaperForm(id: string): Promise<void> {
+    try {
+      await client.graphql({
+        query: mutations.deletePaperFormEntry,
+        variables: { input: { id } }
+      });
+    } catch (error) {
+      console.error('Error deleting paper form:', error);
+      throw error;
+    }
+  }
+
+  async clearAllPaperForms(): Promise<void> {
+    try {
+      // First try to get all forms
+      const forms = await this.getPaperForms();
+      
+      if (forms.length === 0) {
+        console.log('No forms found to clear');
+        return;
+      }
+      
+      console.log(`Found ${forms.length} forms to delete`);
+      
+      // Delete forms one by one with better error handling
+      const deletePromises = forms.map(async (form) => {
+        try {
+          await this.deletePaperForm(form.id);
+          console.log(`Successfully deleted form: ${form.id}`);
+          return { success: true, id: form.id };
+        } catch (error) {
+          console.error(`Failed to delete form ${form.id}:`, error);
+          return { success: false, id: form.id, error };
+        }
+      });
+      
+      const results = await Promise.allSettled(deletePromises);
+      
+      // Log results
+      const successful = results.filter(result => 
+        result.status === 'fulfilled' && result.value.success
+      ).length;
+      const failed = results.filter(result => 
+        result.status === 'fulfilled' && !result.value.success
+      ).length;
+      const rejected = results.filter(result => result.status === 'rejected').length;
+      
+      console.log(`Clear operation completed: ${successful} successful, ${failed} failed, ${rejected} rejected`);
+      
+      if (failed > 0 || rejected > 0) {
+        throw new Error(`Failed to delete ${failed + rejected} forms`);
+      }
+      
+    } catch (error) {
+      console.error('Error clearing all paper forms:', error);
+      throw error;
+    }
+  }
+
+  // Date-based queries for paper forms
+  async getPaperFormsByDateRange(startDate: Date, endDate: Date): Promise<PaperFormEntry[]> {
+    try {
+      const result = await client.graphql({
+        query: queries.getPaperFormsByDateRange,
+        variables: { 
+          startDate: startDate.toISOString(), 
+          endDate: endDate.toISOString() 
+        }
+      }) as GraphQLResult<any>;
+
+      if (result.data?.getPaperFormsByDateRange) {
+        return result.data.getPaperFormsByDateRange.map(mapGraphQLResultToPaperFormEntry);
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting paper forms by date range:', error);
+      return [];
+    }
+  }
+
+  async getTodaysPaperForms(): Promise<PaperFormEntry[]> {
+    try {
+      const result = await client.graphql({
+        query: queries.getTodaysPaperForms
+      }) as GraphQLResult<any>;
+
+      if (result.data?.getTodaysPaperForms) {
+        return result.data.getTodaysPaperForms.map(mapGraphQLResultToPaperFormEntry);
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting todays paper forms:', error);
+      return [];
+    }
+  }
+
+  async getPaperFormsByStatus(status: string): Promise<PaperFormEntry[]> {
+    try {
+      const result = await client.graphql({
+        query: queries.getPaperFormsByStatus,
+        variables: { status: status.toUpperCase().replace(' ', '_') }
+      }) as GraphQLResult<any>;
+
+      if (result.data?.getPaperFormsByStatus) {
+        return result.data.getPaperFormsByStatus.map(mapGraphQLResultToPaperFormEntry);
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting paper forms by status:', error);
+      return [];
+    }
+  }
+
+  async getPaperFormsByInitial(initial: string): Promise<PaperFormEntry[]> {
+    try {
+      const result = await client.graphql({
+        query: queries.getPaperFormsByInitial,
+        variables: { initial }
+      }) as GraphQLResult<any>;
+
+      if (result.data?.getPaperFormsByInitial) {
+        return result.data.getPaperFormsByInitial.map(mapGraphQLResultToPaperFormEntry);
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting paper forms by initial:', error);
+      return [];
+    }
+  }
+
+  // Custom mutations for paper forms
+  async updatePaperFormStatus(formId: string, status: string): Promise<PaperFormEntry> {
+    try {
+      const result = await client.graphql({
+        query: mutations.updatePaperFormStatus,
+        variables: { 
+          formId, 
+          status: status.toUpperCase().replace(' ', '_') 
+        }
+      }) as GraphQLResult<any>;
+
+      return mapGraphQLResultToPaperFormEntry(result.data.updatePaperFormStatus);
+    } catch (error) {
+      console.error('Error updating paper form status:', error);
+      throw error;
+    }
+  }
+
+  async addAdminComment(formId: string, comment: any): Promise<PaperFormEntry> {
+    try {
+      const result = await client.graphql({
+        query: mutations.addAdminComment,
+        variables: { formId, comment }
+      }) as GraphQLResult<any>;
+
+      return mapGraphQLResultToPaperFormEntry(result.data.addAdminComment);
+    } catch (error) {
+      console.error('Error adding admin comment:', error);
+      throw error;
+    }
+  }
+
+  async resolveError(formId: string, errorId: string): Promise<PaperFormEntry> {
+    try {
+      const result = await client.graphql({
+        query: mutations.resolveError,
+        variables: { formId, errorId }
+      }) as GraphQLResult<any>;
+
+      return mapGraphQLResultToPaperFormEntry(result.data.resolveError);
+    } catch (error) {
+      console.error('Error resolving error:', error);
       throw error;
     }
   }

@@ -467,6 +467,129 @@ export const addCorrectiveAction = /* GraphQL */ `
     }
   }
 `;
+export const updatePaperFormStatus = /* GraphQL */ `
+  mutation UpdatePaperFormStatus($formId: ID!, $status: FormStatus!) {
+    updatePaperFormStatus(formId: $formId, status: $status) {
+      id
+      date
+      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        __typename
+      }
+      thermometerNumber
+      ingredients {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      lotNumbers {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const addAdminComment = /* GraphQL */ `
+  mutation AddAdminComment($formId: ID!, $comment: AdminCommentInput!) {
+    addAdminComment(formId: $formId, comment: $comment) {
+      id
+      date
+      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        __typename
+      }
+      thermometerNumber
+      ingredients {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      lotNumbers {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const resolveError = /* GraphQL */ `
+  mutation ResolveError($formId: ID!, $errorId: String!) {
+    resolveError(formId: $formId, errorId: $errorId) {
+      id
+      date
+      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        __typename
+      }
+      thermometerNumber
+      ingredients {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      lotNumbers {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
 export const createUser = /* GraphQL */ `
   mutation CreateUser(
     $input: CreateUserInput!
@@ -532,6 +655,138 @@ export const deleteUser = /* GraphQL */ `
         nextToken
         __typename
       }
+      __typename
+    }
+  }
+`;
+export const createPaperFormEntry = /* GraphQL */ `
+  mutation CreatePaperFormEntry(
+    $input: CreatePaperFormEntryInput!
+    $condition: ModelPaperFormEntryConditionInput
+  ) {
+    createPaperFormEntry(input: $input, condition: $condition) {
+      id
+      date
+      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        __typename
+      }
+      thermometerNumber
+      ingredients {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      lotNumbers {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updatePaperFormEntry = /* GraphQL */ `
+  mutation UpdatePaperFormEntry(
+    $input: UpdatePaperFormEntryInput!
+    $condition: ModelPaperFormEntryConditionInput
+  ) {
+    updatePaperFormEntry(input: $input, condition: $condition) {
+      id
+      date
+      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        __typename
+      }
+      thermometerNumber
+      ingredients {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      lotNumbers {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deletePaperFormEntry = /* GraphQL */ `
+  mutation DeletePaperFormEntry(
+    $input: DeletePaperFormEntryInput!
+    $condition: ModelPaperFormEntryConditionInput
+  ) {
+    deletePaperFormEntry(input: $input, condition: $condition) {
+      id
+      date
+      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        __typename
+      }
+      thermometerNumber
+      ingredients {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      lotNumbers {
+        beef
+        chicken
+        liquidEggs
+        __typename
+      }
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
       __typename
     }
   }

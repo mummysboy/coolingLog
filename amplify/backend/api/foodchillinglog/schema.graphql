@@ -17,6 +17,70 @@ type User @model {
   logEntries: [LogEntry] @hasMany(indexName: "byEmployee", fields: ["id"])
 }
 
+# Paper Form Entry model for food chilling logs
+type PaperFormEntry @model {
+  id: ID!
+  date: AWSDateTime!
+  formType: FormType!
+  formInitial: String!
+  status: FormStatus!
+  title: String
+  
+  # Row entries (1-9)
+  entries: [PaperFormRow!]!
+  
+  # Bottom section
+  thermometerNumber: String
+  ingredients: Ingredients
+  lotNumbers: LotNumbers
+  correctiveActionsComments: String
+  
+  # Admin comments and resolution
+  adminComments: [AdminComment!]
+  resolvedErrors: [String!]
+  
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+# Paper Form Row for individual entries
+type PaperFormRow {
+  type: String
+  
+  # CCP 1 - Temperature Must reach 166°F or greater
+  ccp1: StageData
+  # CCP 2 - 127°F or greater
+  ccp2: StageData
+  # 80°F or below within 105 minutes
+  coolingTo80: StageData
+  # 54°F or below within 4.75 hr
+  coolingTo54: StageData
+  # Chill Continuously to 39°F or below
+  finalChill: StageData
+}
+
+# Ingredients information
+type Ingredients {
+  beef: String
+  chicken: String
+  liquidEggs: String
+}
+
+# Lot numbers information
+type LotNumbers {
+  beef: String
+  chicken: String
+  liquidEggs: String
+}
+
+# Admin comment for paper forms
+type AdminComment {
+  id: ID!
+  adminInitial: String!
+  timestamp: AWSDateTime!
+  comment: String!
+}
+
 # Log entry model for food chilling records
 type LogEntry @model {
   id: ID!
@@ -137,6 +201,16 @@ enum StageType {
   FINAL_CHILL
 }
 
+enum FormType {
+  FOOD_CHILLING_LOG
+}
+
+enum FormStatus {
+  COMPLETE
+  IN_PROGRESS
+  ERROR
+}
+
 enum InspectionResult {
   NORMAL
   ABNORMAL
@@ -156,6 +230,66 @@ input StageDataInput {
   correctiveAction: String
   employeeInitials: String
   notes: String
+}
+
+input PaperFormRowInput {
+  type: String
+  ccp1: StageDataInput
+  ccp2: StageDataInput
+  coolingTo80: StageDataInput
+  coolingTo54: StageDataInput
+  finalChill: StageDataInput
+}
+
+input IngredientsInput {
+  beef: String
+  chicken: String
+  liquidEggs: String
+}
+
+input LotNumbersInput {
+  beef: String
+  chicken: String
+  liquidEggs: String
+}
+
+input AdminCommentInput {
+  id: ID!
+  adminInitial: String!
+  timestamp: AWSDateTime!
+  comment: String!
+}
+
+input CreatePaperFormEntryInput {
+  id: ID
+  date: AWSDateTime!
+  formType: FormType!
+  formInitial: String!
+  status: FormStatus!
+  title: String
+  entries: [PaperFormRowInput!]!
+  thermometerNumber: String
+  ingredients: IngredientsInput
+  lotNumbers: LotNumbersInput
+  correctiveActionsComments: String
+  adminComments: [AdminCommentInput!]
+  resolvedErrors: [String!]
+}
+
+input UpdatePaperFormEntryInput {
+  id: ID!
+  date: AWSDateTime
+  formType: FormType
+  formInitial: String
+  status: FormStatus
+  title: String
+  entries: [PaperFormRowInput!]
+  thermometerNumber: String
+  ingredients: IngredientsInput
+  lotNumbers: LotNumbersInput
+  correctiveActionsComments: String
+  adminComments: [AdminCommentInput!]
+  resolvedErrors: [String!]
 }
 
 input CreateLogEntryInput {
@@ -278,6 +412,12 @@ type Query {
   
   # Get logs by shift
   getLogsByShift(shift: Shift!): [LogEntry]
+  
+  # Paper Form queries
+  getPaperFormsByDateRange(startDate: AWSDateTime!, endDate: AWSDateTime!): [PaperFormEntry]
+  getTodaysPaperForms: [PaperFormEntry]
+  getPaperFormsByStatus(status: FormStatus!): [PaperFormEntry]
+  getPaperFormsByInitial(initial: String!): [PaperFormEntry]
 }
 
 # Custom mutations
@@ -306,6 +446,22 @@ type Mutation {
     action: String!
     employeeInitials: String!
   ): LogEntry
+  
+  # Paper Form mutations
+  updatePaperFormStatus(
+    formId: ID!
+    status: FormStatus!
+  ): PaperFormEntry
+  
+  addAdminComment(
+    formId: ID!
+    comment: AdminCommentInput!
+  ): PaperFormEntry
+  
+  resolveError(
+    formId: ID!
+    errorId: String!
+  ): PaperFormEntry
 }
 
 # Subscriptions for real-time updates
@@ -318,4 +474,14 @@ type Subscription {
   
   onLogEntrySubmittedForReview: LogEntry
     @aws_subscribe(mutations: ["submitLogEntryForReview"])
+  
+  # Paper Form subscriptions
+  onPaperFormEntryCreated: PaperFormEntry
+    @aws_subscribe(mutations: ["createPaperFormEntry"])
+  
+  onPaperFormEntryUpdated: PaperFormEntry
+    @aws_subscribe(mutations: ["updatePaperFormEntry"])
+  
+  onPaperFormStatusUpdated: PaperFormEntry
+    @aws_subscribe(mutations: ["updatePaperFormStatus"])
 }

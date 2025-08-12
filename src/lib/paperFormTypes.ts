@@ -170,3 +170,15 @@ export const createEmptyForm = (formType: FormType = FormType.FOOD_CHILLING_LOG,
   adminComments: [],
   resolvedErrors: [],
 });
+
+// Utility function to safely convert dates
+export const ensureDate = (date: Date | string | any): Date => {
+  if (date instanceof Date) {
+    return date;
+  }
+  if (typeof date === 'string') {
+    return new Date(date);
+  }
+  // Fallback for any other type
+  return new Date();
+};
