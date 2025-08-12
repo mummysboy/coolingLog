@@ -397,7 +397,9 @@ export const usePaperFormStore = create<PaperFormStore>()(
         
         // Parse the field path (e.g., "ccp1.initial" -> stage: "ccp1", field: "initial")
         const [stage, fieldName] = field.split('.');
+        
         if (stage && fieldName && currentForm.entries[rowIndex]) {
+          // Handle nested fields (e.g., ccp1.initial, ccp1.temp, etc.)
           const updatedEntries = [...currentForm.entries];
           const currentEntry = updatedEntries[rowIndex];
           const currentStage = currentEntry[stage as keyof typeof currentEntry] as any;
@@ -423,6 +425,31 @@ export const usePaperFormStore = create<PaperFormStore>()(
             console.log(`Reason: fieldName=${fieldName}, isDataLog=${fieldName === 'dataLog'}, isNull=${value === null}, isUndefined=${value === undefined}`);
           }
           
+          const newLastTextEntry = shouldUpdateLastTextEntry ? new Date() : currentForm.lastTextEntry;
+          
+          set((state) => ({
+            currentForm: { 
+              ...currentForm, 
+              entries: updatedEntries,
+              lastTextEntry: newLastTextEntry
+            },
+            savedForms: state.savedForms.map(form => 
+              form.id === currentForm.id 
+                ? { ...form, entries: updatedEntries, lastTextEntry: newLastTextEntry }
+                : form
+            )
+          }));
+        } else if (currentForm.entries[rowIndex]) {
+          // Handle direct fields (e.g., type, rack)
+          const updatedEntries = [...currentForm.entries];
+          
+          updatedEntries[rowIndex] = {
+            ...updatedEntries[rowIndex],
+            [field]: value
+          };
+          
+          // Update lastTextEntry for direct fields
+          const shouldUpdateLastTextEntry = value !== null && value !== undefined;
           const newLastTextEntry = shouldUpdateLastTextEntry ? new Date() : currentForm.lastTextEntry;
           
           set((state) => ({

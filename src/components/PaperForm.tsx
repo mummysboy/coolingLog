@@ -415,10 +415,12 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         const ccp1Temp = parseFloat(String(currentEntry.ccp1.temp));
         const ccp2Temp = parseFloat(String(currentEntry.ccp2.temp));
         
-        if (!isNaN(ccp1Temp) && !isNaN(ccp2Temp) && ccp2Temp > ccp1Temp) {
-          const progressionError = `CCP2 temperature (${ccp2Temp}°F) should not be higher than CCP1 temperature (${ccp1Temp}°F)`;
-          console.error(`LOGICAL VALIDATION ERROR: ${progressionError}`);
-          // Toast notification removed
+        if (!isNaN(ccp1Temp) && !isNaN(ccp2Temp)) {
+          // CCP1 should be the cooking temperature (higher) and CCP2 should be the cooling temperature (lower)
+          // But we should allow some flexibility for edge cases and not block the user
+          if (ccp2Temp > ccp1Temp) {
+            console.warn(`Temperature progression note: CCP2 temperature (${ccp2Temp}°F) is higher than CCP1 temperature (${ccp1Temp}°F). This may indicate a data entry order issue.`);
+          }
         }
       }
       

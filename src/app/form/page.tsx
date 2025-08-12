@@ -11,7 +11,7 @@ export default function FormPage() {
   const { currentForm, createNewForm, updateFormStatus, saveForm, savedForms, loadForm, deleteForm } = usePaperFormStore();
   const [formUpdateKey, setFormUpdateKey] = useState(0); // Force re-render when form updates
   const [isLoadingForm, setIsLoadingForm] = useState(false);
-  const [lastValidationUpdate, setLastValidationUpdate] = useState<number>(0); // Track when validation last updated status
+
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
   const [isAddFormDropdownOpen, setIsAddFormDropdownOpen] = useState(false); // State for add form dropdown
@@ -114,108 +114,7 @@ export default function FormPage() {
     }
   }, [showFormModal, newlyCreatedFormId]);
 
-  // Real-time status monitoring effect
-  useEffect(() => {
-    if (!currentForm) return;
 
-    // Function to check and update form status based on validation
-    const checkAndUpdateStatus = () => {
-      // Only check for errors when all three fields (temp, time, initial) are complete for a cell
-      let hasErrors = false;
-      let hasCompleteEntries = false;
-      
-      currentForm.entries.forEach((entry, rowIndex) => {
-        const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
-        
-        stages.forEach(stage => {
-          const stageData = entry[stage as keyof typeof entry] as any;
-          
-          // Only validate if all three fields are present
-          if (stageData && stageData.temp && stageData.time && stageData.initial) {
-            hasCompleteEntries = true;
-            
-            // Check if this specific cell has validation errors
-            const validation = shouldHighlightCell(currentForm, rowIndex, `${stage}.temp`);
-            if (validation.highlight && validation.severity === 'error') {
-              // Get the full validation to find the error message
-              const fullValidation = validateForm(currentForm);
-              const cellError = fullValidation.errors.find(
-                error => error.rowIndex === rowIndex && error.field === `${stage}.temp`
-              );
-              
-              if (cellError) {
-                // Check if this error has been resolved by admin
-                const errorId = `${rowIndex}-${stage}.temp-${cellError.message}`;
-                const isResolved = currentForm.resolvedErrors?.includes(errorId);
-                
-                if (!isResolved) {
-                  hasErrors = true;
-                }
-              }
-            }
-          }
-        });
-      });
-
-      let newStatus: 'Complete' | 'In Progress' | 'Error';
-      
-      if (hasErrors) {
-        newStatus = 'Error';
-      } else if (hasCompleteEntries) {
-        // Check if all entries that have data are complete
-        const completeEntries = currentForm.entries.filter(entry => {
-          const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
-          return stages.every(stage => {
-            const stageData = entry[stage as keyof typeof entry] as any;
-            return stageData && stageData.temp && stageData.time && stageData.initial;
-          });
-        }).length;
-        
-        // Only mark as Complete if ALL entries are complete AND user explicitly wants it
-        // This prevents automatic completion from blocking further edits
-        if (completeEntries === currentForm.entries.length && currentForm.entries.length > 0) {
-          // Don't automatically set to Complete - let user do it manually
-          newStatus = 'In Progress';
-        } else {
-          newStatus = 'In Progress';
-        }
-      } else {
-        newStatus = 'In Progress';
-      }
-
-      // Only update if status has changed and we're not overriding a manually set 'Complete' status
-      // Also don't override if admin has resolved errors and set status to 'In Progress'
-      // Also don't override if validation just updated the status (within last 5 seconds)
-      const adminHasResolvedErrors = currentForm.resolvedErrors && currentForm.resolvedErrors.length > 0;
-      const shouldRespectAdminResolution = adminHasResolvedErrors && currentForm.status === 'In Progress';
-      const validationRecentlyUpdated = Date.now() - lastValidationUpdate < 5000; // 5 seconds
-      const isManuallyCompleted = currentForm.status === 'Complete';
-      
-      if (newStatus !== currentForm.status && !isManuallyCompleted && !shouldRespectAdminResolution && !validationRecentlyUpdated) {
-        console.log('Real-time status update: Form', currentForm.id, 'status changed from', currentForm.status, 'to', newStatus);
-        updateFormStatus(currentForm.id, newStatus);
-        
-        // Save the form to persist the status change
-        setTimeout(() => saveForm(), 100);
-      } else if (isManuallyCompleted) {
-        console.log('Skipping status update: Form is manually marked as Complete');
-      } else if (shouldRespectAdminResolution) {
-        console.log('Skipping status update: Admin has resolved errors and set status to In Progress');
-      } else if (validationRecentlyUpdated) {
-        console.log('Skipping status update: Validation recently updated status, respecting that update');
-      }
-    };
-
-    // Check status immediately
-    checkAndUpdateStatus();
-
-    // Set up an interval to check status every few seconds while form is being edited
-    const statusCheckInterval = setInterval(checkAndUpdateStatus, 1000);
-
-    return () => {
-      clearInterval(statusCheckInterval);
-    };
-  }, [currentForm, updateFormStatus, saveForm]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -389,6 +288,9 @@ export default function FormPage() {
                           <div className="text-lg font-semibold text-gray-900">
                             {new Date(form.dateCreated || form.date).toLocaleDateString()}
                           </div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            {new Date(form.dateCreated || form.date).toLocaleTimeString()}
+                          </div>
                         </div>
                         
                         <div className="bg-gray-50 rounded-lg p-3">
@@ -398,13 +300,7 @@ export default function FormPage() {
                           </div>
                         </div>
                         
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <div className="font-medium text-gray-700">Real-time Monitoring</div>
-                          <div className="flex items-center text-green-600">
-                            <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                            <span className="text-sm">Active</span>
-                          </div>
-                        </div>
+
                       </div>
                     </div>
                   </div>
@@ -485,6 +381,9 @@ export default function FormPage() {
                             <div className="text-lg font-semibold text-gray-900">
                               {new Date(form.date).toLocaleDateString()}
                             </div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              {new Date(form.date).toLocaleTimeString()}
+                            </div>
                           </div>
                           
                           <div className="bg-gray-50 rounded-lg p-3">
@@ -556,8 +455,6 @@ export default function FormPage() {
                   if (updates.status) {
                     console.log('Status updated to:', updates.status, 'updating store');
                     updateFormStatus(formId, updates.status);
-                    // Track when validation last updated the status
-                    setLastValidationUpdate(Date.now());
                     // Ensure the form is saved to persist the status change
                     setTimeout(() => saveForm(), 100);
                     
