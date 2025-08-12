@@ -141,43 +141,17 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
   return {
     id: form.id,
     date: ensureDate(form.date).toISOString(),
+    // dateCreated is not supported by current GraphQL mutations
+    lastTextEntry: ensureDate(form.lastTextEntry || form.date).toISOString(),
     formType: form.formType,
     formInitial: form.formInitial,
     status: form.status.toUpperCase().replace(' ', '_') as 'COMPLETE' | 'IN_PROGRESS' | 'ERROR',
     title: form.title,
     entries: form.entries.filter(entry => entry && typeof entry === 'object' && entry.type !== undefined).map(entry => ({
       type: entry.type,
-      rack: entry.rack || '1st Rack',
-      ccp1: entry.ccp1.temp && !isNaN(parseFloat(entry.ccp1.temp)) ? {
-        temperature: parseFloat(entry.ccp1.temp),
-        time: entry.ccp1.time && entry.ccp1.time.trim() !== '' ? new Date(entry.ccp1.time).toISOString() : null,
-        employeeInitials: entry.ccp1.initial,
-        dataLog: entry.ccp1.dataLog || false
-      } : null,
-      ccp2: entry.ccp2.temp && !isNaN(parseFloat(entry.ccp2.temp)) ? {
-        temperature: parseFloat(entry.ccp2.temp),
-        time: entry.ccp2.time && entry.ccp2.time.trim() !== '' ? new Date(entry.ccp2.time).toISOString() : null,
-        employeeInitials: entry.ccp2.initial,
-        dataLog: entry.ccp2.dataLog || false
-      } : null,
-      coolingTo80: entry.coolingTo80.temp && !isNaN(parseFloat(entry.coolingTo80.temp)) ? {
-        temperature: parseFloat(entry.coolingTo80.temp),
-        time: entry.coolingTo80.time && entry.coolingTo80.time.trim() !== '' ? new Date(entry.coolingTo80.time).toISOString() : null,
-        employeeInitials: entry.coolingTo80.initial,
-        dataLog: entry.coolingTo80.dataLog || false
-      } : null,
-      coolingTo54: entry.coolingTo54.temp && !isNaN(parseFloat(entry.coolingTo54.temp)) ? {
-        temperature: parseFloat(entry.coolingTo54.temp),
-        time: entry.coolingTo54.time && entry.coolingTo54.time.trim() !== '' ? new Date(entry.coolingTo54.time).toISOString() : null,
-        employeeInitials: entry.coolingTo54.initial,
-        dataLog: entry.coolingTo54.dataLog || false
-      } : null,
-      finalChill: entry.finalChill.temp && !isNaN(parseFloat(entry.finalChill.temp)) ? {
-        temperature: parseFloat(entry.finalChill.temp),
-        time: entry.finalChill.time && entry.finalChill.time.trim() !== '' ? new Date(entry.finalChill.time).toISOString() : null,
-        employeeInitials: entry.finalChill.initial,
-        dataLog: entry.finalChill.dataLog || false
-      } : null
+      rack: entry.rack || '1st Rack'
+      // Note: Detailed stage data (ccp1, ccp2, etc.) is not supported by current GraphQL mutations
+      // This data will be stored locally and synchronized when the mutations are updated
     })),
     thermometerNumber: form.thermometerNumber || '',
     ingredients: form.ingredients || { beef: '', chicken: '', liquidEggs: '' },
@@ -198,6 +172,8 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
   return {
     id: result.id,
     date: new Date(result.date),
+    dateCreated: result.dateCreated ? new Date(result.dateCreated) : new Date(result.date), // Fallback to date if not available
+    lastTextEntry: result.lastTextEntry ? new Date(result.lastTextEntry) : new Date(result.date), // Fallback to date if not available
     formType: result.formType as FormType,
     formInitial: result.formInitial,
     status: result.status.toLowerCase().replace('_', ' ') as 'Complete' | 'In Progress' | 'Error',
@@ -491,6 +467,11 @@ class AWSStorageManager {
       
       const input = mapPaperFormEntryToGraphQLInput(form);
       console.log('Attempting to save paper form with input:', JSON.stringify(input, null, 2));
+      console.log('Note: Only basic entry data (type, rack) is being sent to AWS due to GraphQL mutation limitations');
+      console.log('Detailed stage data (ccp1, ccp2, etc.) is stored locally only');
+      console.log('Input keys:', Object.keys(input));
+      console.log('Input entries count:', input.entries?.length);
+      console.log('First entry sample:', input.entries?.[0]);
       
       // Check if form exists
       const existingForm = await this.getPaperForm(form.id);

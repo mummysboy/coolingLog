@@ -72,6 +72,8 @@ export interface AdminComment {
 export interface PaperFormEntry {
   id: string;
   date: Date;
+  dateCreated: Date; // When the form was first created
+  lastTextEntry: Date; // When text was last entered on the form
   formType: FormType; // The type of form
   formInitial: string; // The initial this form is associated with
   status: 'Complete' | 'In Progress' | 'Error'; // Automatically determined status
@@ -157,6 +159,8 @@ export const EMPTY_ROW: PaperFormRow = {
 export const createEmptyForm = (formType: FormType = FormType.FOOD_CHILLING_LOG, formInitial: string = ''): PaperFormEntry => ({
   id: `form-${Date.now()}`,
   date: new Date(),
+  dateCreated: new Date(), // Set dateCreated to current date
+  lastTextEntry: new Date(), // Set lastTextEntry to current date
   formType,
   formInitial,
   status: 'In Progress', // Default status for new forms

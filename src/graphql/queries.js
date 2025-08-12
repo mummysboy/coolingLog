@@ -39,6 +39,7 @@ export const getLogsByDateRange = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -48,6 +49,7 @@ export const getLogsByDateRange = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -57,6 +59,7 @@ export const getLogsByDateRange = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -66,6 +69,7 @@ export const getLogsByDateRange = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -75,6 +79,7 @@ export const getLogsByDateRange = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified
@@ -149,6 +154,7 @@ export const getTodaysLogs = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -158,6 +164,7 @@ export const getTodaysLogs = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -167,6 +174,7 @@ export const getTodaysLogs = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -176,6 +184,7 @@ export const getTodaysLogs = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -185,6 +194,7 @@ export const getTodaysLogs = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified
@@ -259,6 +269,7 @@ export const getLogsRequiringReview = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -268,6 +279,7 @@ export const getLogsRequiringReview = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -277,6 +289,7 @@ export const getLogsRequiringReview = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -286,6 +299,7 @@ export const getLogsRequiringReview = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -295,6 +309,7 @@ export const getLogsRequiringReview = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified
@@ -369,6 +384,7 @@ export const getLogsByEmployee = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -378,6 +394,7 @@ export const getLogsByEmployee = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -387,6 +404,7 @@ export const getLogsByEmployee = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -396,6 +414,7 @@ export const getLogsByEmployee = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -405,6 +424,7 @@ export const getLogsByEmployee = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified
@@ -479,6 +499,7 @@ export const getLogsByShift = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -488,6 +509,7 @@ export const getLogsByShift = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -497,6 +519,7 @@ export const getLogsByShift = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -506,6 +529,7 @@ export const getLogsByShift = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -515,6 +539,7 @@ export const getLogsByShift = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified
@@ -565,6 +590,8 @@ export const getPaperFormsByDateRange = /* GraphQL */ `
       title
       entries {
         type
+        rack
+        __typename
         __typename
       }
       thermometerNumber
@@ -589,6 +616,7 @@ export const getPaperFormsByDateRange = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -606,6 +634,8 @@ export const getTodaysPaperForms = /* GraphQL */ `
       title
       entries {
         type
+        rack
+        __typename
         __typename
       }
       thermometerNumber
@@ -630,6 +660,7 @@ export const getTodaysPaperForms = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -647,6 +678,8 @@ export const getPaperFormsByStatus = /* GraphQL */ `
       title
       entries {
         type
+        rack
+        __typename
         __typename
       }
       thermometerNumber
@@ -671,6 +704,7 @@ export const getPaperFormsByStatus = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -688,6 +722,8 @@ export const getPaperFormsByInitial = /* GraphQL */ `
       title
       entries {
         type
+        rack
+        __typename
         __typename
       }
       thermometerNumber
@@ -712,6 +748,7 @@ export const getPaperFormsByInitial = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -773,6 +810,8 @@ export const getPaperFormEntry = /* GraphQL */ `
       title
       entries {
         type
+        rack
+        __typename
         __typename
       }
       thermometerNumber
@@ -797,6 +836,7 @@ export const getPaperFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -824,6 +864,7 @@ export const listPaperFormEntries = /* GraphQL */ `
         thermometerNumber
         correctiveActionsComments
         resolvedErrors
+        lastTextEntry
         createdAt
         updatedAt
         __typename
@@ -871,6 +912,7 @@ export const getLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -880,6 +922,7 @@ export const getLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -889,6 +932,7 @@ export const getLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -898,6 +942,7 @@ export const getLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -907,6 +952,7 @@ export const getLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified

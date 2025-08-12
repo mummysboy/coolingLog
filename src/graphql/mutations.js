@@ -47,6 +47,7 @@ export const updateLogEntryStage = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -56,6 +57,7 @@ export const updateLogEntryStage = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -65,6 +67,7 @@ export const updateLogEntryStage = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -74,6 +77,7 @@ export const updateLogEntryStage = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -83,6 +87,7 @@ export const updateLogEntryStage = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified
@@ -157,6 +162,7 @@ export const submitLogEntryForReview = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -166,6 +172,7 @@ export const submitLogEntryForReview = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -175,6 +182,7 @@ export const submitLogEntryForReview = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -184,6 +192,7 @@ export const submitLogEntryForReview = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -193,6 +202,7 @@ export const submitLogEntryForReview = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified
@@ -275,6 +285,7 @@ export const approveLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -284,6 +295,7 @@ export const approveLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -293,6 +305,7 @@ export const approveLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -302,6 +315,7 @@ export const approveLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -311,6 +325,7 @@ export const approveLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified
@@ -395,6 +410,7 @@ export const addCorrectiveAction = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -404,6 +420,7 @@ export const addCorrectiveAction = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -413,6 +430,7 @@ export const addCorrectiveAction = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -422,6 +440,7 @@ export const addCorrectiveAction = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -431,6 +450,7 @@ export const addCorrectiveAction = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified
@@ -478,6 +498,8 @@ export const updatePaperFormStatus = /* GraphQL */ `
       title
       entries {
         type
+        rack
+        __typename
         __typename
       }
       thermometerNumber
@@ -502,6 +524,7 @@ export const updatePaperFormStatus = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -519,6 +542,8 @@ export const addAdminComment = /* GraphQL */ `
       title
       entries {
         type
+        rack
+        __typename
         __typename
       }
       thermometerNumber
@@ -543,6 +568,7 @@ export const addAdminComment = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -560,6 +586,8 @@ export const resolveError = /* GraphQL */ `
       title
       entries {
         type
+        rack
+        __typename
         __typename
       }
       thermometerNumber
@@ -584,6 +612,7 @@ export const resolveError = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -673,6 +702,8 @@ export const createPaperFormEntry = /* GraphQL */ `
       title
       entries {
         type
+        rack
+        __typename
         __typename
       }
       thermometerNumber
@@ -697,6 +728,7 @@ export const createPaperFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -717,6 +749,8 @@ export const updatePaperFormEntry = /* GraphQL */ `
       title
       entries {
         type
+        rack
+        __typename
         __typename
       }
       thermometerNumber
@@ -741,6 +775,7 @@ export const updatePaperFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -761,6 +796,8 @@ export const deletePaperFormEntry = /* GraphQL */ `
       title
       entries {
         type
+        rack
+        __typename
         __typename
       }
       thermometerNumber
@@ -785,6 +822,7 @@ export const deletePaperFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -832,6 +870,7 @@ export const createLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -841,6 +880,7 @@ export const createLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -850,6 +890,7 @@ export const createLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -859,6 +900,7 @@ export const createLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -868,6 +910,7 @@ export const createLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified
@@ -945,6 +988,7 @@ export const updateLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -954,6 +998,7 @@ export const updateLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -963,6 +1008,7 @@ export const updateLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -972,6 +1018,7 @@ export const updateLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -981,6 +1028,7 @@ export const updateLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified
@@ -1058,6 +1106,7 @@ export const deleteLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       startCoolingStage {
@@ -1067,6 +1116,7 @@ export const deleteLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to80Stage {
@@ -1076,6 +1126,7 @@ export const deleteLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       to54Stage {
@@ -1085,6 +1136,7 @@ export const deleteLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       finalChillStage {
@@ -1094,6 +1146,7 @@ export const deleteLogEntry = /* GraphQL */ `
         correctiveAction
         employeeInitials
         notes
+        dataLog
         __typename
       }
       ccp1Verified

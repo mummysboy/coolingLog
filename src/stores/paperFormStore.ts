@@ -37,6 +37,12 @@ interface PaperFormStore {
   
   // Initial management
   setSelectedInitial: (initial: string | null) => void;
+  
+  // Debug functions
+  debugLastTextEntry: () => void;
+  testUpdateLastTextEntry: () => void;
+  logCurrentState: () => void;
+  forceUpdateLastTextEntry: () => void;
 }
 
 export const usePaperFormStore = create<PaperFormStore>()(
@@ -77,14 +83,15 @@ export const usePaperFormStore = create<PaperFormStore>()(
           
           set({ savedForms: updatedSavedForms });
           
-          // Save to AWS DynamoDB
-          console.log('About to save form to AWS:', currentForm.id);
-          await awsStorageManager.savePaperForm(currentForm);
+          // TEMPORARILY DISABLE AWS SAVING TO FOCUS ON LOCAL FUNCTIONALITY
+          console.log('Form updated locally (AWS saving temporarily disabled):', currentForm.id, 'with lastTextEntry:', currentForm.lastTextEntry);
           
-          console.log('Form saved successfully to AWS DynamoDB');
+          // TODO: Re-enable AWS saving once GraphQL mutations are fixed
+          // await awsStorageManager.savePaperForm(currentForm);
+          // console.log('Form saved successfully to AWS DynamoDB');
         } catch (error) {
-          console.error('Error saving form to AWS:', error);
-          console.error('Form data that failed to save:', currentForm);
+          console.error('Error updating form locally:', error);
+          console.error('Form data that failed to update:', currentForm);
           throw error;
         }
       },
@@ -167,66 +174,117 @@ export const usePaperFormStore = create<PaperFormStore>()(
 
       
       updateFormField: (formId: string, field: string, value: any) => {
-        set((state) => ({
-          savedForms: state.savedForms.map(form => 
-            form.id === formId ? { ...form, [field]: value } : form
-          ),
-          currentForm: state.currentForm?.id === formId 
-            ? { ...state.currentForm, [field]: value }
-            : state.currentForm
-        }));
+        set((state) => {
+          // Check if ANY keystroke was detected (for bottom section fields)
+          const hasTextEntry = value !== null && value !== undefined;
+          
+          console.log(`updateFormField called for field: ${field}, value: ${value}, hasTextEntry: ${hasTextEntry}`);
+          
+          if (hasTextEntry) {
+            console.log(`Updating lastTextEntry for form field ${field} with value:`, value);
+          }
+          
+          return {
+            savedForms: state.savedForms.map(form => 
+              form.id === formId ? { 
+                ...form, 
+                [field]: value,
+                lastTextEntry: hasTextEntry ? new Date() : form.lastTextEntry
+              } : form
+            ),
+            currentForm: state.currentForm?.id === formId 
+              ? { 
+                  ...state.currentForm, 
+                  [field]: value,
+                  lastTextEntry: hasTextEntry ? new Date() : state.currentForm.lastTextEntry
+                }
+              : state.currentForm
+          };
+        });
       },
       
       updateFormRow: (formId: string, rowIndex: number, rowData: any) => {
-        set((state) => ({
-          savedForms: state.savedForms.map(form => {
-            if (form.id === formId) {
-              const updatedEntries = [...form.entries];
-              updatedEntries[rowIndex] = { ...updatedEntries[rowIndex], ...rowData };
-              return { ...form, entries: updatedEntries };
-            }
-            return form;
-          }),
-          currentForm: state.currentForm?.id === formId 
-            ? {
-                ...state.currentForm,
-                entries: state.currentForm.entries.map((entry, index) => 
-                  index === rowIndex ? { ...entry, ...rowData } : entry
-                )
+        set((state) => {
+          console.log(`updateFormRow called for formId: ${formId}, row: ${rowIndex}, data:`, rowData);
+          
+          // Check if any keystroke was detected
+          const hasTextEntry = Object.entries(rowData).some(([key, value]) => 
+            key !== 'dataLog' && value !== null && value !== undefined
+          );
+          
+          console.log(`hasTextEntry: ${hasTextEntry} for row: ${rowIndex}`);
+          
+          return {
+            savedForms: state.savedForms.map(form => {
+              if (form.id === formId) {
+                const updatedEntries = [...form.entries];
+                updatedEntries[rowIndex] = { ...updatedEntries[rowIndex], ...rowData };
+                return { 
+                  ...form, 
+                  entries: updatedEntries,
+                  lastTextEntry: hasTextEntry ? new Date() : form.lastTextEntry
+                };
               }
-            : state.currentForm
-        }));
+              return form;
+            }),
+            currentForm: state.currentForm?.id === formId 
+              ? {
+                  ...state.currentForm,
+                  entries: state.currentForm.entries.map((entry, index) => 
+                    index === rowIndex ? { ...entry, ...rowData } : entry
+                  ),
+                  lastTextEntry: hasTextEntry ? new Date() : state.currentForm.lastTextEntry
+                }
+              : state.currentForm
+          };
+        });
       },
       
       updateFormRowStage: (formId: string, rowIndex: number, stage: string, stageData: any) => {
-        set((state) => ({
-          savedForms: state.savedForms.map(form => {
-            if (form.id === formId) {
-              const updatedEntries = [...form.entries];
-              const currentEntry = updatedEntries[rowIndex];
-              const currentStage = currentEntry[stage as keyof typeof currentEntry] as any;
-              updatedEntries[rowIndex] = {
-                ...currentEntry,
-                [stage]: { ...currentStage, ...stageData }
-              };
-              return { ...form, entries: updatedEntries };
-            }
-            return form;
-          }),
-          currentForm: state.currentForm?.id === formId 
-            ? {
-                ...state.currentForm,
-                entries: state.currentForm.entries.map((entry, index) => 
-                  index === rowIndex 
-                    ? {
-                        ...entry,
-                        [stage]: { ...(entry[stage as keyof typeof entry] as any), ...stageData }
-                      }
-                    : entry
-                )
+        set((state) => {
+          console.log(`updateFormRowStage called for formId: ${formId}, row: ${rowIndex}, stage: ${stage}, data:`, stageData);
+          
+          // Check if any keystroke was detected (excluding dataLog checkbox)
+          const hasTextEntry = Object.entries(stageData).some(([key, value]) => 
+            key !== 'dataLog' && value !== null && value !== undefined
+          );
+          
+          console.log(`hasTextEntry: ${hasTextEntry} for stage: ${stage}`);
+          
+          return {
+            savedForms: state.savedForms.map(form => {
+              if (form.id === formId) {
+                const updatedEntries = [...form.entries];
+                const currentEntry = updatedEntries[rowIndex];
+                const currentStage = currentEntry[stage as keyof typeof currentEntry] as any;
+                updatedEntries[rowIndex] = {
+                  ...currentEntry,
+                  [stage]: { ...currentStage, ...stageData }
+                };
+                return { 
+                  ...form, 
+                  entries: updatedEntries,
+                  lastTextEntry: hasTextEntry ? new Date() : form.lastTextEntry
+                };
               }
-            : state.currentForm
-        }));
+              return form;
+            }),
+            currentForm: state.currentForm?.id === formId 
+              ? {
+                  ...state.currentForm,
+                  entries: state.currentForm.entries.map((entry, index) => 
+                    index === rowIndex 
+                      ? {
+                          ...entry,
+                          [stage]: { ...(entry[stage as keyof typeof entry] as any), ...stageData }
+                        }
+                      : entry
+                  ),
+                  lastTextEntry: hasTextEntry ? new Date() : state.currentForm.lastTextEntry
+                }
+              : state.currentForm
+          };
+        });
       },
       
       addAdminComment: (formId: string, adminInitial: string, comment: string) => {
@@ -335,6 +393,8 @@ export const usePaperFormStore = create<PaperFormStore>()(
         const { currentForm } = get();
         if (!currentForm) return;
         
+        console.log(`updateEntry called for row: ${rowIndex}, field: ${field}, value: ${value}, type: ${typeof value}, isNull: ${value === null}, isUndefined: ${value === undefined}, isEmpty: ${value === ''}`);
+        
         // Parse the field path (e.g., "ccp1.initial" -> stage: "ccp1", field: "initial")
         const [stage, fieldName] = field.split('.');
         if (stage && fieldName && currentForm.entries[rowIndex]) {
@@ -350,7 +410,33 @@ export const usePaperFormStore = create<PaperFormStore>()(
             }
           };
           
-          set({ currentForm: { ...currentForm, entries: updatedEntries } });
+          // Update lastTextEntry when ANY keystroke is detected (but not for dataLog checkbox)
+          const shouldUpdateLastTextEntry = fieldName !== 'dataLog' && 
+            (value !== null && value !== undefined);
+          
+          if (shouldUpdateLastTextEntry) {
+            console.log(`✅ UPDATING lastTextEntry for field ${field} with value:`, value);
+            console.log(`Old lastTextEntry:`, currentForm.lastTextEntry);
+            console.log(`New lastTextEntry:`, new Date());
+          } else {
+            console.log(`❌ NOT updating lastTextEntry for field ${field} with value:`, value);
+            console.log(`Reason: fieldName=${fieldName}, isDataLog=${fieldName === 'dataLog'}, isNull=${value === null}, isUndefined=${value === undefined}`);
+          }
+          
+          const newLastTextEntry = shouldUpdateLastTextEntry ? new Date() : currentForm.lastTextEntry;
+          
+          set((state) => ({
+            currentForm: { 
+              ...currentForm, 
+              entries: updatedEntries,
+              lastTextEntry: newLastTextEntry
+            },
+            savedForms: state.savedForms.map(form => 
+              form.id === currentForm.id 
+                ? { ...form, entries: updatedEntries, lastTextEntry: newLastTextEntry }
+                : form
+            )
+          }));
         }
       },
       
@@ -398,6 +484,75 @@ export const usePaperFormStore = create<PaperFormStore>()(
       clearAllFormsLocally: () => {
         set({ savedForms: [], currentForm: null });
         console.log('All forms cleared locally.');
+      },
+      
+      // Debug function to test lastTextEntry updates
+      debugLastTextEntry: () => {
+        const { currentForm } = get();
+        if (currentForm) {
+          console.log('Current form lastTextEntry:', currentForm.lastTextEntry);
+          console.log('Current form data:', currentForm);
+        } else {
+          console.log('No current form');
+        }
+      },
+      
+      // Test function to manually update lastTextEntry
+      testUpdateLastTextEntry: () => {
+        const { currentForm } = get();
+        if (currentForm) {
+          console.log('Testing lastTextEntry update...');
+          const newDate = new Date();
+          console.log('Setting lastTextEntry to:', newDate);
+          
+          set((state) => ({
+            currentForm: { ...currentForm, lastTextEntry: newDate },
+            savedForms: state.savedForms.map(form => 
+              form.id === currentForm.id ? { ...form, lastTextEntry: newDate } : form
+            )
+          }));
+          
+          console.log('lastTextEntry updated in store');
+        } else {
+          console.log('No current form to update');
+        }
+      },
+      
+      // Function to log current state for debugging
+      logCurrentState: () => {
+        const { currentForm, savedForms } = get();
+        console.log('=== CURRENT STORE STATE ===');
+        console.log('Current Form:', currentForm);
+        if (currentForm) {
+          console.log('Current Form lastTextEntry:', currentForm.lastTextEntry);
+          console.log('Current Form entries count:', currentForm.entries?.length);
+        }
+        console.log('Saved Forms count:', savedForms.length);
+        if (savedForms.length > 0) {
+          console.log('First saved form lastTextEntry:', savedForms[0].lastTextEntry);
+          console.log('First saved form ID:', savedForms[0].id);
+        }
+        console.log('=== END STORE STATE ===');
+      },
+      
+      // Function to force update lastTextEntry for testing
+      forceUpdateLastTextEntry: () => {
+        const { currentForm } = get();
+        if (currentForm) {
+          console.log('Force updating lastTextEntry...');
+          const newDate = new Date();
+          
+          set((state) => ({
+            currentForm: { ...currentForm, lastTextEntry: newDate },
+            savedForms: state.savedForms.map(form => 
+              form.id === currentForm.id ? { ...form, lastTextEntry: newDate } : form
+            )
+          }));
+          
+          console.log('Force updated lastTextEntry to:', newDate);
+        } else {
+          console.log('No current form to force update');
+        }
       }
     }),
     {

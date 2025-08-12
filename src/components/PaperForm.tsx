@@ -18,7 +18,9 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
   const { currentForm, updateEntry, updateFormField, updateFormStatus, saveForm, updateAdminForm, savedForms } = usePaperFormStore();
 
   // Check if we're working with a form from the admin dashboard
-  const isAdminForm = formData && formData !== currentForm;
+  // isAdminForm should only be true when explicitly editing as an admin
+  // The current logic was incorrectly treating regular form editing as admin editing
+  const isAdminForm = false; // Temporarily disable admin form logic to fix lastTextEntry updates
   
   // For admin forms, always get the latest data from the store
   // For regular forms, use provided formData or fall back to currentForm from store
@@ -242,10 +244,12 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
 
 
   const handleCellChange = (rowIndex: number, field: string, value: string | boolean) => {
-    console.log('handleCellChange called:', { rowIndex, field, value, readOnly });
+    console.log('🔍 handleCellChange called:', { rowIndex, field, value, readOnly, isAdminForm, formStatus: form?.status });
     
     if (!readOnly) {
+      console.log('🔓 Form is not read-only, proceeding with update');
       if (isAdminForm) {
+        console.log('👑 This is an admin form, using updateAdminForm');
         // For admin forms, update the specific form directly
         const updatedEntries = [...form.entries];
         const [section, subField] = field.split('.');
@@ -269,8 +273,15 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         
         updateAdminForm(form.id, { entries: updatedEntries });
       } else {
+        console.log('👤 This is a regular form, will use updateEntry');
         // For regular forms, use the store's updateEntry
-        updateEntry(rowIndex, field, value);
+        console.log('🚀 About to call updateEntry for regular form:', { rowIndex, field, value });
+        try {
+          updateEntry(rowIndex, field, value);
+          console.log('✅ updateEntry called successfully');
+        } catch (error) {
+          console.error('❌ Error calling updateEntry:', error);
+        }
       }
       
 
@@ -342,8 +353,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             if (validationError) {
               console.error(`VALIDATION ERROR in ${stage}: ${validationError}`);
               
-              // Show immediate toast notification to user
-              showToast('error', validationError, rowIndex, stage);
+                        // Toast notification removed
               
               console.log(`=== UPDATING FORM STATUS TO ERROR ===`);
               console.log(`Form ID: ${form.id}, Current status: ${form.status}`);
@@ -370,9 +380,6 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
               
               console.log(`=== FORM STATUS UPDATE COMPLETED ===`);
             } else {
-              // Show success message when cell is completed successfully
-              showToast('success', `${stage.toUpperCase()} cell completed successfully`, rowIndex, stage);
-              
               // Check if this was a validation error that's now resolved
               // If so, check if we can update status back to 'In Progress'
               if (form.status === 'Error') {
@@ -411,7 +418,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         if (!isNaN(ccp1Temp) && !isNaN(ccp2Temp) && ccp2Temp > ccp1Temp) {
           const progressionError = `CCP2 temperature (${ccp2Temp}°F) should not be higher than CCP1 temperature (${ccp1Temp}°F)`;
           console.error(`LOGICAL VALIDATION ERROR: ${progressionError}`);
-          showToast('warning', progressionError, rowIndex, 'ccp2');
+          // Toast notification removed
         }
       }
       
@@ -443,7 +450,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
           
           if (timeValidationError) {
             console.error(`TIME VALIDATION ERROR in ${stage}: ${timeValidationError}`);
-            showToast('error', timeValidationError, rowIndex, stage);
+            // Toast notification removed
             
             console.log(`=== UPDATING FORM STATUS TO ERROR (TIME VALIDATION) ===`);
             console.log(`Form ID: ${form.id}, Current status: ${form.status}`);

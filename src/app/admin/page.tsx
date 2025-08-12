@@ -633,7 +633,7 @@ export default function AdminDashboard() {
         </div>
         {/* NEW: Show last update time */}
         <div className="text-xs text-gray-500 px-3">
-          Last updated: {new Date().toLocaleTimeString()}
+          Last updated: {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : 'No text entered yet'}
         </div>
       </div>
     );

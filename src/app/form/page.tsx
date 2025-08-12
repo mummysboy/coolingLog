@@ -171,8 +171,11 @@ export default function FormPage() {
           });
         }).length;
         
+        // Only mark as Complete if ALL entries are complete AND user explicitly wants it
+        // This prevents automatic completion from blocking further edits
         if (completeEntries === currentForm.entries.length && currentForm.entries.length > 0) {
-          newStatus = 'Complete';
+          // Don't automatically set to Complete - let user do it manually
+          newStatus = 'In Progress';
         } else {
           newStatus = 'In Progress';
         }
@@ -229,6 +232,7 @@ export default function FormPage() {
               />
             </div>
           </div>
+          
           
           {/* Add Form Button with Dropdown */}
           <div className="relative add-form-dropdown">
@@ -381,23 +385,16 @@ export default function FormPage() {
                       {/* Additional Form Summary Info */}
                       <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div className="bg-gray-50 rounded-lg p-3">
-                          <div className="font-medium text-gray-700">Entries with Data</div>
+                          <div className="font-medium text-gray-700">Date Created</div>
                           <div className="text-lg font-semibold text-gray-900">
-                            {form.entries.filter(entry => 
-                              entry.type || 
-                              entry.ccp1.temp || 
-                              entry.ccp2.temp || 
-                              entry.coolingTo80.temp || 
-                              entry.coolingTo54.temp || 
-                              entry.finalChill.temp
-                            ).length} / {form.entries.length}
+                            {new Date(form.dateCreated || form.date).toLocaleDateString()}
                           </div>
                         </div>
                         
                         <div className="bg-gray-50 rounded-lg p-3">
                           <div className="font-medium text-gray-700">Last Updated</div>
                           <div className="text-lg font-semibold text-gray-900">
-                            {new Date().toLocaleTimeString()}
+                            {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : 'No text entered yet'}
                           </div>
                         </div>
                         
