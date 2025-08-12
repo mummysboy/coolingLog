@@ -3,57 +3,19 @@
 import { useEffect, useState } from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import type { PaperFormEntry } from '@/lib/paperFormTypes';
-import { usePinStore } from '@/stores/pinStore';
 import { PaperForm } from '@/components/PaperForm';
-import { InitialSelector } from '@/components/InitialSelector';
-import { PinAuthModal } from '@/components/PinAuthModal';
 import { validateForm, shouldHighlightCell } from '@/lib/validation';
 
 export default function FormPage() {
-  const { currentForm, createNewForm, selectedInitial, setSelectedInitial, updateFormStatus, saveForm, savedForms, loadForm } = usePaperFormStore();
-  const { isAuthenticated, clearAuthentication } = usePinStore();
-  const [showPinModal, setShowPinModal] = useState(false);
-  const [pendingInitial, setPendingInitial] = useState<string>('');
+  const { currentForm, createNewForm, updateFormStatus, saveForm, savedForms, loadForm } = usePaperFormStore();
   const [formUpdateKey, setFormUpdateKey] = useState(0); // Force re-render when form updates
   const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [lastValidationUpdate, setLastValidationUpdate] = useState<number>(0); // Track when validation last updated status
 
-  // Check if current initial is authenticated
-  const isCurrentInitialAuthenticated = selectedInitial ? isAuthenticated(selectedInitial) : false;
-
-  // Effect to handle form loading when initial changes
+  // Create a default form on page load
   useEffect(() => {
-    console.log('Form page useEffect triggered:', {
-      selectedInitial,
-      isCurrentInitialAuthenticated,
-      currentFormId: currentForm?.id,
-      currentFormInitial: currentForm?.formInitial,
-      savedFormsCount: savedForms.length
-    });
-
-    if (!selectedInitial) {
-      // No initial selected, clear any current form
-      console.log('No initial selected, clearing form');
-      return;
-    }
-
-    if (!isCurrentInitialAuthenticated) {
-      // Not authenticated, don't load forms yet
-      console.log('Initial not authenticated yet:', selectedInitial);
-      return;
-    }
-
-    // Clear current form when initial changes to ensure clean state
-    if (currentForm && currentForm.formInitial !== selectedInitial) {
-      // Force clear the current form when switching to a different initial
-      console.log('Switching to different initial, clearing current form');
-      setFormUpdateKey(prev => prev + 1);
-      return;
-    }
-
-    // Load or create form for the current initial
-    const loadFormForInitial = async () => {
-      console.log('Loading form for initial:', selectedInitial);
+    const loadDefaultForm = async () => {
+      console.log('Loading default form');
       setIsLoadingForm(true);
       
       try {
@@ -64,7 +26,7 @@ export default function FormPage() {
         // Look for an existing form for today
         const existingForm = savedForms.find((form: PaperFormEntry) => {
           const formDateString = form.date.toISOString().split('T')[0];
-          return form.formInitial === selectedInitial && formDateString === todayString;
+          return formDateString === todayString;
         });
         
         if (existingForm) {
@@ -77,61 +39,61 @@ export default function FormPage() {
           }
         } else if (!currentForm) {
           // Create a new form for today if none exists
-          console.log('Creating new form for initial:', selectedInitial);
-          createNewForm(selectedInitial);
+          console.log('Creating new form for today');
+          createNewForm('USER'); // Use a default initial
         }
       } catch (error) {
-        console.error('Error loading form for initial:', error);
+        console.error('Error loading form:', error);
       } finally {
         setIsLoadingForm(false);
       }
     };
 
-    loadFormForInitial();
-  }, [selectedInitial, isCurrentInitialAuthenticated, savedForms, currentForm, createNewForm, loadForm]);
+    loadDefaultForm();
+  }, [savedForms, currentForm, createNewForm, loadForm]);
 
-  // NEW: Real-time status monitoring effect
+  // Real-time status monitoring effect
   useEffect(() => {
     if (!currentForm) return;
 
-          // Function to check and update form status based on validation
-      const checkAndUpdateStatus = () => {
-        // Only check for errors when all three fields (temp, time, initial) are complete for a cell
-        let hasErrors = false;
-        let hasCompleteEntries = false;
+    // Function to check and update form status based on validation
+    const checkAndUpdateStatus = () => {
+      // Only check for errors when all three fields (temp, time, initial) are complete for a cell
+      let hasErrors = false;
+      let hasCompleteEntries = false;
+      
+      currentForm.entries.forEach((entry, rowIndex) => {
+        const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
         
-        currentForm.entries.forEach((entry, rowIndex) => {
-          const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+        stages.forEach(stage => {
+          const stageData = entry[stage as keyof typeof entry] as any;
           
-          stages.forEach(stage => {
-            const stageData = entry[stage as keyof typeof entry] as any;
+          // Only validate if all three fields are present
+          if (stageData && stageData.temp && stageData.time && stageData.initial) {
+            hasCompleteEntries = true;
             
-            // Only validate if all three fields are present
-            if (stageData && stageData.temp && stageData.time && stageData.initial) {
-              hasCompleteEntries = true;
+            // Check if this specific cell has validation errors
+            const validation = shouldHighlightCell(currentForm, rowIndex, `${stage}.temp`);
+            if (validation.highlight && validation.severity === 'error') {
+              // Get the full validation to find the error message
+              const fullValidation = validateForm(currentForm);
+              const cellError = fullValidation.errors.find(
+                error => error.rowIndex === rowIndex && error.field === `${stage}.temp`
+              );
               
-              // Check if this specific cell has validation errors
-              const validation = shouldHighlightCell(currentForm, rowIndex, `${stage}.temp`);
-              if (validation.highlight && validation.severity === 'error') {
-                // Get the full validation to find the error message
-                const fullValidation = validateForm(currentForm);
-                const cellError = fullValidation.errors.find(
-                  error => error.rowIndex === rowIndex && error.field === `${stage}.temp`
-                );
+              if (cellError) {
+                // Check if this error has been resolved by admin
+                const errorId = `${rowIndex}-${stage}.temp-${cellError.message}`;
+                const isResolved = currentForm.resolvedErrors?.includes(errorId);
                 
-                if (cellError) {
-                  // Check if this error has been resolved by admin
-                  const errorId = `${rowIndex}-${stage}.temp-${cellError.message}`;
-                  const isResolved = currentForm.resolvedErrors?.includes(errorId);
-                  
-                  if (!isResolved) {
-                    hasErrors = true;
-                  }
+                if (!isResolved) {
+                  hasErrors = true;
                 }
               }
             }
-          });
+          }
         });
+      });
 
       let newStatus: 'Complete' | 'In Progress' | 'Error';
       
@@ -187,106 +149,17 @@ export default function FormPage() {
     };
   }, [currentForm, updateFormStatus, saveForm]);
 
-  // Handle initial selection with PIN authentication
-  const handleInitialChange = (newInitial: string) => {
-    console.log('handleInitialChange called:', { newInitial, currentInitial: selectedInitial });
-    
-    if (newInitial === selectedInitial) return;
-
-    // Clear current form when changing initials to force refresh
-    if (currentForm) {
-      console.log('Clearing current form for initial change');
-      // Reset the current form to trigger a clean state
-      setFormUpdateKey(prev => prev + 1);
-    }
-
-    // If selecting a new initial, check if it needs authentication
-    if (newInitial && !isAuthenticated(newInitial)) {
-      console.log('New initial requires authentication:', newInitial);
-      setPendingInitial(newInitial);
-      setShowPinModal(true);
-    } else {
-      // Already authenticated or no initial selected
-      console.log('Setting new initial (already authenticated):', newInitial);
-      setSelectedInitial(newInitial);
-    }
-  };
-
-  // Handle successful PIN authentication
-  const handlePinSuccess = () => {
-    setShowPinModal(false);
-    setSelectedInitial(pendingInitial);
-    setPendingInitial('');
-    // Force a refresh after successful authentication
-    setFormUpdateKey(prev => prev + 1);
-  };
-
-  // Handle PIN authentication cancel
-  const handlePinCancel = () => {
-    setShowPinModal(false);
-    setPendingInitial('');
-  };
-
-  // Handle logout from current initial
-  const handleLogout = () => {
-    if (selectedInitial) {
-      clearAuthentication(selectedInitial);
-      setSelectedInitial('');
-      // Clear current form and force refresh
-      setFormUpdateKey(prev => prev + 1);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      {/* Header with Initial Selector */}
+      {/* Header */}
       <div className="max-w-7xl mx-auto px-4 mb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Food Chilling Log Form</h1>
-          </div>
-          <div className="flex items-center space-x-4">
-            {selectedInitial && isCurrentInitialAuthenticated && (
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-                title={`Logout from ${selectedInitial}`}
-              >
-                Logout {selectedInitial}
-              </button>
-            )}
-            <InitialSelector onInitialChange={handleInitialChange} />
-          </div>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Food Chilling Log Form</h1>
         </div>
       </div>
 
       {/* Form Content */}
-      {!selectedInitial ? (
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200">
-            <div className="text-6xl mb-4">👤</div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Select an Initial</h2>
-            <p className="text-gray-600">Please select an initial from the dropdown above to view and manage forms.</p>
-          </div>
-        </div>
-      ) : !isCurrentInitialAuthenticated ? (
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center py-12 bg-white rounded-xl border-2 border-orange-200">
-            <div className="text-6xl mb-4">🔒</div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Authentication Required</h2>
-            <p className="text-gray-600">Please authenticate with your PIN to access forms for &quot;{selectedInitial}&quot;.</p>
-            <button
-              onClick={() => {
-                setPendingInitial(selectedInitial);
-                setShowPinModal(true);
-              }}
-              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Enter PIN
-            </button>
-          </div>
-        </div>
-      ) : isLoadingForm || !currentForm ? (
+      {isLoadingForm || !currentForm ? (
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200">
             <div className="text-6xl mb-4">⏳</div>
@@ -296,7 +169,7 @@ export default function FormPage() {
         </div>
       ) : (
         <div className="max-w-7xl mx-auto px-4">
-          {/* NEW: Real-time Status Indicator */}
+          {/* Real-time Status Indicator */}
           <div className="mb-6 bg-white rounded-xl border-2 border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -316,7 +189,7 @@ export default function FormPage() {
                      currentForm.status === 'Error' ? '⚠️ Has Errors' :
                      '⏳ In Progress'}
                   </p>
-                  {/* NEW: Show error count when there are validation errors */}
+                  {/* Show error count when there are validation errors */}
                   {currentForm.status === 'Error' && (() => {
                     let errorCount = 0;
                     currentForm.entries.forEach((entry, rowIndex) => {
@@ -349,7 +222,7 @@ export default function FormPage() {
           
           <PaperForm 
             key={formUpdateKey}
-            formData={currentForm} // Pass formData to make it work like admin page
+            formData={currentForm}
             readOnly={false}
             onFormUpdate={(formId, updates) => {
               console.log('Form updated in form page:', formId, updates);
@@ -366,14 +239,6 @@ export default function FormPage() {
           />
         </div>
       )}
-
-      {/* PIN Authentication Modal */}
-      <PinAuthModal
-        isOpen={showPinModal}
-        initials={pendingInitial}
-        onSuccess={handlePinSuccess}
-        onCancel={handlePinCancel}
-      />
     </div>
   );
 }
