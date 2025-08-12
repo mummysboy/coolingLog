@@ -488,298 +488,113 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         }
       }
       
-      // NEW: Always run validation regardless of form status or snapshot state
-      // This ensures that new errors are caught even after previous errors were resolved
-      console.log('=== ALWAYS RUNNING VALIDATION FOR NEW ERRORS ===');
-      console.log('Modified cell:', field, 'at row:', rowIndex);
-      console.log('Current form status:', form.status);
-      console.log('Has resolvedDataSnapshot:', !!resolvedDataSnapshot);
-      
-      // Check if the current value has validation errors based on column requirements
-      let currentHasError = false;
-      
-      if (field.includes('.temp')) {
-        // Temperature validation based on column requirements
-        const tempValue = parseFloat(String(value || ''));
-        if (isNaN(tempValue)) {
-          currentHasError = true;
-          console.log(`Temperature validation failed: NaN value`);
-        } else {
-          // Check against specific column requirements
-          if (field.includes('ccp1.temp')) {
-            // CCP 1: Temperature Must reach 166°F or greater
-            currentHasError = tempValue < 166;
-            console.log(`CCP1 validation: ${tempValue}°F >= 166°F = ${tempValue >= 166}`);
-          } else if (field.includes('ccp2.temp')) {
-            // CCP 2: 127°F or greater
-            currentHasError = tempValue < 127;
-            console.log(`CCP2 validation: ${tempValue}°F >= 127°F = ${tempValue >= 127}`);
-          } else if (field.includes('coolingTo80.temp')) {
-            // 80°F Cooling: 80°F or below within 105 minutes
-            currentHasError = tempValue > 80;
-            console.log(`80°F Cooling validation: ${tempValue}°F <= 80°F = ${tempValue <= 80}`);
-          } else if (field.includes('coolingTo54.temp')) {
-            // 54°F Cooling: 54°F or below within 4.75 hr
-            currentHasError = tempValue > 54;
-            console.log(`54°F Cooling validation: ${tempValue}°F <= 54°F = ${tempValue <= 54}`);
-          } else if (field.includes('finalChill.temp')) {
-            // Final Chill: 39°F or below
-            currentHasError = tempValue > 39;
-            console.log(`Final Chill validation: ${tempValue}°F <= 39°F = ${tempValue <= 39}`);
-          }
-        }
-      } else if (field.includes('.time')) {
-        // Time validation - must not be empty
-        currentHasError = !value || (typeof value === 'string' && value.trim() === '');
-        console.log(`Time validation: empty = ${currentHasError}`);
-      } else if (field.includes('.initial')) {
-        // Initial validation - must not be empty
-        currentHasError = !value || (typeof value === 'string' && value.trim() === '');
-        console.log(`Initial validation: empty = ${currentHasError}`);
-      } else if (field === 'type') {
-        // Type validation - must not be empty
-        currentHasError = !value || (typeof value === 'string' && value.trim() === '');
-        console.log(`Type validation: empty = ${currentHasError}`);
-      }
-      
-      console.log(`Current cell has validation error: ${currentHasError}`);
-      
-      // If there's a validation error, update the form status to Error
-      if (currentHasError) {
-        console.log('=== VALIDATION ERROR DETECTED - UPDATING STATUS ===');
-        console.log('Validation error in field:', field, 'at row:', rowIndex);
-        
-        // Update form status to 'Error' when validation fails
-        if (onFormUpdate) {
-          console.log('Calling onFormUpdate with status: Error');
-          onFormUpdate(form.id, { status: 'Error' });
-        }
-        
-        if (isAdminForm) {
-          console.log('Updating admin form status to Error');
-          updateAdminForm(form.id, { status: 'Error' });
-        } else {
-          console.log('Updating regular form status to Error');
-          // Use the store's updateFormStatus function directly for immediate effect
-          updateFormStatus(form.id, 'Error');
-                        // Also update the current form status locally for immediate UI update
-              updateFormField(form.id, 'status', 'Error');
-          // Save the form to persist the status change
-          setTimeout(() => saveForm(), 100);
-        }
-        
-        console.log('=== VALIDATION STATUS UPDATE COMPLETED ===');
-        
-        // Reset the resolvedDataSnapshot when a new error is detected
-        // This ensures that new errors can be properly tracked after previous ones were resolved
-        if (resolvedDataSnapshot) {
-          console.log('Resetting resolvedDataSnapshot due to new validation error');
-          setResolvedDataSnapshot(null);
-        }
-      }
-      
-      // LEGACY: Keep the old logic for backward compatibility but make it less restrictive
-      console.log('=== CHECKING SPECIFIC CELL FOR NEW ERRORS (LEGACY) ===');
+      // MODIFIED: Only run validation when all three fields (temp, time, initial) are complete for a stage
+      // This prevents input freezing by avoiding validation on every keystroke
+      console.log('=== CHECKING IF STAGE IS COMPLETE FOR VALIDATION ===');
       console.log('Modified cell:', field, 'at row:', rowIndex);
       
-      if (form.status === 'In Progress' && resolvedDataSnapshot) {
-        // Get the resolved value for this specific cell only
-        let resolvedValue;
-        if (field.includes('.')) {
-          const [section, subField] = field.split('.');
-          resolvedValue = resolvedDataSnapshot.entries[rowIndex]?.[section]?.[subField];
-        } else {
-          resolvedValue = resolvedDataSnapshot.entries[rowIndex]?.[field];
-        }
+      // Extract the stage name from the field (e.g., 'ccp1.temp' -> 'ccp1')
+      const stageMatch = field.match(/^([^.]+)\.(temp|time|initial)$/);
+      if (stageMatch) {
+        const stageName = stageMatch[1];
+        const fieldType = stageMatch[2];
+        const currentEntry = form.entries[rowIndex];
+        const stageData = currentEntry[stageName as keyof typeof currentEntry] as any;
         
-        console.log('Resolved cell value:', resolvedValue, 'Current cell value:', value);
+        // Check if all three fields are complete for this stage
+        const hasTemp = stageData.temp && String(stageData.temp).trim() !== '';
+        const hasTime = stageData.time && String(stageData.time).trim() !== '';
+        const hasInitial = stageData.initial && String(stageData.initial).trim() !== '';
+        const isStageComplete = hasTemp && hasTime && hasInitial;
         
-        // Only check for errors if this specific cell actually changed
-        if (resolvedValue !== value) {
-          console.log('Cell value changed, checking ONLY this cell for validation errors...');
+        console.log(`Stage ${stageName} completion: temp=${hasTemp}, time=${hasTime}, initial=${hasInitial}, complete=${isStageComplete}`);
+        
+        // Only run validation if the stage is complete
+        if (isStageComplete) {
+          console.log(`=== RUNNING VALIDATION FOR COMPLETE STAGE: ${stageName} ===`);
           
-          // Smart validation: Check if this cell went from valid to invalid
-          let hasNewError = false;
+          let validationError = '';
+          const tempValue = parseFloat(String(stageData.temp));
           
-          // Get the resolved value for this specific cell
-          let resolvedValue;
-          if (field.includes('.')) {
-            const [section, subField] = field.split('.');
-            const resolvedEntry = resolvedDataSnapshot.entries[rowIndex];
-            if (resolvedEntry && resolvedEntry[section as keyof typeof resolvedEntry]) {
-              const resolvedSectionData = resolvedEntry[section as keyof typeof resolvedEntry] as any;
-              resolvedValue = resolvedSectionData?.[subField];
-            }
-          } else {
-            resolvedValue = resolvedDataSnapshot.entries[rowIndex]?.[field as keyof any];
-          }
-          
-          console.log(`=== CELL COMPARISON DEBUG ===`);
-          console.log(`Field: ${field}, Row: ${rowIndex}`);
-          console.log(`Resolved value: "${resolvedValue}"`);
-          console.log(`Current value: "${value}"`);
-          console.log(`Values are different: ${resolvedValue !== value}`);
-          console.log(`=== END CELL COMPARISON DEBUG ===`);
-          
-          // Check if the current value has validation errors based on column requirements
-          let currentHasError = false;
-          
-          if (field.includes('.temp')) {
-            // Temperature validation based on column requirements
-            const tempValue = parseFloat(String(value || ''));
-            if (isNaN(tempValue)) {
-              currentHasError = true;
-              console.log(`Temperature validation failed: NaN value`);
-            } else {
-              // Check against specific column requirements
-              if (field.includes('ccp1.temp')) {
-                // CCP 1: Temperature Must reach 166°F or greater
-                currentHasError = tempValue < 166;
-                console.log(`CCP1 validation: ${tempValue}°F >= 166°F = ${tempValue >= 166}`);
-              } else if (field.includes('ccp2.temp')) {
-                // CCP 2: 127°F or greater
-                currentHasError = tempValue < 127;
-                console.log(`CCP2 validation: ${tempValue}°F >= 127°F = ${tempValue >= 127}`);
-              } else if (field.includes('coolingTo80.temp')) {
-                // 80°F Cooling: 80°F or below within 105 minutes
-                currentHasError = tempValue > 80;
-                console.log(`80°F Cooling validation: ${tempValue}°F <= 80°F = ${tempValue <= 80}`);
-              } else if (field.includes('coolingTo54.temp')) {
-                // 54°F Cooling: 54°F or below within 4.75 hr
-                currentHasError = tempValue > 54;
-                console.log(`54°F Cooling validation: ${tempValue}°F <= 54°F = ${tempValue <= 54}`);
-              } else if (field.includes('finalChill.temp')) {
-                // Final Chill: 39°F or below
-                currentHasError = tempValue > 39;
-                console.log(`Final Chill validation: ${tempValue}°F <= 39°F = ${tempValue <= 39}`);
+          if (!isNaN(tempValue)) {
+            // Check against specific column requirements
+            if (stageName === 'ccp1') {
+              // CCP 1: Temperature Must reach 166°F or greater
+              if (tempValue < 166) {
+                validationError = `CCP1 temperature ${tempValue}°F is below minimum required 166°F`;
+              }
+            } else if (stageName === 'ccp2') {
+              // CCP 2: 127°F or greater
+              if (tempValue < 127) {
+                validationError = `CCP2 temperature ${tempValue}°F is below minimum required 127°F`;
+              }
+            } else if (stageName === 'coolingTo80') {
+              // 80°F Cooling: 80°F or below within 105 minutes
+              if (tempValue > 80) {
+                validationError = `80°F Cooling temperature ${tempValue}°F is above maximum allowed 80°F`;
+              }
+              
+              // Check time limit if CCP2 time is available
+              if (!validationError && currentEntry.ccp2.time) {
+                const timeDiff = getTimeDifferenceMinutes(currentEntry.ccp2.time, stageData.time);
+                if (timeDiff !== null && timeDiff > 105) {
+                  validationError = `80°F Cooling time limit exceeded: ${timeDiff} minutes (limit: 105 minutes)`;
+                }
+              }
+            } else if (stageName === 'coolingTo54') {
+              // 54°F Cooling: 54°F or below within 4.75 hours
+              if (tempValue > 54) {
+                validationError = `54°F Cooling temperature ${tempValue}°F is above maximum allowed 54°F`;
+              }
+              
+              // Check time limit if previous cooling stage time is available
+              if (!validationError) {
+                const referenceTime = currentEntry.coolingTo80.time || currentEntry.ccp2.time;
+                if (referenceTime) {
+                  const timeDiff = getTimeDifferenceMinutes(referenceTime, stageData.time);
+                  if (timeDiff !== null && timeDiff > 4.75 * 60) { // Convert 4.75 hours to minutes
+                    validationError = `54°F Cooling time limit exceeded: ${(timeDiff / 60).toFixed(2)} hours (limit: 4.75 hours)`;
+                  }
+                }
+              }
+            } else if (stageName === 'finalChill') {
+              // Final Chill: 39°F or below
+              if (tempValue > 39) {
+                validationError = `Final Chill temperature ${tempValue}°F is above maximum allowed 39°F`;
               }
             }
-          } else if (field.includes('.time')) {
-            // Time validation - must not be empty
-            currentHasError = !value || (typeof value === 'string' && value.trim() === '');
-            console.log(`Time validation: empty = ${currentHasError}`);
-          } else if (field.includes('.initial')) {
-            // Initial validation - must not be empty
-            currentHasError = !value || (typeof value === 'string' && value.trim() === '');
-            console.log(`Initial validation: empty = ${currentHasError}`);
-          } else if (field === 'type') {
-            // Type validation - must not be empty
-            currentHasError = !value || (typeof value === 'string' && value.trim() === '');
-            console.log(`Type validation: empty = ${currentHasError}`);
           }
           
-          console.log(`Current cell has error: ${currentHasError}`);
-          
-          // Check if the resolved value had validation errors based on column requirements
-          let resolvedHadError = false;
-          
-          if (field.includes('.temp')) {
-            const resolvedTempValue = parseFloat(String(resolvedValue || ''));
-            if (isNaN(resolvedTempValue)) {
-              resolvedHadError = true;
-              console.log(`Resolved temperature validation failed: NaN value`);
-            } else {
-              // Check against specific column requirements
-              if (field.includes('ccp1.temp')) {
-                // CCP 1: Temperature Must reach 166°F or greater
-                resolvedHadError = resolvedTempValue < 166;
-                console.log(`Resolved CCP1 validation: ${resolvedTempValue}°F >= 166°F = ${resolvedTempValue >= 166}`);
-              } else if (field.includes('ccp2.temp')) {
-                // CCP 2: 127°F or greater
-                resolvedHadError = resolvedTempValue < 127;
-                console.log(`Resolved CCP2 validation: ${resolvedTempValue}°F >= 127°F = ${resolvedTempValue >= 127}`);
-              } else if (field.includes('coolingTo80.temp')) {
-                // 80°F Cooling: 80°F or below within 105 minutes
-                resolvedHadError = resolvedTempValue > 80;
-                console.log(`Resolved 80°F Cooling validation: ${resolvedTempValue}°F <= 80°F = ${resolvedTempValue <= 80}`);
-              } else if (field.includes('coolingTo54.temp')) {
-                // 54°F Cooling: 54°F or below within 4.75 hr
-                resolvedHadError = resolvedTempValue > 54;
-                console.log(`Resolved 54°F Cooling validation: ${resolvedTempValue}°F <= 54°F = ${resolvedTempValue <= 54}`);
-              } else if (field.includes('finalChill.temp')) {
-                // Final Chill: 39°F or below
-                resolvedHadError = resolvedTempValue > 39;
-                console.log(`Resolved Final Chill validation: ${resolvedTempValue}°F <= 39°F = ${resolvedTempValue <= 39}`);
-              }
-            }
-          } else if (field.includes('.time')) {
-            resolvedHadError = !resolvedValue || String(resolvedValue).trim() === '';
-            console.log(`Resolved time validation: empty = ${resolvedHadError}`);
-          } else if (field.includes('.initial')) {
-            resolvedHadError = !resolvedValue || String(resolvedValue).trim() === '';
-            console.log(`Resolved initial validation: empty = ${resolvedHadError}`);
-          } else if (field === 'type') {
-            resolvedHadError = !resolvedValue || String(resolvedValue).trim() === '';
-            console.log(`Resolved type validation: empty = ${resolvedHadError}`);
-          }
-          
-          // Only flag as new error if: current has error AND resolved didn't have error
-          hasNewError = currentHasError && !resolvedHadError;
-          
-          console.log(`Current cell has error: ${currentHasError}, Resolved cell had error: ${resolvedHadError}`);
-          console.log(`New error detected: ${hasNewError}`);
-          
-          if (hasNewError) {
-            console.log('=== STATUS UPDATE ATTEMPT ===');
-            console.log('New error detected in this specific cell, updating status back to Error');
-            console.log('Current form status before update:', form.status);
-            console.log('Form ID:', form.id);
-            console.log('isAdminForm:', isAdminForm);
-            console.log('onFormUpdate exists:', !!onFormUpdate);
+          // If validation error found, update form status to Error
+          if (validationError) {
+            console.log(`VALIDATION ERROR in ${stageName}: ${validationError}`);
             
-            // Update form status back to 'Error' when new errors occur
+            // Update form status to 'Error' when validation fails
             if (onFormUpdate) {
               console.log('Calling onFormUpdate with status: Error');
-              try {
-                onFormUpdate(form.id, { status: 'Error' });
-                console.log('onFormUpdate call completed successfully');
-              } catch (error) {
-                console.error('Error calling onFormUpdate:', error);
-              }
+              onFormUpdate(form.id, { status: 'Error' });
             }
             
             if (isAdminForm) {
               console.log('Updating admin form status to Error');
-              try {
-                updateAdminForm(form.id, { status: 'Error' });
-                console.log('updateAdminForm call completed successfully');
-              } catch (error) {
-                console.error('Error calling updateAdminForm:', error);
-              }
+              updateAdminForm(form.id, { status: 'Error' });
             } else {
               console.log('Updating regular form status to Error');
-              try {
-                // Use direct update to avoid potential issues with handleFormFieldChange
-                updateFormField(form.id, 'status', 'Error');
-                console.log('updateFormField call completed successfully');
-                // Also save the form to persist the status change
-                saveForm();
-                console.log('saveForm call completed successfully');
-              } catch (error) {
-                console.error('Error calling updateFormField or saveForm:', error);
-              }
+              updateFormStatus(form.id, 'Error');
+              updateFormField(form.id, 'status', 'Error');
+              setTimeout(() => saveForm(), 100);
             }
-            
-            console.log('All status update calls completed');
-            
-            // Check if the status actually changed
-            setTimeout(() => {
-              console.log('=== STATUS CHECK AFTER UPDATE ===');
-              console.log('Form status after update attempt:', form.status);
-              console.log('Form ID after update:', form.id);
-              console.log('=== END STATUS CHECK ===');
-            }, 100);
-            
-            console.log('=== END STATUS UPDATE ATTEMPT ===');
-          } else {
-            console.log('No new errors in this specific cell, status remains In Progress');
           }
         } else {
-          console.log('Cell value unchanged, no need to check for errors');
+          console.log(`Stage ${stageName} not complete yet, skipping validation`);
         }
       } else {
-        console.log('Not checking for new errors - status:', form.status, 'has snapshot:', !!resolvedDataSnapshot);
+        console.log('Field is not a stage field, skipping validation');
       }
+      
+      // REMOVED: Legacy individual field validation that was causing input freezing
+      
+      // Legacy validation logic removed to prevent input freezing
       
       // Auto-save after updating entry (only if form has data and not admin form)
       if (!isAdminForm) {
@@ -853,21 +668,43 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
   };
 
   // Helper function to get cell CSS classes based on validation
+  // Only shows red highlighting when all three fields (temp, time, initial) are complete
   const getCellClasses = (rowIndex: number, field: string, baseClasses: string) => {
     if (!form) return baseClasses;
     
-    const validation = shouldHighlightCell(form, rowIndex, field);
-    let classes = baseClasses;
-    
-    if (validation.highlight) {
-      if (validation.severity === 'error') {
-        classes += ' bg-red-200 border-2 border-red-500 shadow-sm';
-      } else if (validation.severity === 'warning') {
-        classes += ' bg-yellow-200 border-2 border-yellow-500 shadow-sm';
+    // Check if this is a stage field (temp, time, or initial)
+    const stageMatch = field.match(/^([^.]+)\.(temp|time|initial)$/);
+    if (stageMatch) {
+      const stageName = stageMatch[1];
+      const fieldType = stageMatch[2];
+      const currentEntry = form.entries[rowIndex];
+      const stageData = currentEntry[stageName as keyof typeof currentEntry] as any;
+      
+      // Check if all three fields are complete for this stage
+      const hasTemp = stageData.temp && String(stageData.temp).trim() !== '';
+      const hasTime = stageData.time && String(stageData.time).trim() !== '';
+      const hasInitial = stageData.initial && String(stageData.initial).trim() !== '';
+      const isStageComplete = hasTemp && hasTime && hasInitial;
+      
+      // Only show validation highlighting if the stage is complete
+      if (isStageComplete) {
+        const validation = shouldHighlightCell(form, rowIndex, field);
+        let classes = baseClasses;
+        
+        if (validation.highlight) {
+          if (validation.severity === 'error') {
+            classes += ' bg-red-200 border-2 border-red-500 shadow-sm';
+          } else if (validation.severity === 'warning') {
+            classes += ' bg-yellow-200 border-2 border-yellow-500 shadow-sm';
+          }
+        }
+        
+        return classes;
       }
     }
     
-    return classes;
+    // For non-stage fields or incomplete stages, return base classes without validation highlighting
+    return baseClasses;
   };
 
   return (
@@ -1017,11 +854,15 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 <td className={`border border-black p-1 ${entry.ccp1.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
                     <input
-                      type="text"
+                      type="number"
                       value={entry.ccp1.temp}
                       onChange={(e) => handleCellChange(rowIndex, 'ccp1.temp', e.target.value)}
-                      className={getCellClasses(rowIndex, 'ccp1.temp', 'w-full text-xs text-center rounded-sm')}
+                      className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="°F"
+                      step="0.1"
+                      min="0"
+                      max="300"
+                      inputMode="decimal"
                       readOnly={readOnly}
                     />
                     <TimePicker
@@ -1084,11 +925,15 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 <td className={`border border-black p-1 ${entry.ccp2.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
                     <input
-                      type="text"
+                      type="number"
                       value={entry.ccp2.temp}
                       onChange={(e) => handleCellChange(rowIndex, 'ccp2.temp', e.target.value)}
-                      className={getCellClasses(rowIndex, 'ccp2.temp', 'w-full text-xs text-center rounded-sm')}
+                      className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="°F"
+                      step="0.1"
+                      min="0"
+                      max="300"
+                      inputMode="decimal"
                       readOnly={readOnly}
                     />
                     <TimePicker
@@ -1151,11 +996,15 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 <td className={`border border-black p-1 ${entry.coolingTo80.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
                     <input
-                      type="text"
+                      type="number"
                       value={entry.coolingTo80.temp}
                       onChange={(e) => handleCellChange(rowIndex, 'coolingTo80.temp', e.target.value)}
-                      className={getCellClasses(rowIndex, 'coolingTo80.temp', 'w-full text-xs text-center rounded-sm')}
+                      className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="°F"
+                      step="0.1"
+                      min="0"
+                      max="300"
+                      inputMode="decimal"
                       readOnly={readOnly}
                     />
                     <TimePicker
@@ -1218,11 +1067,15 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 <td className={`border border-black p-1 ${entry.coolingTo54.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
                     <input
-                      type="text"
+                      type="number"
                       value={entry.coolingTo54.temp}
                       onChange={(e) => handleCellChange(rowIndex, 'coolingTo54.temp', e.target.value)}
-                      className={getCellClasses(rowIndex, 'coolingTo54.temp', 'w-full text-xs border-0 bg-transparent text-center')}
+                      className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="°F"
+                      step="0.1"
+                      min="0"
+                      max="300"
+                      inputMode="decimal"
                       readOnly={readOnly}
                     />
                     <TimePicker
@@ -1285,11 +1138,15 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 <td className={`border border-black p-1 ${entry.finalChill.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
                     <input
-                      type="text"
+                      type="number"
                       value={entry.finalChill.temp}
                       onChange={(e) => handleCellChange(rowIndex, 'finalChill.temp', e.target.value)}
-                      className={getCellClasses(rowIndex, 'finalChill.temp', 'w-full text-xs border-0 bg-transparent text-center')}
+                      className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="°F"
+                      step="0.1"
+                      min="0"
+                      max="300"
+                      inputMode="decimal"
                       readOnly={readOnly}
                     />
                     <TimePicker
