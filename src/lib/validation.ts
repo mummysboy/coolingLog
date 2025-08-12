@@ -128,24 +128,17 @@ export function validateTemperatureCell(
     };
   }
   
-  // Check time limits for cooling stages
-  if ('timeLimit' in rule && rule.timeLimit && referenceTime && comparisonTime) {
+  // Check time limits for cooling stages (only for 54°F stage, 80°F is handled separately)
+  if (stage === 'coolingTo54' && 'timeLimit' in rule && rule.timeLimit && referenceTime && comparisonTime) {
     const timeDiff = getTimeDifferenceMinutes(referenceTime, comparisonTime);
     
     if (timeDiff !== null) {
-      const timeLimitMinutes = stage === 'coolingTo54' 
-        ? rule.timeLimit * 60 // Convert hours to minutes for 54°F stage
-        : rule.timeLimit; // Already in minutes for 80°F stage
+      const timeLimitMinutes = rule.timeLimit * 60; // Convert hours to minutes for 54°F stage
       
       if (timeDiff > timeLimitMinutes) {
-        const unit = stage === 'coolingTo54' ? 'hours' : 'minutes';
-        const displayTime = stage === 'coolingTo54' 
-          ? (timeDiff / 60).toFixed(2) 
-          : timeDiff.toString();
-        
         return {
           isValid: false,
-          error: `Time limit exceeded: ${displayTime} ${unit} (limit: ${rule.timeLimit} ${unit})`
+          error: `Time limit exceeded: ${(timeDiff / 60).toFixed(2)} hours (limit: ${rule.timeLimit} hours)`
         };
       }
     }
@@ -188,39 +181,105 @@ export function validateFormRow(row: PaperFormRow, rowIndex: number): FormValida
         severity: 'error'
       });
     }
+    
+    // Check time sequence - CCP2 time must be after CCP1 time
+    if (row.ccp2.time && row.ccp1.time) {
+      const timeDiff = getTimeDifferenceMinutes(row.ccp1.time, row.ccp2.time);
+      if (timeDiff !== null && timeDiff < 0) {
+        errors.push({
+          rowIndex,
+          field: 'ccp2.time',
+          message: `CCP2 time cannot be before CCP1 time`,
+          severity: 'error'
+        });
+      }
+    }
   }
   
   // Validate cooling to 80°F with time check
   if (row.coolingTo80.temp) {
-    const result = validateTemperatureCell(
+    // First validate temperature
+    const tempResult = validateTemperatureCell(
       row.coolingTo80.temp,
-      'coolingTo80',
-      row.ccp2.time,
-      row.coolingTo80.time
+      'coolingTo80'
     );
-    if (!result.isValid && result.error) {
+    if (!tempResult.isValid && tempResult.error) {
       errors.push({
         rowIndex,
         field: 'coolingTo80.temp',
-        message: result.error,
+        message: tempResult.error,
         severity: 'error'
       });
+    }
+    
+    // Then validate timing - must be within 105 minutes of CCP2 time
+    if (row.coolingTo80.time && row.ccp2.time) {
+      const timeDiff = getTimeDifferenceMinutes(row.ccp2.time, row.coolingTo80.time);
+      if (timeDiff !== null && timeDiff > 105) {
+        errors.push({
+          rowIndex,
+          field: 'coolingTo80.time',
+          message: `Time limit exceeded`,
+          severity: 'error'
+        });
+      } else if (timeDiff !== null && timeDiff < 0) {
+        errors.push({
+          rowIndex,
+          field: 'coolingTo80.time',
+          message: `Invalid time sequence`,
+          severity: 'error'
+        });
+      }
+    } else if (row.coolingTo80.time && !row.ccp2.time) {
+      errors.push({
+        rowIndex,
+        field: 'coolingTo80.time',
+        message: `Missing reference time`,
+        severity: 'error'
+        });
     }
   }
   
   // Validate cooling to 54°F with time check
   if (row.coolingTo54.temp) {
-    const result = validateTemperatureCell(
+    // First validate temperature
+    const tempResult = validateTemperatureCell(
       row.coolingTo54.temp,
-      'coolingTo54',
-      row.coolingTo80.time || row.ccp2.time,
-      row.coolingTo54.time
+      'coolingTo54'
     );
-    if (!result.isValid && result.error) {
+    if (!tempResult.isValid && tempResult.error) {
       errors.push({
         rowIndex,
         field: 'coolingTo54.temp',
-        message: result.error,
+        message: tempResult.error,
+        severity: 'error'
+      });
+    }
+    
+    // Then validate timing - must be within 4.75 hours of CCP2 time (127°F or greater)
+    const referenceTime = row.ccp2.time;
+    if (row.coolingTo54.time && referenceTime) {
+      const timeDiff = getTimeDifferenceMinutes(referenceTime, row.coolingTo54.time);
+      if (timeDiff !== null && timeDiff > 4.75 * 60) { // Convert 4.75 hours to minutes
+        errors.push({
+          rowIndex,
+          field: 'coolingTo54.time',
+          message: `Time limit exceeded`,
+          severity: 'error'
+        });
+      } else if (timeDiff !== null && timeDiff < 0) {
+        errors.push({
+          rowIndex,
+          field: 'coolingTo54.time',
+          message: `Invalid time sequence`,
+          severity: 'error'
+        });
+      }
+    } else if (row.coolingTo54.time && !referenceTime) {
+      errors.push({
+        rowIndex,
+        field: 'coolingTo54.time',
+        message: `Missing reference time`,
         severity: 'error'
       });
     }
