@@ -35,6 +35,9 @@ interface PaperFormStore {
   isFormBlank: (form: PaperFormEntry) => boolean;
   exportState: () => any;
   
+  // AWS sync functions
+  syncFormsToAWS: () => Promise<{ success: boolean; synced: number; errors: number; error?: any }>;
+  
   // Initial management
   setSelectedInitial: (initial: string | null) => void;
   
@@ -124,11 +127,18 @@ export const usePaperFormStore = create<PaperFormStore>()(
       
       loadFormsFromStorage: async () => {
         try {
+          // Get current local forms before loading from AWS
+          const currentState = get();
+          const currentLocalForms = currentState.savedForms;
+          
+          console.log(`Current local forms count: ${currentLocalForms.length}`);
+          
           // Load forms from AWS DynamoDB
-          const forms = await awsStorageManager.getPaperForms();
+          const awsForms = await awsStorageManager.getPaperForms();
+          console.log(`AWS forms count: ${awsForms.length}`);
           
           // Migrate existing forms to include rack field and dataLog field if missing
-          const migratedForms = forms.map(form => {
+          const migratedForms = awsForms.map(form => {
             if (!form.entries) return form;
             
             const migratedEntries = form.entries.map(entry => {
@@ -162,12 +172,96 @@ export const usePaperFormStore = create<PaperFormStore>()(
             return { ...form, entries: migratedEntries };
           });
           
-          set({ savedForms: migratedForms });
-          console.log('Forms loaded successfully from AWS DynamoDB');
+          // Create a map of AWS forms by ID for easy lookup
+          const awsFormMap = new Map(migratedForms.map(f => [f.id, f]));
+          
+          // Merge AWS forms with locally created forms
+          const mergedForms: PaperFormEntry[] = [];
+          
+          // First, add all AWS forms
+          mergedForms.push(...migratedForms);
+          
+          // Then, add local forms that don't exist in AWS (or update existing ones with local data)
+          currentLocalForms.forEach(localForm => {
+            const existingAwsForm = awsFormMap.get(localForm.id);
+            
+            if (!existingAwsForm) {
+              // This is a new local form that hasn't been saved to AWS yet
+              console.log(`Adding local-only form: ${localForm.id}`);
+              mergedForms.push(localForm);
+            } else {
+              // This form exists in both places - use the local version if it's more recent
+              const localLastModified = localForm.lastTextEntry || localForm.date;
+              const awsLastModified = existingAwsForm.lastTextEntry || existingAwsForm.date;
+              
+              if (localLastModified > awsLastModified) {
+                console.log(`Using local version of form ${localForm.id} (more recent)`);
+                // Replace AWS version with local version
+                const index = mergedForms.findIndex(f => f.id === localForm.id);
+                if (index !== -1) {
+                  mergedForms[index] = localForm;
+                }
+              } else {
+                console.log(`Using AWS version of form ${localForm.id} (more recent)`);
+              }
+            }
+          });
+          
+          console.log(`Final merged forms count: ${mergedForms.length} (${migratedForms.length} from AWS, ${mergedForms.length - migratedForms.length} from local)`);
+          
+          set({ savedForms: mergedForms });
         } catch (error) {
           console.error('Error loading forms from AWS:', error);
+          console.error('Error details:', {
+            name: error instanceof Error ? error.name : 'Unknown',
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : 'No stack trace',
+            error: error
+          });
+          
           // Fallback to local storage if AWS fails
-          console.log('Falling back to local storage');
+          console.log('Falling back to local storage only');
+          const currentState = get();
+          if (currentState.savedForms.length > 0) {
+            console.log(`Using ${currentState.savedForms.length} forms from local storage`);
+            // Even if AWS fails, we should still show the local forms
+            set({ savedForms: currentState.savedForms });
+          }
+        }
+      },
+
+      // NEW: Function to sync local forms to AWS
+      syncFormsToAWS: async () => {
+        try {
+          const { savedForms } = get();
+          const localForms = savedForms.filter(form => !get().isFormBlank(form));
+          
+          if (localForms.length === 0) {
+            console.log('No forms to sync to AWS');
+            return { success: true, synced: 0, errors: 0 };
+          }
+          
+          console.log(`Attempting to sync ${localForms.length} forms to AWS...`);
+          
+          let synced = 0;
+          let errors = 0;
+          
+          for (const form of localForms) {
+            try {
+              await awsStorageManager.savePaperForm(form);
+              synced++;
+              console.log(`Successfully synced form ${form.id} to AWS`);
+            } catch (error) {
+              errors++;
+              console.error(`Failed to sync form ${form.id} to AWS:`, error);
+            }
+          }
+          
+          console.log(`Sync completed: ${synced} successful, ${errors} failed`);
+          return { success: true, synced, errors };
+        } catch (error) {
+          console.error('Error during AWS sync:', error);
+          return { success: false, synced: 0, errors: 0, error };
         }
       },
       
@@ -373,7 +467,34 @@ export const usePaperFormStore = create<PaperFormStore>()(
           form.lotNumbers.liquidEggs ||
           form.correctiveActionsComments;
         
-        return !hasEntries && !hasBottomSection;
+        // A form with a title is never blank
+        const hasTitle = form.title && form.title.trim() !== '';
+        
+        // A form with a status other than the default is never blank
+        const hasStatus = form.status && form.status !== 'In Progress';
+        
+        // A form with a formInitial is never blank
+        const hasInitial = form.formInitial && form.formInitial.trim() !== '';
+        
+        // A form with admin comments is never blank
+        const hasAdminComments = form.adminComments && form.adminComments.length > 0;
+        
+        // A form with corrective actions is never blank
+        const hasCorrectiveActions = form.correctiveActionsComments && form.correctiveActionsComments.trim() !== '';
+        
+        // Debug logging
+        console.log(`isFormBlank check for form ${form.id}:`, {
+          hasEntries,
+          hasBottomSection,
+          hasTitle: hasTitle ? `"${form.title}"` : false,
+          hasStatus,
+          hasInitial: hasInitial ? `"${form.formInitial}"` : false,
+          hasAdminComments,
+          hasCorrectiveActions: hasCorrectiveActions ? `"${form.correctiveActionsComments?.substring(0, 50)}..."` : false,
+          isBlank: !(hasEntries || hasBottomSection || hasTitle || hasStatus || hasInitial || hasAdminComments || hasCorrectiveActions)
+        });
+        
+        return !(hasEntries || hasBottomSection || hasTitle || hasStatus || hasInitial || hasAdminComments || hasCorrectiveActions);
       },
       
       exportState: () => {

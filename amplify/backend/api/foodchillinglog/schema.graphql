@@ -21,9 +21,9 @@ type User @model {
 type PaperFormEntry @model {
   id: ID!
   date: AWSDateTime!
-  formType: FormType!
+  formType: FormType
   formInitial: String!
-  status: FormStatus!
+  status: String
   title: String
   
   # Row entries (1-9)
@@ -273,9 +273,9 @@ input AdminCommentInput {
 input CreatePaperFormEntryInput {
   id: ID
   date: AWSDateTime!
-  formType: FormType!
+  formType: FormType
   formInitial: String!
-  status: FormStatus!
+  status: String
   title: String
   entries: [PaperFormRowInput!]!
   thermometerNumber: String

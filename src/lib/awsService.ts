@@ -169,6 +169,21 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
 
 // Map GraphQL result to frontend PaperFormEntry
 function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
+  // Map status from database values to frontend values
+  let mappedStatus: 'Complete' | 'In Progress' | 'Error';
+  if (!result.status) {
+    mappedStatus = 'In Progress'; // Default for null/undefined status
+  } else if (result.status === 'COMPLETE') {
+    mappedStatus = 'Complete';
+  } else if (result.status === 'In_Progress') {
+    mappedStatus = 'In Progress';
+  } else if (result.status === 'ERROR') {
+    mappedStatus = 'Error';
+  } else {
+    // Handle any other status values by converting to title case
+    mappedStatus = result.status.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) as any;
+  }
+
   return {
     id: result.id,
     date: new Date(result.date),
@@ -176,9 +191,9 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
     lastTextEntry: result.lastTextEntry ? new Date(result.lastTextEntry) : new Date(result.date), // Fallback to date if not available
     formType: result.formType as FormType,
     formInitial: result.formInitial,
-    status: result.status.toLowerCase().replace('_', ' ') as 'Complete' | 'In Progress' | 'Error',
+    status: mappedStatus,
     title: result.title || '',
-    entries: result.entries.map((entry: any) => ({
+    entries: (result.entries || []).map((entry: any) => ({
       type: entry.type || '',
       rack: entry.rack || '1st Rack',
       ccp1: {
