@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import type { PaperFormEntry } from '@/lib/paperFormTypes';
 import { FormType, getFormTypeDisplayName, getFormTypeDescription, getFormTypeIcon, getFormTypeColors } from '@/lib/paperFormTypes';
@@ -15,6 +15,7 @@ export default function FormPage() {
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
   const [isAddFormDropdownOpen, setIsAddFormDropdownOpen] = useState(false); // State for add form dropdown
+  const [newlyCreatedFormId, setNewlyCreatedFormId] = useState<string | null>(null); // Track newly created forms
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -28,6 +29,15 @@ export default function FormPage() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isAddFormDropdownOpen]);
+
+  // Function to handle form creation and make it pop out into view
+  const handleCreateForm = (formType: FormType) => {
+    createNewForm(formType);
+    setIsAddFormDropdownOpen(false);
+    
+    // Mark that we just created a new form
+    setNewlyCreatedFormId('pending');
+  };
 
   // Function to open form in modal
   const handleViewForm = (form: PaperFormEntry) => {
@@ -86,6 +96,7 @@ export default function FormPage() {
           // Create a new form for today if none exists
           console.log('Creating new form for today');
           createNewForm(FormType.FOOD_CHILLING_LOG, 'USER'); // Use a default initial
+          // Don't automatically open forms created on page load
         }
       } catch (error) {
         console.error('Error loading form:', error);
@@ -96,6 +107,23 @@ export default function FormPage() {
 
     loadDefaultForm();
   }, [savedForms, currentForm, createNewForm, loadForm]);
+
+  // Automatically open newly created forms
+  useEffect(() => {
+    if (currentForm && newlyCreatedFormId === 'pending' && !showFormModal) {
+      console.log('Automatically opening newly created form:', currentForm.id);
+      setSelectedForm(currentForm);
+      setShowFormModal(true);
+      setNewlyCreatedFormId(currentForm.id); // Mark as opened
+    }
+  }, [currentForm, newlyCreatedFormId, showFormModal]);
+
+  // Reset newly created form flag when modal is closed
+  useEffect(() => {
+    if (!showFormModal && newlyCreatedFormId) {
+      setNewlyCreatedFormId(null);
+    }
+  }, [showFormModal, newlyCreatedFormId]);
 
   // Real-time status monitoring effect
   useEffect(() => {
@@ -199,8 +227,15 @@ export default function FormPage() {
       {/* Header */}
       <div className="max-w-7xl mx-auto px-4 mb-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Food Chilling Log Form</h1>
+          <div className="flex items-center space-x-3">
+            {/* Logo */}
+            <div className="flex items-center justify-center w-32 h-32 rounded-xl overflow-hidden">
+              <img 
+                src="/logo.avif" 
+                alt="FoodChillingLog Logo" 
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
           
           {/* Add Form Button with Dropdown */}
@@ -224,8 +259,7 @@ export default function FormPage() {
                 <div className="py-1" role="menu" aria-orientation="vertical">
                   <button
                     onClick={() => {
-                      createNewForm(FormType.FOOD_CHILLING_LOG);
-                      setIsAddFormDropdownOpen(false);
+                      handleCreateForm(FormType.FOOD_CHILLING_LOG);
                     }}
                     className={`block w-full text-left px-4 py-2 text-sm text-gray-700 ${getFormTypeColors(FormType.FOOD_CHILLING_LOG).hover} hover:text-gray-900`}
                     role="menuitem"
@@ -276,118 +310,104 @@ export default function FormPage() {
             savedForms
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // Sort by date, newest first
               .map((form, index) => (
-              <div key={form.id} className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6">
-                <div className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      {/* Status Indicator */}
-                      <div className={`w-4 h-4 rounded-full ${
-                        form.status === 'Complete' ? 'bg-green-500' :
-                        form.status === 'Error' ? 'bg-red-500' :
-                        'bg-yellow-500'
-                      }`}></div>
-                      
-                      {/* Form Info */}
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {form.title ? form.title : getFormTypeDisplayName(form.formType)} - {new Date(form.date).toLocaleDateString()}
-                        </h3>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                          <span>Form #{form.id.slice(-6)}</span>
-                          <span>•</span>
-                          <span>Initial: {form.formInitial || 'Not set'}</span>
-                          <span>•</span>
-                          <span>Thermometer: {form.thermometerNumber || 'Not set'}</span>
-                          {form.title && (
-                            <>
-                              <span>•</span>
-                              <span className="text-blue-600 font-medium">"{form.title}"</span>
-                            </>
-                          )}
+                <div 
+                  key={form.id} 
+                  className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
+                >
+                  <div className={`p-6`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        {/* Status Indicator */}
+                        <div className={`w-4 h-4 rounded-full ${
+                          form.status === 'Complete' ? 'bg-green-500' :
+                          form.status === 'Error' ? 'bg-red-500' :
+                          'bg-yellow-500'
+                        }`}></div>
+                        
+                        {/* Form Info */}
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {form.title ? form.title : getFormTypeDisplayName(form.formType)} - {new Date(form.date).toLocaleDateString()}
+                          </h3>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                            <span>Form #{form.id.slice(-6)}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-3">
-                      {/* New Badge - Show on the first form (newest) */}
-                      {index === 0 && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          ✨ New
+                      
+                      <div className="flex items-center space-x-3">
+                        {/* Status Badge */}
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                          form.status === 'Complete' ? 'bg-green-100 text-green-800' :
+                          form.status === 'Error' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {form.status === 'Complete' ? '✓ Complete' :
+                           form.status === 'Error' ? '⚠️ Has Errors' :
+                           '⏳ In Progress'}
                         </span>
-                      )}
-                      
-                      {/* Status Badge */}
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        form.status === 'Complete' ? 'bg-green-100 text-green-800' :
-                        form.status === 'Error' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {form.status === 'Complete' ? '✓ Complete' :
-                         form.status === 'Error' ? '⚠️ Has Errors' :
-                         '⏳ In Progress'}
-                      </span>
-                      
-                      {/* View Form Button */}
-                      <button
-                        onClick={() => handleViewForm(form)}
-                        className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                        title="View and edit form details"
-                      >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        View Form
-                      </button>
-                      
-                      {/* Delete Form Button */}
-                      <button
-                        onClick={() => handleDeleteForm(form.id)}
-                        className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors"
-                        title="Delete form"
-                      >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Additional Form Summary Info */}
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="font-medium text-gray-700">Entries with Data</div>
-                      <div className="text-lg font-semibold text-gray-900">
-                        {form.entries.filter(entry => 
-                          entry.type || 
-                          entry.ccp1.temp || 
-                          entry.ccp2.temp || 
-                          entry.coolingTo80.temp || 
-                          entry.coolingTo54.temp || 
-                          entry.finalChill.temp
-                        ).length} / {form.entries.length}
+                        
+                        {/* View Form Button */}
+                        <button
+                          onClick={() => handleViewForm(form)}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                          title="View and edit form details"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          View Form
+                        </button>
+                        
+                        {/* Delete Form Button */}
+                        <button
+                          onClick={() => handleDeleteForm(form.id)}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors"
+                          title="Delete form"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete
+                        </button>
                       </div>
                     </div>
                     
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="font-medium text-gray-700">Last Updated</div>
-                      <div className="text-lg font-semibold text-gray-900">
-                        {new Date().toLocaleTimeString()}
+                    {/* Additional Form Summary Info */}
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="font-medium text-gray-700">Entries with Data</div>
+                        <div className="text-lg font-semibold text-gray-900">
+                          {form.entries.filter(entry => 
+                            entry.type || 
+                            entry.ccp1.temp || 
+                            entry.ccp2.temp || 
+                            entry.coolingTo80.temp || 
+                            entry.coolingTo54.temp || 
+                            entry.finalChill.temp
+                          ).length} / {form.entries.length}
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="font-medium text-gray-700">Real-time Monitoring</div>
-                      <div className="flex items-center text-green-600">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                        <span className="text-sm">Active</span>
+                      
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="font-medium text-gray-700">Last Updated</div>
+                        <div className="text-lg font-semibold text-gray-900">
+                          {new Date().toLocaleTimeString()}
+                        </div>
+                      </div>
+                      
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="font-medium text-gray-700">Real-time Monitoring</div>
+                        <div className="flex items-center text-green-600">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                          <span className="text-sm">Active</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))
           )}
         </div>
       )}
@@ -409,17 +429,14 @@ export default function FormPage() {
                   }`}>
                     {selectedForm.status}
                   </span>
-                  {selectedForm.title && (
-                    <div className="text-blue-600 font-medium mt-1">
-                      Form Title: "{selectedForm.title}"
-                    </div>
-                  )}
+
                 </div>
               </div>
               <button
                 onClick={() => {
                   setShowFormModal(false);
                   setSelectedForm(null);
+                  setNewlyCreatedFormId(null); // Reset the flag when closing
                 }}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
               >
