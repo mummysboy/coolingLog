@@ -8,6 +8,21 @@ import * as mutations from '../graphql/mutations';
 // AWS API Client
 const client = generateClient();
 
+// Helper function to convert time string (HH:MM) to DateTime
+function convertTimeStringToDateTime(timeString: string, baseDate: Date): string | null {
+  if (!timeString || !baseDate) return null;
+  
+  try {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const dateTime = new Date(baseDate);
+    dateTime.setHours(hours, minutes, 0, 0);
+    return dateTime.toISOString();
+  } catch (error) {
+    console.warn('Failed to convert time string to DateTime:', timeString, error);
+    return null;
+  }
+}
+
 // Convert GraphQL stage names to frontend stage names
 const stageMapping: Record<StageType, string> = {
   'cook': 'COOK',
@@ -153,7 +168,7 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
       // Map all stage data
       heatTreating: entry.heatTreating ? {
         temperature: entry.heatTreating.temp ? parseFloat(entry.heatTreating.temp) : null,
-        time: entry.heatTreating.time ? this.convertTimeStringToDateTime(entry.heatTreating.time, form.date) : null,
+        time: entry.heatTreating.time ? convertTimeStringToDateTime(entry.heatTreating.time, form.date) : null,
         isValid: true,
         correctiveAction: '',
         employeeInitials: entry.heatTreating.initial || '',
@@ -162,7 +177,7 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
       } : null,
       ccp2_126: entry.ccp2_126 ? {
         temperature: entry.ccp2_126.temp ? parseFloat(entry.ccp2_126.temp) : null,
-        time: entry.ccp2_126.time ? this.convertTimeStringToDateTime(entry.ccp2_126.time, form.date) : null,
+        time: entry.ccp2_126.time ? convertTimeStringToDateTime(entry.ccp2_126.time, form.date) : null,
         isValid: true,
         correctiveAction: '',
         employeeInitials: entry.ccp2_126.initial || '',
@@ -171,7 +186,7 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
       } : null,
       ccp2_80: entry.ccp2_80 ? {
         temperature: entry.ccp2_80.temp ? parseFloat(entry.ccp2_80.temp) : null,
-        time: entry.ccp2_80.time ? this.convertTimeStringToDateTime(entry.ccp2_80.time, form.date) : null,
+        time: entry.ccp2_80.time ? convertTimeStringToDateTime(entry.ccp2_80.time, form.date) : null,
         isValid: true,
         correctiveAction: '',
         employeeInitials: entry.ccp2_80.initial || '',
@@ -180,7 +195,7 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
       } : null,
       ccp2_55: entry.ccp2_55 ? {
         temperature: entry.ccp2_55.temp ? parseFloat(entry.ccp2_55.temp) : null,
-        time: entry.ccp2_55.time ? this.convertTimeStringToDateTime(entry.ccp2_55.time, form.date) : null,
+        time: entry.ccp2_55.time ? convertTimeStringToDateTime(entry.ccp2_55.time, form.date) : null,
         isValid: true,
         correctiveAction: '',
         employeeInitials: entry.ccp2_55.initial || '',
@@ -189,7 +204,7 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
       } : null,
       ccp1: entry.ccp1 ? {
         temperature: entry.ccp1.temp ? parseFloat(entry.ccp1.temp) : null,
-        time: entry.ccp1.time ? this.convertTimeStringToDateTime(entry.ccp1.time, form.date) : null,
+        time: entry.ccp1.time ? convertTimeStringToDateTime(entry.ccp1.time, form.date) : null,
         isValid: entry.ccp1.dataLog || false,
         correctiveAction: '',
         employeeInitials: entry.ccp1.initial || '',
@@ -198,7 +213,7 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
       } : null,
       ccp2: entry.ccp2 ? {
         temperature: entry.ccp2.temp ? parseFloat(entry.ccp2.temp) : null,
-        time: entry.ccp2.time ? this.convertTimeStringToDateTime(entry.ccp2.time, form.date) : null,
+        time: entry.ccp2.time ? convertTimeStringToDateTime(entry.ccp2.time, form.date) : null,
         isValid: entry.ccp2.dataLog || false,
         correctiveAction: '',
         employeeInitials: entry.ccp2.initial || '',
@@ -207,7 +222,7 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
       } : null,
       coolingTo80: entry.coolingTo80 ? {
         temperature: entry.coolingTo80.temp ? parseFloat(entry.coolingTo80.temp) : null,
-        time: entry.coolingTo80.time ? this.convertTimeStringToDateTime(entry.coolingTo80.time, form.date) : null,
+        time: entry.coolingTo80.time ? convertTimeStringToDateTime(entry.coolingTo80.time, form.date) : null,
         isValid: entry.coolingTo80.dataLog || false,
         correctiveAction: '',
         employeeInitials: entry.coolingTo80.initial || '',
@@ -216,7 +231,7 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
       } : null,
       coolingTo54: entry.coolingTo54 ? {
         temperature: entry.coolingTo54.temp ? parseFloat(entry.coolingTo54.temp) : null,
-        time: entry.coolingTo54.time ? this.convertTimeStringToDateTime(entry.coolingTo54.time, form.date) : null,
+        time: entry.coolingTo54.time ? convertTimeStringToDateTime(entry.coolingTo54.time, form.date) : null,
         isValid: entry.coolingTo54.dataLog || false,
         correctiveAction: '',
         employeeInitials: entry.coolingTo54.initial || '',
@@ -225,7 +240,7 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
       } : null,
       finalChill: entry.finalChill ? {
         temperature: entry.finalChill.temp ? parseFloat(entry.finalChill.temp) : null,
-        time: entry.finalChill.time ? this.convertTimeStringToDateTime(entry.finalChill.time, form.date) : null,
+        time: entry.finalChill.time ? convertTimeStringToDateTime(entry.finalChill.time, form.date) : null,
         isValid: entry.finalChill.dataLog || false,
         correctiveAction: '',
         employeeInitials: entry.finalChill.initial || '',
@@ -459,7 +474,7 @@ function mapGraphQLResultToLogEntry(result: any): LogEntry {
 
 class AWSStorageManager {
   // Helper method to convert time string (HH:MM) to DateTime
-  private convertTimeStringToDateTime(timeString: string, baseDate: Date): string {
+  private convertTimeStringToDateTime(timeString: string, baseDate: Date): string | null {
     if (!timeString || !baseDate) return null;
     
     try {
@@ -632,7 +647,7 @@ class AWSStorageManager {
           const result = await client.graphql({
             query: mutations.updatePaperFormEntry,
             variables: { input }
-          });
+          }) as GraphQLResult<any>;
                   // Check for GraphQL errors in the result
         if (result.errors && result.errors.length > 0) {
           console.error('GraphQL errors in update result:', result.errors);
@@ -654,7 +669,7 @@ class AWSStorageManager {
         console.log('Input keys:', Object.keys(input));
         
         // Check for any problematic values
-        const problematicFields = [];
+        const problematicFields: string[] = [];
         Object.entries(input).forEach(([key, value]) => {
           if (value === null || value === undefined) {
             problematicFields.push(`${key}: ${value}`);
@@ -677,7 +692,7 @@ class AWSStorageManager {
         }
         
         // Validate each entry has required fields
-        input.entries?.forEach((entry, index) => {
+        input.entries?.forEach((entry: any, index: number) => {
           if (!entry.type || !entry.rack) {
             console.log(`⚠️ Entry ${index} missing type or rack:`, entry);
           }
@@ -692,7 +707,7 @@ class AWSStorageManager {
         const result = await client.graphql({
           query: mutations.createPaperFormEntry,
           variables: { input: createInput }
-        });
+        }) as GraphQLResult<any>;
         
         // Check for GraphQL errors in the result
         if (result.errors && result.errors.length > 0) {
