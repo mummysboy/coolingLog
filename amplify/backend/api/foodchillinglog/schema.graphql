@@ -18,12 +18,14 @@ type User @model {
 }
 
 # Paper Form Entry model for food chilling logs
-type PaperFormEntry @model {
+type PaperFormEntry @model @auth(rules: [{ allow: public }]) {
   id: ID!
   date: AWSDateTime!
-  formType: FormType
+  dateCreated: AWSDateTime!
+  lastTextEntry: AWSDateTime!
+  formType: FormType!
   formInitial: String!
-  status: String
+  status: String!
   title: String
   
   # Row entries (1-9)
@@ -31,25 +33,43 @@ type PaperFormEntry @model {
   
   # Bottom section
   thermometerNumber: String
-  ingredients: Ingredients
-  lotNumbers: LotNumbers
+  ingredients: AWSJSON
+  lotNumbers: AWSJSON
   correctiveActionsComments: String
+  
+  # For Piroshki form - Quantity and Flavor
+  quantityAndFlavor: AWSJSON
+  
+  # For Piroshki form - Pre Shipment Review
+  preShipmentReview: PreShipmentReview
+  
+  # For Bagel Dog form - Frank Flavor/Size Table
+  frankFlavorSizeTable: AWSJSON
+  
+  # For Bagel Dog form - Pre Shipment Review
+  bagelDogPreShipmentReview: BagelDogPreShipmentReview
   
   # Admin comments and resolution
   adminComments: [AdminComment!]
   resolvedErrors: [String!]
   
-  # Add explicit fields for better GraphQL generation
-  lastTextEntry: AWSDateTime
-  
-  createdAt: AWSDateTime!
-  updatedAt: AWSDateTime!
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
 }
 
 # Paper Form Row for individual entries
 type PaperFormRow {
   type: String
   rack: String
+  
+  # For Piroshki form - Heat Treating Step
+  heatTreating: StageData
+  # For Piroshki form - CCP 2 126°F
+  ccp2_126: StageData
+  # For Piroshki form - CCP 2 80°F
+  ccp2_80: StageData
+  # For Piroshki form - CCP 2 55°F
+  ccp2_55: StageData
   
   # CCP 1 - Temperature Must reach 166°F or greater
   ccp1: StageData
@@ -210,7 +230,9 @@ enum StageType {
 }
 
 enum FormType {
-  FOOD_CHILLING_LOG
+  COOKING_AND_COOLING
+  PIROSHKI_CALZONE_EMPANADA
+  BAGEL_DOG_COOKING_COOLING
 }
 
 enum FormStatus {
@@ -244,6 +266,10 @@ input StageDataInput {
 input PaperFormRowInput {
   type: String
   rack: String
+  heatTreating: StageDataInput
+  ccp2_126: StageDataInput
+  ccp2_80: StageDataInput
+  ccp2_55: StageDataInput
   ccp1: StageDataInput
   ccp2: StageDataInput
   coolingTo80: StageDataInput
@@ -270,34 +296,80 @@ input AdminCommentInput {
   comment: String!
 }
 
+input PreShipmentReviewInput {
+  date: String
+  initials: String
+  results: String
+}
+
 input CreatePaperFormEntryInput {
-  id: ID
+  id: String
   date: AWSDateTime!
-  formType: FormType
+  dateCreated: AWSDateTime!
+  lastTextEntry: AWSDateTime!
+  formType: FormType!
   formInitial: String!
-  status: String
+  status: String!
   title: String
+  
+  # Row entries (1-9)
   entries: [PaperFormRowInput!]!
+  
+  # Bottom section
   thermometerNumber: String
-  ingredients: IngredientsInput
-  lotNumbers: LotNumbersInput
+  ingredients: AWSJSON
+  lotNumbers: AWSJSON
   correctiveActionsComments: String
+  
+  # For Piroshki form - Quantity and Flavor
+  quantityAndFlavor: AWSJSON
+  
+  # For Piroshki form - Pre Shipment Review
+  preShipmentReview: PreShipmentReviewInput
+  
+  # For Bagel Dog form - Frank Flavor/Size Table
+  frankFlavorSizeTable: AWSJSON
+  
+  # For Bagel Dog form - Pre Shipment Review
+  bagelDogPreShipmentReview: BagelDogPreShipmentReviewInput
+  
+  # Admin comments and resolution
   adminComments: [AdminCommentInput!]
   resolvedErrors: [String!]
 }
 
 input UpdatePaperFormEntryInput {
-  id: ID!
+  id: String!
   date: AWSDateTime
+  dateCreated: AWSDateTime
+  lastTextEntry: AWSDateTime
   formType: FormType
   formInitial: String
-  status: FormStatus
+  status: String
   title: String
+  
+  # Row entries (1-9)
   entries: [PaperFormRowInput!]
+  
+  # Bottom section
   thermometerNumber: String
-  ingredients: IngredientsInput
-  lotNumbers: LotNumbersInput
+  ingredients: AWSJSON
+  lotNumbers: AWSJSON
   correctiveActionsComments: String
+  
+  # For Piroshki form - Quantity and Flavor
+  quantityAndFlavor: AWSJSON
+  
+  # For Piroshki form - Pre Shipment Review
+  preShipmentReview: PreShipmentReviewInput
+  
+  # For Bagel Dog form - Frank Flavor/Size Table
+  frankFlavorSizeTable: AWSJSON
+  
+  # For Bagel Dog form - Pre Shipment Review
+  bagelDogPreShipmentReview: BagelDogPreShipmentReviewInput
+  
+  # Admin comments and resolution
   adminComments: [AdminCommentInput!]
   resolvedErrors: [String!]
 }
@@ -494,4 +566,23 @@ type Subscription {
   
   onPaperFormStatusUpdated: PaperFormEntry
     @aws_subscribe(mutations: ["updatePaperFormStatus"])
+}
+
+# Pre Shipment Review for Piroshki form
+type PreShipmentReview {
+  date: String
+  initials: String
+  results: String
+}
+
+type BagelDogPreShipmentReview {
+  date: String
+  results: String
+  signature: String
+}
+
+input BagelDogPreShipmentReviewInput {
+  date: String
+  results: String
+  signature: String
 }

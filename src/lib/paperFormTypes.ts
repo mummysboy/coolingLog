@@ -1,11 +1,9 @@
 // Types that exactly match the paper form structure
 
 export enum FormType {
-  FOOD_CHILLING_LOG = 'FOOD_CHILLING_LOG',
-  // Add more form types here as they are created
-  // TEMPERATURE_LOG = 'TEMPERATURE_LOG',
-  // INVENTORY_LOG = 'INVENTORY_LOG',
-  // CLEANING_LOG = 'CLEANING_LOG',
+  COOKING_AND_COOLING = 'COOKING_AND_COOLING',
+  PIROSHKI_CALZONE_EMPANADA = 'PIROSHKI_CALZONE_EMPANADA',
+  BAGEL_DOG_COOKING_COOLING = 'BAGEL_DOG_COOKING_COOLING'
 }
 
 // Example of how to add a new form type:
@@ -17,8 +15,12 @@ export enum FormType {
 // Helper function to get display names for form types
 export const getFormTypeDisplayName = (formType: FormType): string => {
   switch (formType) {
-    case FormType.FOOD_CHILLING_LOG:
+    case FormType.COOKING_AND_COOLING:
       return 'Cooking and Cooling for Meat & Non Meat Ingredients';
+    case FormType.PIROSHKI_CALZONE_EMPANADA:
+      return 'Piroshki, Calzone, Empanada Heat Treating & Cooling CCP 2';
+    case FormType.BAGEL_DOG_COOKING_COOLING:
+      return 'Bagel Dog Cooking & Cooling';
     default:
       return 'Unknown Form Type';
   }
@@ -27,38 +29,42 @@ export const getFormTypeDisplayName = (formType: FormType): string => {
 // Helper function to get description for form types
 export const getFormTypeDescription = (formType: FormType): string => {
   switch (formType) {
-    case FormType.FOOD_CHILLING_LOG:
-      return 'Temperature monitoring for food safety';
+    case FormType.COOKING_AND_COOLING:
+      return 'Standard cooking and cooling log for meat and non-meat ingredients';
+    case FormType.PIROSHKI_CALZONE_EMPANADA:
+      return 'Heat treating and cooling log for piroshki, calzone, and empanada products';
+    case FormType.BAGEL_DOG_COOKING_COOLING:
+      return 'Cooking and cooling log for bagel dog products with CCP monitoring';
     default:
-      return 'No description available';
+      return 'Unknown form type';
   }
 };
 
 // Helper function to get icon for form types (returns SVG path data)
 export const getFormTypeIcon = (formType: FormType): string => {
   switch (formType) {
-    case FormType.FOOD_CHILLING_LOG:
-      return 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'; // Checkmark in circle
+    case FormType.COOKING_AND_COOLING:
+      return '🥩';
+    case FormType.PIROSHKI_CALZONE_EMPANADA:
+      return '📖';
+    case FormType.BAGEL_DOG_COOKING_COOLING:
+      return '🌭';
     default:
-      return 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'; // Document icon
+      return '📄';
   }
 };
 
 // Helper function to get color scheme for form types
-export const getFormTypeColors = (formType: FormType): { bg: string; text: string; hover: string } => {
+export const getFormTypeColors = (formType: FormType): { bg: string; text: string; border: string } => {
   switch (formType) {
-    case FormType.FOOD_CHILLING_LOG:
-      return {
-        bg: 'bg-blue-100',
-        text: 'text-blue-600',
-        hover: 'hover:bg-blue-200'
-      };
+    case FormType.COOKING_AND_COOLING:
+      return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
+    case FormType.PIROSHKI_CALZONE_EMPANADA:
+      return { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' };
+    case FormType.BAGEL_DOG_COOKING_COOLING:
+      return { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' };
     default:
-      return {
-        bg: 'bg-gray-100',
-        text: 'text-gray-600',
-        hover: 'hover:bg-gray-200'
-      };
+      return { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' };
   }
 };
 
@@ -96,6 +102,37 @@ export interface PaperFormEntry {
   };
   correctiveActionsComments: string;
   
+  // For Piroshki form - Quantity and Flavor
+  quantityAndFlavor?: {
+    [key: number]: {
+      quantity: string;
+      flavor: string;
+    };
+  };
+  
+  // For Piroshki form - Pre Shipment Review
+  preShipmentReview?: {
+    date: string;
+    initials: string;
+    results: string; // 'P' for Pass, 'F' for Fail
+  };
+  
+  // For Bagel Dog form - Frank Flavor/Size Table
+  frankFlavorSizeTable?: {
+    beef81: { flavor: string; lotNumbers: string; packagesUsed: string };
+    polish81: { flavor: string; lotNumbers: string; packagesUsed: string };
+    jalapeno81: { flavor: string; lotNumbers: string; packagesUsed: string };
+    jumboBeef41: { flavor: string; lotNumbers: string; packagesUsed: string };
+    jumboPolish41: { flavor: string; lotNumbers: string; packagesUsed: string };
+  };
+  
+  // For Bagel Dog form - Pre Shipment Review
+  bagelDogPreShipmentReview?: {
+    date: string;
+    results: string;
+    signature: string;
+  };
+  
   // Admin comments and resolution
   adminComments: AdminComment[];
   resolvedErrors: string[]; // Array of error IDs that have been resolved
@@ -104,6 +141,35 @@ export interface PaperFormEntry {
 export interface PaperFormRow {
   rack: '1st Rack' | 'Last Rack'; // Track whether this is 1st or Last rack
   type: string; // Product type
+  
+  // For Piroshki form - Heat Treating Step
+  heatTreating?: {
+    type: string;
+    temp: string;
+    time: string;
+    initial: string;
+  };
+  
+  // For Piroshki form - CCP 2 126°F
+  ccp2_126?: {
+    temp: string;
+    time: string;
+    initial: string;
+  };
+  
+  // For Piroshki form - CCP 2 80°F
+  ccp2_80?: {
+    temp: string;
+    time: string;
+    initial: string;
+  };
+  
+  // For Piroshki form - CCP 2 55°F
+  ccp2_55?: {
+    temp: string;
+    time: string;
+    initial: string;
+  };
   
   // CCP 1 - Temperature Must reach 166°F or greater
   ccp1: {
@@ -149,38 +215,94 @@ export interface PaperFormRow {
 export const EMPTY_ROW: PaperFormRow = {
   rack: '1st Rack', // Default to 1st Rack for empty rows
   type: '',
+  // For Piroshki form - Heat Treating Step
+  heatTreating: { temp: '', time: '', initial: '', type: '' },
+  // For Piroshki form - CCP 2 126°F
+  ccp2_126: { temp: '', time: '', initial: '' },
+  // For Piroshki form - CCP 2 80°F
+  ccp2_80: { temp: '', time: '', initial: '' },
+  // For Piroshki form - CCP 2 55°F
+  ccp2_55: { temp: '', time: '', initial: '' },
+  // CCP 1 - Temperature Must reach 166°F or greater
   ccp1: { temp: '', time: '', initial: '', dataLog: false },
+  // CCP 2 - 127°F or greater (Record Temperature of 1st and LAST rack/batch of the day)
   ccp2: { temp: '', time: '', initial: '', dataLog: false },
+  // 80°F or below within 105 minutes (Record Temperature of 1st rack/batch of the day)
   coolingTo80: { temp: '', time: '', initial: '', dataLog: false },
+  // 54°F or below within 4.75 hr
   coolingTo54: { temp: '', time: '', initial: '', dataLog: false },
+  // Chill Continuously to 39°F or below
   finalChill: { temp: '', time: '', initial: '', dataLog: false },
 };
 
-export const createEmptyForm = (formType: FormType = FormType.FOOD_CHILLING_LOG, formInitial: string = ''): PaperFormEntry => ({
-  id: `form-${Date.now()}`,
-  date: new Date(),
-  dateCreated: new Date(), // Set dateCreated to current date
-  lastTextEntry: new Date(), // Set lastTextEntry to current date
-  formType,
-  formInitial,
-  status: 'In Progress', // Default status for new forms
-  title: '', // Default empty title for new forms
-  entries: Array.from({ length: 9 }, () => ({ ...EMPTY_ROW })),
-  thermometerNumber: '',
-  ingredients: {
-    beef: '',
-    chicken: '',
-    liquidEggs: '',
-  },
-  lotNumbers: {
-    beef: '',
-    chicken: '',
-    liquidEggs: '',
-  },
-  correctiveActionsComments: '',
-  adminComments: [],
-  resolvedErrors: [],
-});
+export const createEmptyForm = (formType: FormType = FormType.COOKING_AND_COOLING, formInitial: string = ''): PaperFormEntry => {
+  const baseForm: Omit<PaperFormEntry, 'quantityAndFlavor' | 'preShipmentReview' | 'frankFlavorSizeTable' | 'bagelDogPreShipmentReview'> = {
+    id: `form-${Date.now()}`,
+    date: new Date(),
+    dateCreated: new Date(), // Set dateCreated to current date
+    lastTextEntry: new Date(), // Set lastTextEntry to current date
+    formType,
+    formInitial,
+    status: 'In Progress' as const, // Default status for new forms
+    title: '', // Default empty title for new forms
+    entries: Array.from({ length: 9 }, () => ({ ...EMPTY_ROW })),
+    thermometerNumber: '',
+    ingredients: {
+      beef: '',
+      chicken: '',
+      liquidEggs: '',
+    },
+    lotNumbers: {
+      beef: '',
+      chicken: '',
+      liquidEggs: '',
+    },
+    correctiveActionsComments: '',
+    adminComments: [],
+    resolvedErrors: [],
+  };
+
+  // Add form-specific fields based on type
+  if (formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
+    return {
+      ...baseForm,
+      // For Piroshki form - Quantity and Flavor
+      quantityAndFlavor: {
+        1: { quantity: '', flavor: '' },
+        2: { quantity: '', flavor: '' },
+        3: { quantity: '', flavor: '' }
+      },
+      // For Piroshki form - Pre Shipment Review
+      preShipmentReview: {
+        date: '',
+        initials: '',
+        results: ''
+      },
+    };
+  }
+
+  if (formType === FormType.BAGEL_DOG_COOKING_COOLING) {
+    return {
+      ...baseForm,
+      // For Bagel Dog form - Frank Flavor/Size Table
+      frankFlavorSizeTable: {
+        beef81: { flavor: 'Beef 8-1', lotNumbers: '', packagesUsed: '' },
+        polish81: { flavor: 'Polish 8-1', lotNumbers: '', packagesUsed: '' },
+        jalapeno81: { flavor: 'Jalapeno 8-1', lotNumbers: '', packagesUsed: '' },
+        jumboBeef41: { flavor: 'Jumbo Beef 4-1', lotNumbers: '', packagesUsed: '' },
+        jumboPolish41: { flavor: 'Jumbo Polish 4-1', lotNumbers: '', packagesUsed: '' },
+      },
+      // For Bagel Dog form - Pre Shipment Review
+      bagelDogPreShipmentReview: {
+        date: '',
+        results: '',
+        signature: ''
+      },
+    };
+  }
+
+  return baseForm;
+};
 
 // Utility function to safely convert dates
 export const ensureDate = (date: Date | string | any): Date => {

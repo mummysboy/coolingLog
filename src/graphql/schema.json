@@ -2991,13 +2991,47 @@
           "isDeprecated" : false,
           "deprecationReason" : null
         }, {
+          "name" : "dateCreated",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "NON_NULL",
+            "name" : null,
+            "ofType" : {
+              "kind" : "SCALAR",
+              "name" : "AWSDateTime",
+              "ofType" : null
+            }
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "lastTextEntry",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "NON_NULL",
+            "name" : null,
+            "ofType" : {
+              "kind" : "SCALAR",
+              "name" : "AWSDateTime",
+              "ofType" : null
+            }
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
           "name" : "formType",
           "description" : null,
           "args" : [ ],
           "type" : {
-            "kind" : "ENUM",
-            "name" : "FormType",
-            "ofType" : null
+            "kind" : "NON_NULL",
+            "name" : null,
+            "ofType" : {
+              "kind" : "ENUM",
+              "name" : "FormType",
+              "ofType" : null
+            }
           },
           "isDeprecated" : false,
           "deprecationReason" : null
@@ -3021,9 +3055,13 @@
           "description" : null,
           "args" : [ ],
           "type" : {
-            "kind" : "SCALAR",
-            "name" : "String",
-            "ofType" : null
+            "kind" : "NON_NULL",
+            "name" : null,
+            "ofType" : {
+              "kind" : "SCALAR",
+              "name" : "String",
+              "ofType" : null
+            }
           },
           "isDeprecated" : false,
           "deprecationReason" : null
@@ -3077,8 +3115,8 @@
           "description" : null,
           "args" : [ ],
           "type" : {
-            "kind" : "OBJECT",
-            "name" : "Ingredients",
+            "kind" : "SCALAR",
+            "name" : "AWSJSON",
             "ofType" : null
           },
           "isDeprecated" : false,
@@ -3088,8 +3126,8 @@
           "description" : null,
           "args" : [ ],
           "type" : {
-            "kind" : "OBJECT",
-            "name" : "LotNumbers",
+            "kind" : "SCALAR",
+            "name" : "AWSJSON",
             "ofType" : null
           },
           "isDeprecated" : false,
@@ -3101,6 +3139,50 @@
           "type" : {
             "kind" : "SCALAR",
             "name" : "String",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "quantityAndFlavor",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "AWSJSON",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "preShipmentReview",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "OBJECT",
+            "name" : "PreShipmentReview",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "frankFlavorSizeTable",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "AWSJSON",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "bagelDogPreShipmentReview",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "OBJECT",
+            "name" : "BagelDogPreShipmentReview",
             "ofType" : null
           },
           "isDeprecated" : false,
@@ -3144,7 +3226,7 @@
           "isDeprecated" : false,
           "deprecationReason" : null
         }, {
-          "name" : "lastTextEntry",
+          "name" : "createdAt",
           "description" : null,
           "args" : [ ],
           "type" : {
@@ -3155,32 +3237,13 @@
           "isDeprecated" : false,
           "deprecationReason" : null
         }, {
-          "name" : "createdAt",
-          "description" : null,
-          "args" : [ ],
-          "type" : {
-            "kind" : "NON_NULL",
-            "name" : null,
-            "ofType" : {
-              "kind" : "SCALAR",
-              "name" : "AWSDateTime",
-              "ofType" : null
-            }
-          },
-          "isDeprecated" : false,
-          "deprecationReason" : null
-        }, {
           "name" : "updatedAt",
           "description" : null,
           "args" : [ ],
           "type" : {
-            "kind" : "NON_NULL",
-            "name" : null,
-            "ofType" : {
-              "kind" : "SCALAR",
-              "name" : "AWSDateTime",
-              "ofType" : null
-            }
+            "kind" : "SCALAR",
+            "name" : "AWSDateTime",
+            "ofType" : null
           },
           "isDeprecated" : false,
           "deprecationReason" : null
@@ -3197,7 +3260,17 @@
         "inputFields" : null,
         "interfaces" : null,
         "enumValues" : [ {
-          "name" : "FOOD_CHILLING_LOG",
+          "name" : "COOKING_AND_COOLING",
+          "description" : null,
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "PIROSHKI_CALZONE_EMPANADA",
+          "description" : null,
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "BAGEL_DOG_COOKING_COOLING",
           "description" : null,
           "isDeprecated" : false,
           "deprecationReason" : null
@@ -3225,6 +3298,50 @@
           "type" : {
             "kind" : "SCALAR",
             "name" : "String",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "heatTreating",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "OBJECT",
+            "name" : "StageData",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "ccp2_126",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "OBJECT",
+            "name" : "StageData",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "ccp2_80",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "OBJECT",
+            "name" : "StageData",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "ccp2_55",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "OBJECT",
+            "name" : "StageData",
             "ofType" : null
           },
           "isDeprecated" : false,
@@ -3301,11 +3418,20 @@
         "enumValues" : null,
         "possibleTypes" : null
       }, {
+        "kind" : "SCALAR",
+        "name" : "AWSJSON",
+        "description" : "The `AWSJSON` scalar type provided by AWS AppSync, represents a JSON string that complies with [RFC 8259](https://tools.ietf.org/html/rfc8259).  Maps like \"**{\\\\\"upvotes\\\\\": 10}**\", lists like \"**[1,2,3]**\", and scalar values like \"**\\\\\"AWSJSON example string\\\\\"**\", \"**1**\", and \"**true**\" are accepted as valid JSON and will automatically be parsed and loaded in the resolver mapping templates as Maps, Lists, or Scalar values rather than as the literal input strings.  Invalid JSON strings like \"**{a: 1}**\", \"**{'a': 1}**\" and \"**Unquoted string**\" will throw GraphQL validation errors.",
+        "fields" : null,
+        "inputFields" : null,
+        "interfaces" : null,
+        "enumValues" : null,
+        "possibleTypes" : null
+      }, {
         "kind" : "OBJECT",
-        "name" : "Ingredients",
+        "name" : "PreShipmentReview",
         "description" : null,
         "fields" : [ {
-          "name" : "beef",
+          "name" : "date",
           "description" : null,
           "args" : [ ],
           "type" : {
@@ -3316,7 +3442,7 @@
           "isDeprecated" : false,
           "deprecationReason" : null
         }, {
-          "name" : "chicken",
+          "name" : "initials",
           "description" : null,
           "args" : [ ],
           "type" : {
@@ -3327,7 +3453,7 @@
           "isDeprecated" : false,
           "deprecationReason" : null
         }, {
-          "name" : "liquidEggs",
+          "name" : "results",
           "description" : null,
           "args" : [ ],
           "type" : {
@@ -3344,10 +3470,10 @@
         "possibleTypes" : null
       }, {
         "kind" : "OBJECT",
-        "name" : "LotNumbers",
+        "name" : "BagelDogPreShipmentReview",
         "description" : null,
         "fields" : [ {
-          "name" : "beef",
+          "name" : "date",
           "description" : null,
           "args" : [ ],
           "type" : {
@@ -3358,7 +3484,7 @@
           "isDeprecated" : false,
           "deprecationReason" : null
         }, {
-          "name" : "chicken",
+          "name" : "results",
           "description" : null,
           "args" : [ ],
           "type" : {
@@ -3369,7 +3495,7 @@
           "isDeprecated" : false,
           "deprecationReason" : null
         }, {
-          "name" : "liquidEggs",
+          "name" : "signature",
           "description" : null,
           "args" : [ ],
           "type" : {
@@ -3731,6 +3857,24 @@
           },
           "defaultValue" : null
         }, {
+          "name" : "dateCreated",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "lastTextEntry",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
           "name" : "formType",
           "description" : null,
           "type" : {
@@ -3776,6 +3920,24 @@
           },
           "defaultValue" : null
         }, {
+          "name" : "ingredients",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "lotNumbers",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
           "name" : "correctiveActionsComments",
           "description" : null,
           "type" : {
@@ -3785,7 +3947,7 @@
           },
           "defaultValue" : null
         }, {
-          "name" : "resolvedErrors",
+          "name" : "quantityAndFlavor",
           "description" : null,
           "type" : {
             "kind" : "INPUT_OBJECT",
@@ -3794,7 +3956,16 @@
           },
           "defaultValue" : null
         }, {
-          "name" : "lastTextEntry",
+          "name" : "frankFlavorSizeTable",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "resolvedErrors",
           "description" : null,
           "type" : {
             "kind" : "INPUT_OBJECT",
@@ -5322,7 +5493,7 @@
           "description" : null,
           "type" : {
             "kind" : "SCALAR",
-            "name" : "ID",
+            "name" : "String",
             "ofType" : null
           },
           "defaultValue" : null
@@ -5340,12 +5511,42 @@
           },
           "defaultValue" : null
         }, {
+          "name" : "dateCreated",
+          "description" : null,
+          "type" : {
+            "kind" : "NON_NULL",
+            "name" : null,
+            "ofType" : {
+              "kind" : "SCALAR",
+              "name" : "AWSDateTime",
+              "ofType" : null
+            }
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "lastTextEntry",
+          "description" : null,
+          "type" : {
+            "kind" : "NON_NULL",
+            "name" : null,
+            "ofType" : {
+              "kind" : "SCALAR",
+              "name" : "AWSDateTime",
+              "ofType" : null
+            }
+          },
+          "defaultValue" : null
+        }, {
           "name" : "formType",
           "description" : null,
           "type" : {
-            "kind" : "ENUM",
-            "name" : "FormType",
-            "ofType" : null
+            "kind" : "NON_NULL",
+            "name" : null,
+            "ofType" : {
+              "kind" : "ENUM",
+              "name" : "FormType",
+              "ofType" : null
+            }
           },
           "defaultValue" : null
         }, {
@@ -5365,9 +5566,13 @@
           "name" : "status",
           "description" : null,
           "type" : {
-            "kind" : "SCALAR",
-            "name" : "String",
-            "ofType" : null
+            "kind" : "NON_NULL",
+            "name" : null,
+            "ofType" : {
+              "kind" : "SCALAR",
+              "name" : "String",
+              "ofType" : null
+            }
           },
           "defaultValue" : null
         }, {
@@ -5413,8 +5618,8 @@
           "name" : "ingredients",
           "description" : null,
           "type" : {
-            "kind" : "INPUT_OBJECT",
-            "name" : "IngredientsInput",
+            "kind" : "SCALAR",
+            "name" : "AWSJSON",
             "ofType" : null
           },
           "defaultValue" : null
@@ -5422,8 +5627,8 @@
           "name" : "lotNumbers",
           "description" : null,
           "type" : {
-            "kind" : "INPUT_OBJECT",
-            "name" : "LotNumbersInput",
+            "kind" : "SCALAR",
+            "name" : "AWSJSON",
             "ofType" : null
           },
           "defaultValue" : null
@@ -5433,6 +5638,42 @@
           "type" : {
             "kind" : "SCALAR",
             "name" : "String",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "quantityAndFlavor",
+          "description" : null,
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "AWSJSON",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "preShipmentReview",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "PreShipmentReviewInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "frankFlavorSizeTable",
+          "description" : null,
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "AWSJSON",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "bagelDogPreShipmentReview",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "BagelDogPreShipmentReviewInput",
             "ofType" : null
           },
           "defaultValue" : null
@@ -5498,6 +5739,42 @@
           },
           "defaultValue" : null
         }, {
+          "name" : "heatTreating",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "StageDataInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "ccp2_126",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "StageDataInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "ccp2_80",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "StageDataInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "ccp2_55",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "StageDataInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
           "name" : "ccp1",
           "description" : null,
           "type" : {
@@ -5548,11 +5825,11 @@
         "possibleTypes" : null
       }, {
         "kind" : "INPUT_OBJECT",
-        "name" : "IngredientsInput",
+        "name" : "PreShipmentReviewInput",
         "description" : null,
         "fields" : null,
         "inputFields" : [ {
-          "name" : "beef",
+          "name" : "date",
           "description" : null,
           "type" : {
             "kind" : "SCALAR",
@@ -5561,7 +5838,7 @@
           },
           "defaultValue" : null
         }, {
-          "name" : "chicken",
+          "name" : "initials",
           "description" : null,
           "type" : {
             "kind" : "SCALAR",
@@ -5570,7 +5847,7 @@
           },
           "defaultValue" : null
         }, {
-          "name" : "liquidEggs",
+          "name" : "results",
           "description" : null,
           "type" : {
             "kind" : "SCALAR",
@@ -5584,11 +5861,11 @@
         "possibleTypes" : null
       }, {
         "kind" : "INPUT_OBJECT",
-        "name" : "LotNumbersInput",
+        "name" : "BagelDogPreShipmentReviewInput",
         "description" : null,
         "fields" : null,
         "inputFields" : [ {
-          "name" : "beef",
+          "name" : "date",
           "description" : null,
           "type" : {
             "kind" : "SCALAR",
@@ -5597,7 +5874,7 @@
           },
           "defaultValue" : null
         }, {
-          "name" : "chicken",
+          "name" : "results",
           "description" : null,
           "type" : {
             "kind" : "SCALAR",
@@ -5606,7 +5883,7 @@
           },
           "defaultValue" : null
         }, {
-          "name" : "liquidEggs",
+          "name" : "signature",
           "description" : null,
           "type" : {
             "kind" : "SCALAR",
@@ -5625,6 +5902,24 @@
         "fields" : null,
         "inputFields" : [ {
           "name" : "date",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "dateCreated",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "lastTextEntry",
           "description" : null,
           "type" : {
             "kind" : "INPUT_OBJECT",
@@ -5678,6 +5973,24 @@
           },
           "defaultValue" : null
         }, {
+          "name" : "ingredients",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "lotNumbers",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
           "name" : "correctiveActionsComments",
           "description" : null,
           "type" : {
@@ -5687,7 +6000,7 @@
           },
           "defaultValue" : null
         }, {
-          "name" : "resolvedErrors",
+          "name" : "quantityAndFlavor",
           "description" : null,
           "type" : {
             "kind" : "INPUT_OBJECT",
@@ -5696,7 +6009,16 @@
           },
           "defaultValue" : null
         }, {
-          "name" : "lastTextEntry",
+          "name" : "frankFlavorSizeTable",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "resolvedErrors",
           "description" : null,
           "type" : {
             "kind" : "INPUT_OBJECT",
@@ -5774,13 +6096,31 @@
             "name" : null,
             "ofType" : {
               "kind" : "SCALAR",
-              "name" : "ID",
+              "name" : "String",
               "ofType" : null
             }
           },
           "defaultValue" : null
         }, {
           "name" : "date",
+          "description" : null,
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "AWSDateTime",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "dateCreated",
+          "description" : null,
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "AWSDateTime",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "lastTextEntry",
           "description" : null,
           "type" : {
             "kind" : "SCALAR",
@@ -5810,8 +6150,8 @@
           "name" : "status",
           "description" : null,
           "type" : {
-            "kind" : "ENUM",
-            "name" : "FormStatus",
+            "kind" : "SCALAR",
+            "name" : "String",
             "ofType" : null
           },
           "defaultValue" : null
@@ -5854,8 +6194,8 @@
           "name" : "ingredients",
           "description" : null,
           "type" : {
-            "kind" : "INPUT_OBJECT",
-            "name" : "IngredientsInput",
+            "kind" : "SCALAR",
+            "name" : "AWSJSON",
             "ofType" : null
           },
           "defaultValue" : null
@@ -5863,8 +6203,8 @@
           "name" : "lotNumbers",
           "description" : null,
           "type" : {
-            "kind" : "INPUT_OBJECT",
-            "name" : "LotNumbersInput",
+            "kind" : "SCALAR",
+            "name" : "AWSJSON",
             "ofType" : null
           },
           "defaultValue" : null
@@ -5874,6 +6214,42 @@
           "type" : {
             "kind" : "SCALAR",
             "name" : "String",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "quantityAndFlavor",
+          "description" : null,
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "AWSJSON",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "preShipmentReview",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "PreShipmentReviewInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "frankFlavorSizeTable",
+          "description" : null,
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "AWSJSON",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "bagelDogPreShipmentReview",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "BagelDogPreShipmentReviewInput",
             "ofType" : null
           },
           "defaultValue" : null
@@ -8440,6 +8816,24 @@
           },
           "defaultValue" : null
         }, {
+          "name" : "dateCreated",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelSubscriptionStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "lastTextEntry",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelSubscriptionStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
           "name" : "formType",
           "description" : null,
           "type" : {
@@ -8485,6 +8879,24 @@
           },
           "defaultValue" : null
         }, {
+          "name" : "ingredients",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelSubscriptionStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "lotNumbers",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelSubscriptionStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
           "name" : "correctiveActionsComments",
           "description" : null,
           "type" : {
@@ -8494,7 +8906,7 @@
           },
           "defaultValue" : null
         }, {
-          "name" : "resolvedErrors",
+          "name" : "quantityAndFlavor",
           "description" : null,
           "type" : {
             "kind" : "INPUT_OBJECT",
@@ -8503,7 +8915,16 @@
           },
           "defaultValue" : null
         }, {
-          "name" : "lastTextEntry",
+          "name" : "frankFlavorSizeTable",
+          "description" : null,
+          "type" : {
+            "kind" : "INPUT_OBJECT",
+            "name" : "ModelSubscriptionStringInput",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "resolvedErrors",
           "description" : null,
           "type" : {
             "kind" : "INPUT_OBJECT",
@@ -9312,6 +9733,162 @@
         "possibleTypes" : null
       }, {
         "kind" : "OBJECT",
+        "name" : "Ingredients",
+        "description" : null,
+        "fields" : [ {
+          "name" : "beef",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "String",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "chicken",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "String",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "liquidEggs",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "String",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        } ],
+        "inputFields" : null,
+        "interfaces" : [ ],
+        "enumValues" : null,
+        "possibleTypes" : null
+      }, {
+        "kind" : "INPUT_OBJECT",
+        "name" : "IngredientsInput",
+        "description" : null,
+        "fields" : null,
+        "inputFields" : [ {
+          "name" : "beef",
+          "description" : null,
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "String",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "chicken",
+          "description" : null,
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "String",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "liquidEggs",
+          "description" : null,
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "String",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        } ],
+        "interfaces" : null,
+        "enumValues" : null,
+        "possibleTypes" : null
+      }, {
+        "kind" : "INPUT_OBJECT",
+        "name" : "LotNumbersInput",
+        "description" : null,
+        "fields" : null,
+        "inputFields" : [ {
+          "name" : "beef",
+          "description" : null,
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "String",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "chicken",
+          "description" : null,
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "String",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        }, {
+          "name" : "liquidEggs",
+          "description" : null,
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "String",
+            "ofType" : null
+          },
+          "defaultValue" : null
+        } ],
+        "interfaces" : null,
+        "enumValues" : null,
+        "possibleTypes" : null
+      }, {
+        "kind" : "OBJECT",
+        "name" : "LotNumbers",
+        "description" : null,
+        "fields" : [ {
+          "name" : "beef",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "String",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "chicken",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "String",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        }, {
+          "name" : "liquidEggs",
+          "description" : null,
+          "args" : [ ],
+          "type" : {
+            "kind" : "SCALAR",
+            "name" : "String",
+            "ofType" : null
+          },
+          "isDeprecated" : false,
+          "deprecationReason" : null
+        } ],
+        "inputFields" : null,
+        "interfaces" : [ ],
+        "enumValues" : null,
+        "possibleTypes" : null
+      }, {
+        "kind" : "OBJECT",
         "name" : "__Schema",
         "description" : "A GraphQL Introspection defines the capabilities of a GraphQL server. It exposes all available types and directives on the server, the entry points for query, mutation, and subscription operations.",
         "fields" : [ {
@@ -10094,14 +10671,6 @@
         "onFragment" : false,
         "onField" : true
       }, {
-        "name" : "aws_api_key",
-        "description" : "Tells the service this field/object has access authorized by an API key.",
-        "locations" : [ "OBJECT", "FIELD_DEFINITION" ],
-        "args" : [ ],
-        "onOperation" : false,
-        "onFragment" : false,
-        "onField" : false
-      }, {
         "name" : "aws_cognito_user_pools",
         "description" : "Tells the service this field/object has access authorized by a Cognito User Pools token.",
         "locations" : [ "OBJECT", "FIELD_DEFINITION" ],
@@ -10123,8 +10692,37 @@
         "onFragment" : false,
         "onField" : false
       }, {
-        "name" : "aws_lambda",
-        "description" : "Tells the service this field/object has access authorized by a Lambda Authorizer.",
+        "name" : "aws_oidc",
+        "description" : "Tells the service this field/object has access authorized by an OIDC token.",
+        "locations" : [ "OBJECT", "FIELD_DEFINITION" ],
+        "args" : [ ],
+        "onOperation" : false,
+        "onFragment" : false,
+        "onField" : false
+      }, {
+        "name" : "aws_auth",
+        "description" : "Directs the schema to enforce authorization on a field",
+        "locations" : [ "FIELD_DEFINITION" ],
+        "args" : [ {
+          "name" : "cognito_groups",
+          "description" : "List of cognito user pool groups which have access on this field",
+          "type" : {
+            "kind" : "LIST",
+            "name" : null,
+            "ofType" : {
+              "kind" : "SCALAR",
+              "name" : "String",
+              "ofType" : null
+            }
+          },
+          "defaultValue" : null
+        } ],
+        "onOperation" : false,
+        "onFragment" : false,
+        "onField" : false
+      }, {
+        "name" : "aws_iam",
+        "description" : "Tells the service this field/object has access authorized by sigv4 signing.",
         "locations" : [ "OBJECT", "FIELD_DEFINITION" ],
         "args" : [ ],
         "onOperation" : false,
@@ -10148,6 +10746,14 @@
           },
           "defaultValue" : null
         } ],
+        "onOperation" : false,
+        "onFragment" : false,
+        "onField" : false
+      }, {
+        "name" : "aws_lambda",
+        "description" : "Tells the service this field/object has access authorized by a Lambda Authorizer.",
+        "locations" : [ "OBJECT", "FIELD_DEFINITION" ],
+        "args" : [ ],
         "onOperation" : false,
         "onFragment" : false,
         "onField" : false
@@ -10190,39 +10796,10 @@
         "onFragment" : false,
         "onField" : false
       }, {
-        "name" : "aws_oidc",
-        "description" : "Tells the service this field/object has access authorized by an OIDC token.",
+        "name" : "aws_api_key",
+        "description" : "Tells the service this field/object has access authorized by an API key.",
         "locations" : [ "OBJECT", "FIELD_DEFINITION" ],
         "args" : [ ],
-        "onOperation" : false,
-        "onFragment" : false,
-        "onField" : false
-      }, {
-        "name" : "aws_iam",
-        "description" : "Tells the service this field/object has access authorized by sigv4 signing.",
-        "locations" : [ "OBJECT", "FIELD_DEFINITION" ],
-        "args" : [ ],
-        "onOperation" : false,
-        "onFragment" : false,
-        "onField" : false
-      }, {
-        "name" : "aws_auth",
-        "description" : "Directs the schema to enforce authorization on a field",
-        "locations" : [ "FIELD_DEFINITION" ],
-        "args" : [ {
-          "name" : "cognito_groups",
-          "description" : "List of cognito user pool groups which have access on this field",
-          "type" : {
-            "kind" : "LIST",
-            "name" : null,
-            "ofType" : {
-              "kind" : "SCALAR",
-              "name" : "String",
-              "ofType" : null
-            }
-          },
-          "defaultValue" : null
-        } ],
         "onOperation" : false,
         "onFragment" : false,
         "onField" : false

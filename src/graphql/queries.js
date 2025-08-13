@@ -584,6 +584,8 @@ export const getPaperFormsByDateRange = /* GraphQL */ `
     getPaperFormsByDateRange(startDate: $startDate, endDate: $endDate) {
       id
       date
+      dateCreated
+      lastTextEntry
       formType
       formInitial
       status
@@ -595,19 +597,23 @@ export const getPaperFormsByDateRange = /* GraphQL */ `
         __typename
       }
       thermometerNumber
-      ingredients {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
-      lotNumbers {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
+      ingredients
+      lotNumbers
       correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
       adminComments {
         id
         adminInitial
@@ -616,7 +622,6 @@ export const getPaperFormsByDateRange = /* GraphQL */ `
         __typename
       }
       resolvedErrors
-      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -628,6 +633,8 @@ export const getTodaysPaperForms = /* GraphQL */ `
     getTodaysPaperForms {
       id
       date
+      dateCreated
+      lastTextEntry
       formType
       formInitial
       status
@@ -639,19 +646,23 @@ export const getTodaysPaperForms = /* GraphQL */ `
         __typename
       }
       thermometerNumber
-      ingredients {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
-      lotNumbers {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
+      ingredients
+      lotNumbers
       correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
       adminComments {
         id
         adminInitial
@@ -660,7 +671,6 @@ export const getTodaysPaperForms = /* GraphQL */ `
         __typename
       }
       resolvedErrors
-      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -672,6 +682,8 @@ export const getPaperFormsByStatus = /* GraphQL */ `
     getPaperFormsByStatus(status: $status) {
       id
       date
+      dateCreated
+      lastTextEntry
       formType
       formInitial
       status
@@ -683,19 +695,23 @@ export const getPaperFormsByStatus = /* GraphQL */ `
         __typename
       }
       thermometerNumber
-      ingredients {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
-      lotNumbers {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
+      ingredients
+      lotNumbers
       correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
       adminComments {
         id
         adminInitial
@@ -704,7 +720,6 @@ export const getPaperFormsByStatus = /* GraphQL */ `
         __typename
       }
       resolvedErrors
-      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -716,6 +731,8 @@ export const getPaperFormsByInitial = /* GraphQL */ `
     getPaperFormsByInitial(initial: $initial) {
       id
       date
+      dateCreated
+      lastTextEntry
       formType
       formInitial
       status
@@ -727,19 +744,23 @@ export const getPaperFormsByInitial = /* GraphQL */ `
         __typename
       }
       thermometerNumber
-      ingredients {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
-      lotNumbers {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
+      ingredients
+      lotNumbers
       correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
       adminComments {
         id
         adminInitial
@@ -748,7 +769,6 @@ export const getPaperFormsByInitial = /* GraphQL */ `
         __typename
       }
       resolvedErrors
-      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -804,6 +824,8 @@ export const getPaperFormEntry = /* GraphQL */ `
     getPaperFormEntry(id: $id) {
       id
       date
+      dateCreated
+      lastTextEntry
       formType
       formInitial
       status
@@ -815,19 +837,23 @@ export const getPaperFormEntry = /* GraphQL */ `
         __typename
       }
       thermometerNumber
-      ingredients {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
-      lotNumbers {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
+      ingredients
+      lotNumbers
       correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
       adminComments {
         id
         adminInitial
@@ -836,7 +862,6 @@ export const getPaperFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
-      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -857,14 +882,19 @@ export const listPaperFormEntries = /* GraphQL */ `
       items {
         id
         date
+        dateCreated
+        lastTextEntry
         formType
         formInitial
         status
         title
         thermometerNumber
+        ingredients
+        lotNumbers
         correctiveActionsComments
+        quantityAndFlavor
+        frankFlavorSizeTable
         resolvedErrors
-        lastTextEntry
         createdAt
         updatedAt
         __typename

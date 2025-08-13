@@ -351,6 +351,8 @@ export const onPaperFormEntryCreated = /* GraphQL */ `
     onPaperFormEntryCreated {
       id
       date
+      dateCreated
+      lastTextEntry
       formType
       formInitial
       status
@@ -362,19 +364,23 @@ export const onPaperFormEntryCreated = /* GraphQL */ `
         __typename
       }
       thermometerNumber
-      ingredients {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
-      lotNumbers {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
+      ingredients
+      lotNumbers
       correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
       adminComments {
         id
         adminInitial
@@ -383,7 +389,6 @@ export const onPaperFormEntryCreated = /* GraphQL */ `
         __typename
       }
       resolvedErrors
-      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -395,6 +400,8 @@ export const onPaperFormEntryUpdated = /* GraphQL */ `
     onPaperFormEntryUpdated {
       id
       date
+      dateCreated
+      lastTextEntry
       formType
       formInitial
       status
@@ -406,19 +413,23 @@ export const onPaperFormEntryUpdated = /* GraphQL */ `
         __typename
       }
       thermometerNumber
-      ingredients {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
-      lotNumbers {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
+      ingredients
+      lotNumbers
       correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
       adminComments {
         id
         adminInitial
@@ -427,7 +438,6 @@ export const onPaperFormEntryUpdated = /* GraphQL */ `
         __typename
       }
       resolvedErrors
-      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -439,6 +449,8 @@ export const onPaperFormStatusUpdated = /* GraphQL */ `
     onPaperFormStatusUpdated {
       id
       date
+      dateCreated
+      lastTextEntry
       formType
       formInitial
       status
@@ -450,19 +462,23 @@ export const onPaperFormStatusUpdated = /* GraphQL */ `
         __typename
       }
       thermometerNumber
-      ingredients {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
-      lotNumbers {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
+      ingredients
+      lotNumbers
       correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
       adminComments {
         id
         adminInitial
@@ -471,7 +487,6 @@ export const onPaperFormStatusUpdated = /* GraphQL */ `
         __typename
       }
       resolvedErrors
-      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -545,6 +560,8 @@ export const onCreatePaperFormEntry = /* GraphQL */ `
     onCreatePaperFormEntry(filter: $filter) {
       id
       date
+      dateCreated
+      lastTextEntry
       formType
       formInitial
       status
@@ -556,19 +573,23 @@ export const onCreatePaperFormEntry = /* GraphQL */ `
         __typename
       }
       thermometerNumber
-      ingredients {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
-      lotNumbers {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
+      ingredients
+      lotNumbers
       correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
       adminComments {
         id
         adminInitial
@@ -577,7 +598,6 @@ export const onCreatePaperFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
-      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -591,6 +611,8 @@ export const onUpdatePaperFormEntry = /* GraphQL */ `
     onUpdatePaperFormEntry(filter: $filter) {
       id
       date
+      dateCreated
+      lastTextEntry
       formType
       formInitial
       status
@@ -602,19 +624,23 @@ export const onUpdatePaperFormEntry = /* GraphQL */ `
         __typename
       }
       thermometerNumber
-      ingredients {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
-      lotNumbers {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
+      ingredients
+      lotNumbers
       correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
       adminComments {
         id
         adminInitial
@@ -623,7 +649,6 @@ export const onUpdatePaperFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
-      lastTextEntry
       createdAt
       updatedAt
       __typename
@@ -637,6 +662,8 @@ export const onDeletePaperFormEntry = /* GraphQL */ `
     onDeletePaperFormEntry(filter: $filter) {
       id
       date
+      dateCreated
+      lastTextEntry
       formType
       formInitial
       status
@@ -648,19 +675,23 @@ export const onDeletePaperFormEntry = /* GraphQL */ `
         __typename
       }
       thermometerNumber
-      ingredients {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
-      lotNumbers {
-        beef
-        chicken
-        liquidEggs
-        __typename
-      }
+      ingredients
+      lotNumbers
       correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
       adminComments {
         id
         adminInitial
@@ -669,7 +700,6 @@ export const onDeletePaperFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
-      lastTextEntry
       createdAt
       updatedAt
       __typename

@@ -15,10 +15,12 @@
   "description": "",
   "dependencies": {
     "@aws-amplify/ui-react": "^6.11.2",
+    "@heroicons/react": "^2.2.0",
     "@types/node": "^24.2.1",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
     "aws-amplify": "^6.15.5",
+    "date-fns": "^4.1.0",
     "eslint": "^9.33.0",
     "eslint-config-next": "^15.4.6",
     "idb": "^8.0.3",

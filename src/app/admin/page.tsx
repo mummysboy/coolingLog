@@ -5,8 +5,10 @@ import { usePaperFormStore } from '@/stores/paperFormStore';
 import { useInitialsStore } from '@/stores/initialsStore';
 import { usePinStore } from '@/stores/pinStore';
 import { MOCK_USERS } from '@/lib/types';
-import { PaperFormEntry } from '@/lib/paperFormTypes';
+import { PaperFormEntry, FormType } from '@/lib/paperFormTypes';
 import { PaperForm } from '@/components/PaperForm';
+import { PiroshkiForm } from '@/components/PiroshkiForm';
+import BagelDogForm from '@/components/BagelDogForm';
 
 import { shouldHighlightCell } from '@/lib/validation';
 
@@ -764,6 +766,14 @@ export default function AdminDashboard() {
     );
   };
 
+  const showToast = (type: 'success' | 'error' | 'warning' | 'info', message: string, formId?: string) => {
+    const toastId = `${formId || 'global'}-${Date.now()}`;
+    setToasts(prev => [...prev, { id: toastId, type, message, formId, timestamp: new Date() }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== toastId));
+    }, 5000);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -1233,41 +1243,83 @@ export default function AdminDashboard() {
             </div>
             
             <div className="flex-1 overflow-y-auto">
-              <PaperForm 
-                key={`${selectedForm.id}-${selectedForm.status}`}
-                formData={selectedForm} 
-                readOnly={false} 
-                onFormUpdate={(formId, updates) => {
-                  console.log('Form updated in admin modal:', formId, updates);
-                  
-                  // Handle status updates by calling the store's updateFormStatus function
-                  if (updates.status) {
-                    console.log('Admin modal: Updating form status to:', updates.status);
-                    updateFormStatus(formId, updates.status);
-                    
-                    // Force dashboard refresh to show updated status
-                    setDashboardRefreshKey(prev => prev + 1);
-                    console.log('Dashboard refresh triggered for status update');
-                  }
-                  
-                  // Force re-render of the admin page by updating the selectedForm state
-                  if (selectedForm && selectedForm.id === formId) {
-                    const updatedForm = { ...selectedForm, ...updates };
-                    setSelectedForm(updatedForm);
-                    console.log('Admin modal: Updated selectedForm state');
-                    
-                    // Also update the form in the savedForms array to ensure consistency
-                    if (updates.status) {
-                      // Small delay to ensure the store update is processed
-                      setTimeout(() => {
+                {selectedForm.formType === FormType.PIROSHKI_CALZONE_EMPANADA ? (
+                  <PiroshkiForm 
+                    key={`${selectedForm.id}-${dashboardRefreshKey}`}
+                    formData={selectedForm}
+                    readOnly={false}
+                    onFormUpdate={(formId, updates) => {
+                      console.log('Admin form updated:', formId, updates);
+                      
+                      // Handle status updates
+                      if (updates.status) {
+                        updateFormStatus(formId, updates.status);
+                        // Force dashboard refresh to show updated status
                         setDashboardRefreshKey(prev => prev + 1);
-                        console.log('Additional dashboard refresh for consistency');
-                      }, 50);
-                    }
-                  }
-                }}
-              />
-            </div>
+                        
+                        // Show success toast
+                        showToast('success', `Form status updated to ${updates.status}`, formId);
+                      }
+                      
+                      // Update the selectedForm state to reflect changes
+                      if (selectedForm && selectedForm.id === formId) {
+                        const updatedForm = { ...selectedForm, ...updates };
+                        setSelectedForm(updatedForm);
+                      }
+                    }}
+                  />
+                                 ) : selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING ? (
+                   <BagelDogForm
+                     key={`${selectedForm.id}-${dashboardRefreshKey}`}
+                     formData={selectedForm}
+                     readOnly={false}
+                     onFormUpdate={(formId: string, updates: any) => {
+                       console.log('Admin form updated:', formId, updates);
+                       
+                       // Handle status updates
+                       if (updates.status) {
+                         updateFormStatus(formId, updates.status);
+                         // Force dashboard refresh to show updated status
+                         setDashboardRefreshKey(prev => prev + 1);
+                         
+                         // Show success toast
+                         showToast('success', `Form status updated to ${updates.status}`, formId);
+                       }
+                       
+                       // Update the selectedForm state to reflect changes
+                       if (selectedForm && selectedForm.id === formId) {
+                         const updatedForm = { ...selectedForm, ...updates };
+                         setSelectedForm(updatedForm);
+                       }
+                     }}
+                   />
+                ) : (
+                  <PaperForm 
+                    key={`${selectedForm.id}-${dashboardRefreshKey}`}
+                    formData={selectedForm}
+                    readOnly={false}
+                    onFormUpdate={(formId, updates) => {
+                      console.log('Admin form updated:', formId, updates);
+                      
+                      // Handle status updates
+                      if (updates.status) {
+                        updateFormStatus(formId, updates.status);
+                        // Force dashboard refresh to show updated status
+                        setDashboardRefreshKey(prev => prev + 1);
+                        
+                        // Show success toast
+                        showToast('success', `Form status updated to ${updates.status}`, formId);
+                      }
+                      
+                      // Update the selectedForm state to reflect changes
+                      if (selectedForm && selectedForm.id === formId) {
+                        const updatedForm = { ...selectedForm, ...updates };
+                        setSelectedForm(updatedForm);
+                      }
+                    }}
+                  />
+                )}
+              </div>
           </div>
         </div>
       )}

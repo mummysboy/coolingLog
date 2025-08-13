@@ -5,7 +5,9 @@ import { usePaperFormStore } from '@/stores/paperFormStore';
 import type { PaperFormEntry } from '@/lib/paperFormTypes';
 import { FormType, getFormTypeDisplayName, getFormTypeDescription, getFormTypeIcon, getFormTypeColors, ensureDate } from '@/lib/paperFormTypes';
 import { PaperForm } from '@/components/PaperForm';
+import { PiroshkiForm } from '@/components/PiroshkiForm';
 import { validateForm, shouldHighlightCell } from '@/lib/validation';
+import BagelDogForm from '@/components/BagelDogForm';
 
 export default function FormPage() {
   const { currentForm, createNewForm, updateFormStatus, saveForm, savedForms, loadForm, deleteForm } = usePaperFormStore();
@@ -155,20 +157,60 @@ export default function FormPage() {
                   <div className="py-1" role="menu" aria-orientation="vertical">
                     <button
                       onClick={() => {
-                        handleCreateForm(FormType.FOOD_CHILLING_LOG);
+                        handleCreateForm(FormType.COOKING_AND_COOLING);
                       }}
-                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 ${getFormTypeColors(FormType.FOOD_CHILLING_LOG).hover} hover:text-gray-900`}
+                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
                       role="menuitem"
                     >
                       <div className="flex items-center">
-                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.FOOD_CHILLING_LOG).bg} rounded-lg flex items-center justify-center mr-3`}>
-                          <svg className={`w-4 h-4 ${getFormTypeColors(FormType.FOOD_CHILLING_LOG).text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={getFormTypeIcon(FormType.FOOD_CHILLING_LOG)} />
-                          </svg>
+                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.COOKING_AND_COOLING).bg} rounded-lg flex items-center justify-center mr-3`}>
+                          <span className={`text-lg ${getFormTypeColors(FormType.COOKING_AND_COOLING).text}`}>
+                            {getFormTypeIcon(FormType.COOKING_AND_COOLING)}
+                          </span>
                         </div>
                         <div>
-                          <div className="font-medium">{getFormTypeDisplayName(FormType.FOOD_CHILLING_LOG)}</div>
-                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.FOOD_CHILLING_LOG)}</div>
+                          <div className="font-medium">{getFormTypeDisplayName(FormType.COOKING_AND_COOLING)}</div>
+                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.COOKING_AND_COOLING)}</div>
+                        </div>
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        handleCreateForm(FormType.PIROSHKI_CALZONE_EMPANADA);
+                      }}
+                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
+                      role="menuitem"
+                    >
+                      <div className="flex items-center">
+                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.PIROSHKI_CALZONE_EMPANADA).bg} rounded-lg flex items-center justify-center mr-3`}>
+                          <span className={`text-lg ${getFormTypeColors(FormType.PIROSHKI_CALZONE_EMPANADA).text}`}>
+                            {getFormTypeIcon(FormType.PIROSHKI_CALZONE_EMPANADA)}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium">{getFormTypeDisplayName(FormType.PIROSHKI_CALZONE_EMPANADA)}</div>
+                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.PIROSHKI_CALZONE_EMPANADA)}</div>
+                        </div>
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        handleCreateForm(FormType.BAGEL_DOG_COOKING_COOLING);
+                      }}
+                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
+                      role="menuitem"
+                    >
+                      <div className="flex items-center">
+                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.BAGEL_DOG_COOKING_COOLING).bg} rounded-lg flex items-center justify-center mr-3`}>
+                          <span className={`text-lg ${getFormTypeColors(FormType.BAGEL_DOG_COOKING_COOLING).text}`}>
+                            {getFormTypeIcon(FormType.BAGEL_DOG_COOKING_COOLING)}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium">{getFormTypeDisplayName(FormType.BAGEL_DOG_COOKING_COOLING)}</div>
+                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.BAGEL_DOG_COOKING_COOLING)}</div>
                         </div>
                       </div>
                     </button>
@@ -467,31 +509,59 @@ export default function FormPage() {
             </div>
             
             <div className="flex-1 overflow-y-auto">
-              <PaperForm 
-                key={`${selectedForm.id}-${formUpdateKey}`}
-                formData={selectedForm}
-                readOnly={selectedForm.status === 'Complete'}
-                onFormUpdate={(formId, updates) => {
-                  console.log('Form updated in form modal:', formId, updates);
-                  // Handle status updates by calling the store's updateFormStatus function
-                  if (updates.status) {
-                    console.log('Status updated to:', updates.status, 'updating store');
-                    updateFormStatus(formId, updates.status);
-                    // Ensure the form is saved to persist the status change
-                    setTimeout(() => saveForm(), 100);
+              {selectedForm.formType === FormType.PIROSHKI_CALZONE_EMPANADA ? (
+                <PiroshkiForm 
+                  key={`${selectedForm.id}-${formUpdateKey}`}
+                  formData={selectedForm}
+                  readOnly={selectedForm.status === 'Complete'}
+                  onFormUpdate={(formId, updates) => {
+                    console.log('Form updated in form modal:', formId, updates);
+                    // Handle status updates by calling the store's updateFormStatus function
+                    if (updates.status) {
+                      console.log('Status updated to:', updates.status, 'updating store');
+                      updateFormStatus(formId, updates.status);
+                      // Ensure the form is saved to persist the status change
+                      setTimeout(() => saveForm(), 100);
+                      
+                      // Force a re-render of the form list by updating the formUpdateKey
+                      setFormUpdateKey(prev => prev + 1);
+                    }
                     
-                    // Force a re-render of the form list by updating the formUpdateKey
-                    setFormUpdateKey(prev => prev + 1);
-                  }
-                  
-                  // Update the selectedForm state to reflect changes
-                  if (selectedForm && selectedForm.id === formId) {
-                    const updatedForm = { ...selectedForm, ...updates };
-                    setSelectedForm(updatedForm);
-                    console.log('SelectedForm updated to:', updatedForm.status);
-                  }
-                }}
-              />
+                    // Update the selectedForm state to reflect changes
+                    if (selectedForm && selectedForm.id === formId) {
+                      const updatedForm = { ...selectedForm, ...updates };
+                      setSelectedForm(updatedForm);
+                      console.log('SelectedForm updated to:', updatedForm.status);
+                    }
+                  }}
+                />
+              ) : (
+                <PaperForm 
+                  key={`${selectedForm.id}-${formUpdateKey}`}
+                  formData={selectedForm}
+                  readOnly={selectedForm.status === 'Complete'}
+                  onFormUpdate={(formId, updates) => {
+                    console.log('Form updated in form modal:', formId, updates);
+                    // Handle status updates by calling the store's updateFormStatus function
+                    if (updates.status) {
+                      console.log('Status updated to:', updates.status, 'updating store');
+                      updateFormStatus(formId, updates.status);
+                      // Ensure the form is saved to persist the status change
+                      setTimeout(() => saveForm(), 100);
+                      
+                      // Force a re-render of the form list by updating the formUpdateKey
+                      setFormUpdateKey(prev => prev + 1);
+                    }
+                    
+                    // Update the selectedForm state to reflect changes
+                    if (selectedForm && selectedForm.id === formId) {
+                      const updatedForm = { ...selectedForm, ...updates };
+                      setSelectedForm(updatedForm);
+                      console.log('SelectedForm updated to:', updatedForm.status);
+                    }
+                  }}
+                />
+              )}
             </div>
           </div>
         </div>
