@@ -378,6 +378,31 @@ export function shouldHighlightCell(
   };
 }
 
+// Check if a temperature value should be highlighted based on threshold
+export function shouldHighlightTemperature(
+  temp: string | undefined,
+  threshold: number,
+  operator: '>=' | '<=' | '>' | '<'
+): boolean {
+  if (!temp || temp.trim() === '') return false;
+  
+  const temperature = parseTemperature(temp);
+  if (temperature === null) return false;
+  
+  switch (operator) {
+    case '>=':
+      return temperature >= threshold;
+    case '<=':
+      return temperature <= threshold;
+    case '>':
+      return temperature > threshold;
+    case '<':
+      return temperature < threshold;
+    default:
+      return false;
+  }
+}
+
 // Get validation errors for a specific form (for admin dashboard)
 export function getFormValidationSummary(form: PaperFormEntry): {
   hasErrors: boolean;

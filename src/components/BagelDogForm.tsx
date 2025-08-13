@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { PaperFormEntry, PaperFormRow, FormType } from '../lib/paperFormTypes';
-import { usePaperFormStore } from '../stores/paperFormStore';
+import { shouldHighlightTemperature } from '../lib/validation';
+import { useLogStore } from '../stores/logStore';
 import { useInitialsStore } from '../stores/initialsStore';
 import { usePinStore } from '../stores/pinStore';
+import { usePaperFormStore } from '../stores/paperFormStore';
 import { validateForm } from '../lib/validation';
-import { shouldHighlightCell } from '../lib/validation';
-import { getTimeDifferenceMinutes } from '../lib/validation';
 import { ensureDate } from '../lib/paperFormTypes';
 import { format } from 'date-fns';
 import { 
@@ -228,7 +228,7 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
                       type="text"
                       value={row.ccp1?.temp || ''}
                       onChange={(e) => handleRowChange(index, 'ccp1', { temp: e.target.value })}
-                      className={`w-full text-center border-none outline-none ${shouldHighlightCell(row.ccp1?.temp, 166, '>=') ? 'bg-red-100' : ''}`}
+                      className={`w-full text-center border-none outline-none ${shouldHighlightTemperature(row.ccp1?.temp, 166, '>=') ? 'bg-red-100' : ''}`}
                       placeholder="°F"
                       disabled={!isEditing}
                     />
@@ -259,7 +259,7 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
                       type="text"
                       value={row.ccp2?.temp || ''}
                       onChange={(e) => handleRowChange(index, 'ccp2', { temp: e.target.value })}
-                      className={`w-full text-center border-none outline-none ${shouldHighlightCell(row.ccp2?.temp, 127, '>=') ? 'bg-red-100' : ''}`}
+                      className={`w-full text-center border-none outline-none ${shouldHighlightTemperature(row.ccp2?.temp, 127, '>=') ? 'bg-red-100' : ''}`}
                       placeholder="°F"
                       disabled={!isEditing}
                     />
@@ -290,7 +290,7 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
                       type="text"
                       value={row.coolingTo80?.temp || ''}
                       onChange={(e) => handleRowChange(index, 'coolingTo80', { temp: e.target.value })}
-                      className={`w-full text-center border-none outline-none ${shouldHighlightCell(row.coolingTo80?.temp, 80, '<=') ? 'bg-red-100' : ''}`}
+                      className={`w-full text-center border-none outline-none ${shouldHighlightTemperature(row.coolingTo80?.temp, 80, '<=') ? 'bg-red-100' : ''}`}
                       placeholder="°F"
                       disabled={!isEditing}
                     />
@@ -321,7 +321,7 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
                       type="text"
                       value={row.coolingTo54?.temp || ''}
                       onChange={(e) => handleRowChange(index, 'coolingTo54', { temp: e.target.value })}
-                      className={`w-full text-center border-none outline-none ${shouldHighlightCell(row.coolingTo54?.temp, 54, '<=') ? 'bg-red-100' : ''}`}
+                      className={`w-full text-center border-none outline-none ${shouldHighlightTemperature(row.coolingTo54?.temp, 54, '<=') ? 'bg-red-100' : ''}`}
                       placeholder="°F"
                       disabled={!isEditing}
                     />
@@ -352,7 +352,7 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
                       type="text"
                       value={row.finalChill?.temp || ''}
                       onChange={(e) => handleRowChange(index, 'finalChill', { temp: e.target.value })}
-                      className={`w-full text-center border-none outline-none ${shouldHighlightCell(row.finalChill?.temp, 40, '<=') ? 'bg-red-100' : ''}`}
+                      className={`w-full text-center border-none outline-none ${shouldHighlightTemperature(row.finalChill?.temp, 40, '<=') ? 'bg-red-100' : ''}`}
                       placeholder="°F"
                       disabled={!isEditing}
                     />
