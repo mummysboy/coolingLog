@@ -1,4 +1,5 @@
 // Types that exactly match the paper form structure
+// Deployment trigger: $(date)
 
 export enum FormType {
   COOKING_AND_COOLING = 'COOKING_AND_COOLING',
