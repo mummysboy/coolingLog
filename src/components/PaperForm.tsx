@@ -1,10 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import { PaperFormEntry, FormType, ensureDate } from '@/lib/paperFormTypes';
 import { shouldHighlightCell, validateForm, getTimeDifferenceMinutes } from '@/lib/validation';
 import { TimePicker } from './TimePicker';
+import { KeypadInput } from './KeypadInput';
+import { TimerBadge } from './TimerBadge';
+import { HACCPCompliance } from './HACCPCompliance';
+import { CorrectiveActionSheet } from './CorrectiveActionSheet';
 
 
 interface PaperFormProps {
@@ -35,10 +39,28 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
   // Track the resolved data snapshot to compare against new changes
   const [resolvedDataSnapshot, setResolvedDataSnapshot] = React.useState<any>(null);
   
+  // Add debounced save mechanism to prevent excessive AWS calls
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const debouncedSave = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      if (form && !isAdminForm) {
+        saveForm();
+      }
+    }, 2000); // Save after 2 seconds of no typing
+  }, [form, isAdminForm, saveForm]);
 
-  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
-  
   // NEW: Toast notification state for validation errors
   const [toasts, setToasts] = React.useState<Array<{
     id: string;
@@ -399,7 +421,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 // Also update the current form status locally for immediate UI update
                 updateFormField(form.id, 'status', 'Error');
                 // Save the form to persist the status change
-                setTimeout(() => saveForm(), 100);
+                debouncedSave();
               }
               
               console.log(`=== FORM STATUS UPDATE COMPLETED ===`);
@@ -425,7 +447,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                   } else {
                     updateFormStatus(form.id, 'In Progress');
                     updateFormField(form.id, 'status', 'In Progress');
-                    setTimeout(() => saveForm(), 100);
+                    debouncedSave();
                   }
                 }
               }
@@ -457,7 +479,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
       
       // Auto-save after updating entry (only if form has data and not admin form)
       if (!isAdminForm) {
-        setTimeout(() => saveForm(), 100);
+        debouncedSave();
       }
     }
   };
@@ -519,8 +541,8 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             console.log('Form field change - not checking for new errors - status:', form.status, 'has snapshot:', !!resolvedDataSnapshot);
           }
           
-          // Auto-save after updating field (only if form has data)
-          setTimeout(() => saveForm(), 100);
+          // Use debounced save instead of immediate save to prevent excessive AWS calls
+          debouncedSave();
         }
       }
     }
@@ -780,7 +802,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                           
                           // Ensure form is saved after dataLog change
                           if (!readOnly) {
-                            setTimeout(() => saveForm(), 100);
+                            debouncedSave();
                           }
                         }}
                     />
@@ -851,7 +873,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                           
                           // Ensure form is saved after dataLog change
                           if (!readOnly) {
-                            setTimeout(() => saveForm(), 100);
+                            debouncedSave();
                           }
                         }}
                     />
@@ -923,7 +945,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                           
                           // Ensure form is saved after dataLog change
                           if (!readOnly) {
-                            setTimeout(() => saveForm(), 100);
+                            debouncedSave();
                           }
                         }}
                       />
@@ -997,7 +1019,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                           
                           // Ensure form is saved after dataLog change
                           if (!readOnly) {
-                            setTimeout(() => saveForm(), 100);
+                            debouncedSave();
                           }
                         }}
                       />
@@ -1070,7 +1092,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                         
                         // Ensure form is saved after dataLog change
                         if (!readOnly) {
-                          setTimeout(() => saveForm(), 100);
+                          debouncedSave();
                         }
                       }}
                     />
@@ -1196,7 +1218,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
               } else {
                 updateFormStatus(form.id, 'Complete');
                 updateFormField(form.id, 'status', 'Complete');
-                setTimeout(() => saveForm(), 100);
+                debouncedSave();
               }
               
               // Show success toast

@@ -56,7 +56,9 @@ export const usePaperFormStore = create<PaperFormStore>()(
       selectedInitial: null,
       
       createNewForm: (formType: FormType, formInitial: string = '') => {
-        const newForm = createEmptyForm(formType, formInitial);
+        // Use the selected initial if no formInitial is provided
+        const initialToUse = formInitial || get().selectedInitial || '';
+        const newForm = createEmptyForm(formType, initialToUse);
         set((state) => ({
           currentForm: newForm,
           savedForms: [newForm, ...state.savedForms]
@@ -86,12 +88,9 @@ export const usePaperFormStore = create<PaperFormStore>()(
           
           set({ savedForms: updatedSavedForms });
           
-          // TEMPORARILY DISABLE AWS SAVING TO FOCUS ON LOCAL FUNCTIONALITY
-          console.log('Form updated locally (AWS saving temporarily disabled):', currentForm.id, 'with lastTextEntry:', currentForm.lastTextEntry);
-          
-          // TODO: Re-enable AWS saving once GraphQL mutations are fixed
-          // await awsStorageManager.savePaperForm(currentForm);
-          // console.log('Form saved successfully to AWS DynamoDB');
+          // Save to AWS DynamoDB
+          await awsStorageManager.savePaperForm(currentForm);
+          console.log('Form saved successfully to AWS DynamoDB');
         } catch (error) {
           console.error('Error updating form locally:', error);
           console.error('Form data that failed to update:', currentForm);
@@ -482,17 +481,7 @@ export const usePaperFormStore = create<PaperFormStore>()(
         // A form with corrective actions is never blank
         const hasCorrectiveActions = form.correctiveActionsComments && form.correctiveActionsComments.trim() !== '';
         
-        // Debug logging
-        console.log(`isFormBlank check for form ${form.id}:`, {
-          hasEntries,
-          hasBottomSection,
-          hasTitle: hasTitle ? `"${form.title}"` : false,
-          hasStatus,
-          hasInitial: hasInitial ? `"${form.formInitial}"` : false,
-          hasAdminComments,
-          hasCorrectiveActions: hasCorrectiveActions ? `"${form.correctiveActionsComments?.substring(0, 50)}..."` : false,
-          isBlank: !(hasEntries || hasBottomSection || hasTitle || hasStatus || hasInitial || hasAdminComments || hasCorrectiveActions)
-        });
+        // Debug logging removed for performance
         
         return !(hasEntries || hasBottomSection || hasTitle || hasStatus || hasInitial || hasAdminComments || hasCorrectiveActions);
       },

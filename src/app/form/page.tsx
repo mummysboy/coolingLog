@@ -300,6 +300,28 @@ export default function FormPage() {
                                  '⏳ In Progress'}
                               </span>
                               
+                              {/* Save Form Button */}
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await saveForm();
+                                    // Show success message
+                                    alert('Form saved successfully to AWS DynamoDB!');
+                                  } catch (error) {
+                                    console.error('Error saving form:', error);
+                                    const errorMessage = error instanceof Error ? error.message : String(error);
+                                    alert(`Error saving form: ${errorMessage}`);
+                                  }
+                                }}
+                                className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-700 transition-colors mr-2"
+                                title="Save form to AWS DynamoDB"
+                              >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                </svg>
+                                Save to AWS
+                              </button>
+                              
                               {/* View Form Button */}
                               <button
                                 onClick={() => handleViewForm(form)}

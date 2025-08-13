@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import { useInitialsStore } from '@/stores/initialsStore';
 import { usePinStore } from '@/stores/pinStore';
@@ -93,14 +93,15 @@ export default function AdminDashboard() {
     // Store previous form statuses to detect changes
     const previousStatuses = new Map(savedForms.map(form => [form.id, form.status]));
     
-    // Refresh dashboard every 2 seconds to show real-time status updates
-    const refreshInterval = setInterval(() => {
-      setDashboardRefreshKey(prev => prev + 1);
+    // Only refresh when there are actual status changes, not on a timer
+    const checkForStatusChanges = () => {
+      let hasChanges = false;
       
-      // Check for status changes and show notifications
       savedForms.forEach(form => {
         const previousStatus = previousStatuses.get(form.id);
         if (previousStatus && previousStatus !== form.status) {
+          hasChanges = true;
+          
           // Status changed - show notification
           const toast: {
             id: string;
@@ -128,10 +129,111 @@ export default function AdminDashboard() {
           previousStatuses.set(form.id, form.status);
         }
       });
-    }, 2000);
-
-    return () => clearInterval(refreshInterval);
+      
+      // Only refresh dashboard if there were actual changes
+      if (hasChanges) {
+        setDashboardRefreshKey(prev => prev + 1);
+      }
+    };
+    
+    // Check for changes immediately when savedForms changes
+    checkForStatusChanges();
+    
+    // No more automatic interval - we'll rely on React's natural re-rendering
+    // when savedForms actually changes
   }, [savedForms]);
+
+  // OPTIMIZATION: Memoize filtered forms to avoid repeated isFormBlank calls
+  const filteredForms = useMemo(() => {
+    return savedForms.filter(form => !isFormBlank(form));
+  }, [savedForms, isFormBlank]);
+
+  const errorForms = useMemo(() => {
+    return filteredForms.filter(form => form.status === 'Error');
+  }, [filteredForms]);
+
+  const pendingForms = useMemo(() => {
+    return filteredForms.filter(form => form.status !== 'Complete');
+  }, [filteredForms]);
+
+  const formCounts = useMemo(() => {
+    return {
+      total: filteredForms.length,
+      pending: pendingForms.length,
+      complete: filteredForms.filter(f => f.status === 'Complete').length,
+      error: errorForms.length
+    };
+  }, [filteredForms, pendingForms, errorForms]);
+
+  // OPTIMIZATION: Memoize form status calculations to avoid expensive validation on every render
+  const formStatuses = useMemo(() => {
+    const statusMap = new Map<string, { newStatus: 'Complete' | 'In Progress' | 'Error', shouldUpdate: boolean }>();
+    
+    pendingForms.forEach(form => {
+      const completeEntries = form.entries.filter(entry => 
+        entry.type && entry.ccp1.temp && entry.ccp2.temp && 
+        entry.coolingTo80.temp && entry.coolingTo54.temp && entry.finalChill.temp
+      ).length;
+      
+      // Check for errors only in cells that have all three fields (temp, time, initial)
+      let hasErrors = false;
+      form.entries.forEach((entry, rowIndex) => {
+        const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+        stages.forEach(stage => {
+          const stageData = entry[stage as keyof typeof entry] as any;
+          // Only validate if all three fields are present
+          if (stageData && stageData.temp && stageData.time && stageData.initial) {
+            const validation = shouldHighlightCell(form, rowIndex, `${stage}.temp`);
+            if (validation.highlight && validation.severity === 'error') {
+              hasErrors = true;
+            }
+          }
+        });
+      });
+      
+      let newStatus: 'Complete' | 'In Progress' | 'Error';
+      
+      if (hasErrors) {
+        newStatus = 'Error';
+      } else if (completeEntries === form.entries.length && form.entries.length > 0) {
+        // All entries are complete with data
+        newStatus = 'Complete';
+      } else if (completeEntries > 0) {
+        // Some entries have data but not all
+        newStatus = 'In Progress';
+      } else {
+        // No entries have data
+        newStatus = 'In Progress';
+      }
+      
+      // Auto-update status logic:
+      // 1. Always allow updates to 'Error' status (new errors should be shown)
+      // 2. Allow updates from 'In Progress' to 'Complete' (when all issues are resolved)
+      // 3. Don't override 'In Progress' with 'In Progress' (prevents unnecessary updates)
+      // 4. Don't override 'In Progress' with 'Error' if admin has manually resolved (has corrective actions)
+      // 5. NEVER override manually set 'Complete' status (respect user's decision)
+      const shouldUpdate = newStatus !== form.status && (
+        newStatus === 'Error' || // Always show new errors
+        form.status !== 'In Progress' || // Allow updates from other statuses
+        newStatus === 'Complete' // Allow completion from 'In Progress'
+      );
+      
+      // Special case: Don't auto-update to 'Error' if admin has manually set to 'In Progress' and has corrective actions
+      const adminManuallyResolved = form.status === 'In Progress' && 
+        form.correctiveActionsComments && 
+        form.correctiveActionsComments.trim() && 
+        newStatus === 'Error';
+      
+      // CRITICAL: Never override manually set 'Complete' status
+      const manuallyCompleted = form.status === 'Complete';
+      
+      const finalShouldUpdate = shouldUpdate && !adminManuallyResolved && !manuallyCompleted;
+      
+      statusMap.set(form.id, { newStatus, shouldUpdate: finalShouldUpdate });
+    });
+    
+    return statusMap;
+  }, [pendingForms, shouldHighlightCell]);
 
   // Close dropdown and modals when clicking outside
   useEffect(() => {
@@ -699,15 +801,7 @@ export default function AdminDashboard() {
     return filtered;
   };
 
-  const getFormCounts = () => {
-    const forms = savedForms.filter(form => !isFormBlank(form));
-    return {
-      total: forms.length,
-      pending: forms.filter(f => f.status !== 'Complete').length,
-      complete: forms.filter(f => f.status === 'Complete').length,
-      error: forms.filter(f => f.status === 'Error').length
-    };
-  };
+  // getFormCounts is now replaced by the memoized formCounts above
 
 
 
@@ -855,30 +949,128 @@ export default function AdminDashboard() {
           )}
 
           {/* NEW: Real-time Alerts Section */}
-          {savedForms.filter(form => !isFormBlank(form) && form.status === 'Error').length > 0 && (
-            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6 mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">System Status</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* AWS Connection Test */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-blue-800">AWS Connection</p>
+                      <p className="text-sm text-blue-700">Test DynamoDB connection</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const { awsStorageManager } = await import('@/lib/awsService');
+                        const isConnected = await awsStorageManager.testConnection();
+                        if (isConnected) {
+                          setToasts(prev => [...prev, {
+                            id: Date.now().toString(),
+                            type: 'success',
+                            message: 'AWS connection successful!',
+                            timestamp: new Date()
+                          }]);
+                        } else {
+                          setToasts(prev => [...prev, {
+                            id: Date.now().toString(),
+                            type: 'warning',
+                            message: 'AWS connection failed',
+                            timestamp: new Date()
+                          }]);
+                        }
+                                             } catch (error) {
+                         const errorMessage = error instanceof Error ? error.message : String(error);
+                         setToasts(prev => [...prev, {
+                           id: Date.now().toString(),
+                           type: 'error',
+                           message: `AWS connection error: ${errorMessage}`,
+                           timestamp: new Date()
+                         }]);
+                       }
+                    }}
+                    className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-700 transition-colors"
+                  >
+                    Test
+                  </button>
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-red-800">
-                    ⚠️ Forms Requiring Immediate Attention
-                  </h3>
-                  <p className="text-red-700">
-                    {savedForms.filter(form => !isFormBlank(form) && form.status === 'Error').length} form(s) have validation errors that need to be resolved.
-                  </p>
+              </div>
+              
+              {/* Forms requiring attention */}
+              {errorForms.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-red-800">Forms Requiring Attention</p>
+                      <p className="text-sm text-red-700">{errorForms.length} forms need review</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-shrink-0">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                    {savedForms.filter(form => !isFormBlank(form) && form.status === 'Error').length} Error(s)
-                  </span>
+              )}
+              
+              {/* Sync to AWS */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-green-800">Sync to AWS</p>
+                      <p className="text-sm text-green-700">Sync all forms to DynamoDB</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const result = await syncFormsToAWS();
+                        if (result.success) {
+                          setToasts(prev => [...prev, {
+                            id: Date.now().toString(),
+                            type: 'success',
+                            message: `Successfully synced ${result.synced} forms to AWS`,
+                            timestamp: new Date()
+                          }]);
+                        } else {
+                          setToasts(prev => [...prev, {
+                            id: Date.now().toString(),
+                            type: 'warning',
+                            message: `Synced ${result.synced} forms, ${result.errors} failed`,
+                            timestamp: new Date()
+                          }]);
+                        }
+                      } catch (error) {
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        setToasts(prev => [...prev, {
+                          id: Date.now().toString(),
+                          type: 'error',
+                          message: `Sync error: ${errorMessage}`,
+                          timestamp: new Date()
+                        }]);
+                      }
+                    }}
+                    className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 transition-colors"
+                  >
+                    Sync
+                  </button>
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
           {/* Pending Forms Table */}
           {/* Active Forms Section */}
@@ -897,88 +1089,20 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {savedForms
-                    .filter(form => form.status !== 'Complete')
+                    {pendingForms
                     .sort((a, b) => new Date(b.date).getTime() - new Date(b.date).getTime()) // Sort by most recent date first
                     .map((form) => {
-                    const completeEntries = form.entries.filter(entry => 
-                      entry.type && entry.ccp1.temp && entry.ccp2.temp && 
-                      entry.coolingTo80.temp && entry.coolingTo54.temp && entry.finalChill.temp
-                    ).length;
+                    // Use memoized status calculations instead of running expensive validation on every render
+                    const formStatus = formStatuses.get(form.id);
                     
-                    // Debug: Log current form status before auto-update logic
-                    console.log('Form status check for form:', form.id, 'current status:', form.status);
-                    
-                    // Auto-determine and update status based on form data and validation
-                    // Only auto-update if the current status is not manually set to 'In Progress'
-                    let newStatus: 'Complete' | 'In Progress' | 'Error';
-                    
-                    // Check for errors only in cells that have all three fields (temp, time, initial)
-                    let hasErrors = false;
-                    form.entries.forEach((entry, rowIndex) => {
-                      const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
-                      stages.forEach(stage => {
-                        const stageData = entry[stage as keyof typeof entry] as any;
-                        // Only validate if all three fields are present
-                        if (stageData && stageData.temp && stageData.time && stageData.initial) {
-                          const validation = shouldHighlightCell(form, rowIndex, `${stage}.temp`);
-                          if (validation.highlight && validation.severity === 'error') {
-                            hasErrors = true;
-                          }
-                        }
-                      });
-                    });
-                    
-                    if (hasErrors) {
-                      newStatus = 'Error';
-                    } else if (completeEntries === form.entries.length && form.entries.length > 0) {
-                      // All entries are complete with data
-                      newStatus = 'Complete';
-                    } else if (completeEntries > 0) {
-                      // Some entries have data but not all
-                      newStatus = 'In Progress';
-                    } else {
-                      // No entries have data
-                      newStatus = 'In Progress';
-                    }
-                    
-                    // Auto-update status logic:
-                    // 1. Always allow updates to 'Error' status (new errors should be shown)
-                    // 2. Allow updates from 'In Progress' to 'Complete' (when all issues are resolved)
-                    // 3. Don't override 'In Progress' with 'In Progress' (prevents unnecessary updates)
-                    // 4. Don't override 'In Progress' with 'Error' if admin has manually resolved (has corrective actions)
-                    // 5. NEVER override manually set 'Complete' status (respect user's decision)
-                    const shouldUpdate = newStatus !== form.status && (
-                      newStatus === 'Error' || // Always show new errors
-                      form.status !== 'In Progress' || // Allow updates from other statuses
-                      newStatus === 'Complete' // Allow completion from 'In Progress'
-                    );
-                    
-                    // Special case: Don't auto-update to 'Error' if admin has manually set to 'In Progress' and has corrective actions
-                    const adminManuallyResolved = form.status === 'In Progress' && 
-                      form.correctiveActionsComments && 
-                      form.correctiveActionsComments.trim() && 
-                      newStatus === 'Error';
-                    
-                    // CRITICAL: Never override manually set 'Complete' status
-                    const manuallyCompleted = form.status === 'Complete';
-                    
-                    if (shouldUpdate && !adminManuallyResolved && !manuallyCompleted) {
-                      console.log('Auto-updating form status from', form.status, 'to', newStatus, 'for form:', form.id);
+                    // Auto-update status if needed
+                    if (formStatus?.shouldUpdate) {
                       setTimeout(() => {
-                        updateFormStatus(form.id, newStatus);
+                        updateFormStatus(form.id, formStatus.newStatus);
                       }, 0);
-                    } else {
-                      if (manuallyCompleted) {
-                        console.log('Skipping auto-status update for form:', form.id, 'because status is manually set to Complete');
-                      } else if (adminManuallyResolved) {
-                        console.log('Skipping auto-status update for form:', form.id, 'because admin has manually resolved issues');
-                      } else {
-                        console.log('Skipping auto-status update for form:', form.id, 'current status:', form.status, 'would update to:', newStatus, 'adminManuallyResolved:', adminManuallyResolved);
-                      }
                     }
                     
-                    console.log('Rendering form:', form.id, 'with status:', form.status, 'hasComments:', !!form.correctiveActionsComments?.trim(), 'correctiveActions:', form.correctiveActionsComments?.substring(0, 50));
+                    // Form rendering info (minimal logging)
                     return (
                       <tr 
                         key={form.id} 

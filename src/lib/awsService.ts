@@ -141,22 +141,122 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
   return {
     id: form.id,
     date: ensureDate(form.date).toISOString(),
-    // dateCreated is not supported by current GraphQL mutations
+    dateCreated: ensureDate(form.dateCreated || form.date).toISOString(),
     lastTextEntry: ensureDate(form.lastTextEntry || form.date).toISOString(),
     formType: form.formType,
     formInitial: form.formInitial,
-    status: form.status.toUpperCase().replace(' ', '_') as 'COMPLETE' | 'IN_PROGRESS' | 'ERROR',
+    status: form.status.toUpperCase().replace(' ', '_'),
     title: form.title,
     entries: form.entries.filter(entry => entry && typeof entry === 'object' && entry.type !== undefined).map(entry => ({
       type: entry.type,
-      rack: entry.rack || '1st Rack'
-      // Note: Detailed stage data (ccp1, ccp2, etc.) is not supported by current GraphQL mutations
-      // This data will be stored locally and synchronized when the mutations are updated
+      rack: entry.rack || '1st Rack',
+      // Map all stage data
+      heatTreating: entry.heatTreating ? {
+        temperature: entry.heatTreating.temp ? parseFloat(entry.heatTreating.temp) : null,
+        time: entry.heatTreating.time ? this.convertTimeStringToDateTime(entry.heatTreating.time, form.date) : null,
+        isValid: true,
+        correctiveAction: '',
+        employeeInitials: entry.heatTreating.initial || '',
+        notes: '',
+        dataLog: false
+      } : null,
+      ccp2_126: entry.ccp2_126 ? {
+        temperature: entry.ccp2_126.temp ? parseFloat(entry.ccp2_126.temp) : null,
+        time: entry.ccp2_126.time ? this.convertTimeStringToDateTime(entry.ccp2_126.time, form.date) : null,
+        isValid: true,
+        correctiveAction: '',
+        employeeInitials: entry.ccp2_126.initial || '',
+        notes: '',
+        dataLog: false
+      } : null,
+      ccp2_80: entry.ccp2_80 ? {
+        temperature: entry.ccp2_80.temp ? parseFloat(entry.ccp2_80.temp) : null,
+        time: entry.ccp2_80.time ? this.convertTimeStringToDateTime(entry.ccp2_80.time, form.date) : null,
+        isValid: true,
+        correctiveAction: '',
+        employeeInitials: entry.ccp2_80.initial || '',
+        notes: '',
+        dataLog: false
+      } : null,
+      ccp2_55: entry.ccp2_55 ? {
+        temperature: entry.ccp2_55.temp ? parseFloat(entry.ccp2_55.temp) : null,
+        time: entry.ccp2_55.time ? this.convertTimeStringToDateTime(entry.ccp2_55.time, form.date) : null,
+        isValid: true,
+        correctiveAction: '',
+        employeeInitials: entry.ccp2_55.initial || '',
+        notes: '',
+        dataLog: false
+      } : null,
+      ccp1: entry.ccp1 ? {
+        temperature: entry.ccp1.temp ? parseFloat(entry.ccp1.temp) : null,
+        time: entry.ccp1.time ? this.convertTimeStringToDateTime(entry.ccp1.time, form.date) : null,
+        isValid: entry.ccp1.dataLog || false,
+        correctiveAction: '',
+        employeeInitials: entry.ccp1.initial || '',
+        notes: '',
+        dataLog: entry.ccp1.dataLog || false
+      } : null,
+      ccp2: entry.ccp2 ? {
+        temperature: entry.ccp2.temp ? parseFloat(entry.ccp2.temp) : null,
+        time: entry.ccp2.time ? this.convertTimeStringToDateTime(entry.ccp2.time, form.date) : null,
+        isValid: entry.ccp2.dataLog || false,
+        correctiveAction: '',
+        employeeInitials: entry.ccp2.initial || '',
+        notes: '',
+        dataLog: entry.ccp2.dataLog || false
+      } : null,
+      coolingTo80: entry.coolingTo80 ? {
+        temperature: entry.coolingTo80.temp ? parseFloat(entry.coolingTo80.temp) : null,
+        time: entry.coolingTo80.time ? this.convertTimeStringToDateTime(entry.coolingTo80.time, form.date) : null,
+        isValid: entry.coolingTo80.dataLog || false,
+        correctiveAction: '',
+        employeeInitials: entry.coolingTo80.initial || '',
+        notes: '',
+        dataLog: entry.coolingTo80.dataLog || false
+      } : null,
+      coolingTo54: entry.coolingTo54 ? {
+        temperature: entry.coolingTo54.temp ? parseFloat(entry.coolingTo54.temp) : null,
+        time: entry.coolingTo54.time ? this.convertTimeStringToDateTime(entry.coolingTo54.time, form.date) : null,
+        isValid: entry.coolingTo54.dataLog || false,
+        correctiveAction: '',
+        employeeInitials: entry.coolingTo54.initial || '',
+        notes: '',
+        dataLog: entry.coolingTo54.dataLog || false
+      } : null,
+      finalChill: entry.finalChill ? {
+        temperature: entry.finalChill.temp ? parseFloat(entry.finalChill.temp) : null,
+        time: entry.finalChill.time ? this.convertTimeStringToDateTime(entry.finalChill.time, form.date) : null,
+        isValid: entry.finalChill.dataLog || false,
+        correctiveAction: '',
+        employeeInitials: entry.finalChill.initial || '',
+        notes: '',
+        dataLog: entry.finalChill.dataLog || false
+      } : null
     })),
     thermometerNumber: form.thermometerNumber || '',
-    ingredients: form.ingredients || { beef: '', chicken: '', liquidEggs: '' },
-    lotNumbers: form.lotNumbers || { beef: '', chicken: '', liquidEggs: '' },
+    ingredients: JSON.stringify(form.ingredients || { beef: '', chicken: '', liquidEggs: '' }),
+    lotNumbers: JSON.stringify(form.lotNumbers || { beef: '', chicken: '', liquidEggs: '' }),
     correctiveActionsComments: form.correctiveActionsComments,
+    // For Piroshki form - Quantity and Flavor
+    quantityAndFlavor: form.quantityAndFlavor ? JSON.stringify(form.quantityAndFlavor) : null,
+    
+    // For Piroshki form - Pre Shipment Review
+    preShipmentReview: form.preShipmentReview ? {
+      date: form.preShipmentReview.date,
+      initials: form.preShipmentReview.initials,
+      results: form.preShipmentReview.results
+    } : null,
+    
+    // For Bagel Dog form - Frank Flavor/Size Table
+    frankFlavorSizeTable: form.frankFlavorSizeTable ? JSON.stringify(form.frankFlavorSizeTable) : null,
+    
+    // For Bagel Dog form - Pre Shipment Review
+    bagelDogPreShipmentReview: form.bagelDogPreShipmentReview ? {
+      date: form.bagelDogPreShipmentReview.date,
+      results: form.bagelDogPreShipmentReview.results,
+      signature: form.bagelDogPreShipmentReview.signature
+    } : null,
+    
     adminComments: form.adminComments?.filter(comment => comment && comment.id && comment.adminInitial && comment.comment)?.map(comment => ({
       id: comment.id,
       adminInitial: comment.adminInitial,
@@ -358,18 +458,41 @@ function mapGraphQLResultToLogEntry(result: any): LogEntry {
 }
 
 class AWSStorageManager {
+  // Helper method to convert time string (HH:MM) to DateTime
+  private convertTimeStringToDateTime(timeString: string, baseDate: Date): string {
+    if (!timeString || !baseDate) return null;
+    
+    try {
+      const [hours, minutes] = timeString.split(':').map(Number);
+      const dateTime = new Date(baseDate);
+      dateTime.setHours(hours, minutes, 0, 0);
+      return dateTime.toISOString();
+    } catch (error) {
+      console.warn('Failed to convert time string to DateTime:', timeString, error);
+      return null;
+    }
+  }
+
   // Test AWS connection
   async testConnection(): Promise<boolean> {
     try {
       console.log('Testing AWS connection...');
       
-      // Try a simple query to see if we can connect
+      // Try a simple query to test connection
       const result = await client.graphql({
         query: queries.listPaperFormEntries,
-        variables: { limit: 1 } // Just get 1 item to test
+        variables: { limit: 1 }
       }) as GraphQLResult<any>;
       
-      console.log('AWS connection test successful:', result);
+      console.log('AWS connection test successful');
+      
+      // Test if mutations are accessible
+      if (mutations.createPaperFormEntry) {
+        console.log('✅ Mutations are available');
+      } else {
+        console.log('❌ Mutations are not available');
+      }
+      
       return true;
     } catch (error) {
       console.error('AWS connection test failed:', error);
@@ -477,75 +600,149 @@ class AWSStorageManager {
         throw new Error('Invalid form data: missing or invalid entries array');
       }
       
-      console.log('Original form data:', JSON.stringify(form, null, 2));
+      console.log('=== FORM SAVE DEBUG ===');
+      console.log('Form ID:', form.id);
+      console.log('Form type:', form.formType);
+      console.log('Form entries count:', form.entries.length);
       console.log('Form entries:', form.entries);
+      console.log('Form has title:', !!form.title);
+      console.log('Form has initial:', !!form.formInitial);
       
       const input = mapPaperFormEntryToGraphQLInput(form);
-      console.log('Attempting to save paper form with input:', JSON.stringify(input, null, 2));
-      console.log('Note: Only basic entry data (type, rack) is being sent to AWS due to GraphQL mutation limitations');
-      console.log('Detailed stage data (ccp1, ccp2, etc.) is stored locally only');
-      console.log('Input keys:', Object.keys(input));
-      console.log('Input entries count:', input.entries?.length);
-      console.log('First entry sample:', input.entries?.[0]);
+      console.log('Saving form to AWS DynamoDB:', { id: form.id, type: form.formType, status: form.status });
       
       // Check if form exists
       const existingForm = await this.getPaperForm(form.id);
       
       if (existingForm) {
         // Update existing form
-        console.log('Updating existing form:', form.id);
-        const result = await client.graphql({
-          query: mutations.updatePaperFormEntry,
-          variables: { input }
+        console.log('=== UPDATE FORM ===');
+        console.log('Form ID:', form.id);
+        console.log('Mutation available:', !!mutations.updatePaperFormEntry);
+        console.log('Mutation type:', typeof mutations.updatePaperFormEntry);
+        console.log('Input structure:', {
+          id: input.id,
+          date: input.date,
+          formType: input.formType,
+          entriesCount: input.entries?.length,
+          hasEntries: !!input.entries
         });
-        console.log('Update result:', result);
-      } else {
-        // Create new form
-        console.log('Creating new form');
+        
+        try {
+          const result = await client.graphql({
+            query: mutations.updatePaperFormEntry,
+            variables: { input }
+          });
+                  // Check for GraphQL errors in the result
+        if (result.errors && result.errors.length > 0) {
+          console.error('GraphQL errors in update result:', result.errors);
+          throw new Error(`GraphQL errors: ${result.errors.map(e => e.message).join(', ')}`);
+        }
+      } catch (graphqlError) {
+        console.error('GraphQL update failed:', graphqlError);
+        throw graphqlError;
+      }
+    } else {
+      // Create new form
+      try {
+        // Log the input data before making the GraphQL call
+        console.log('=== GRAPHQL CREATE INPUT ===');
+        console.log('Input ID:', input.id);
+        console.log('Input formType:', input.formType);
+        console.log('Input status:', input.status);
+        console.log('Input entries count:', input.entries?.length);
+        console.log('Input keys:', Object.keys(input));
+        
+        // Check for any problematic values
+        const problematicFields = [];
+        Object.entries(input).forEach(([key, value]) => {
+          if (value === null || value === undefined) {
+            problematicFields.push(`${key}: ${value}`);
+          }
+        });
+        if (problematicFields.length > 0) {
+          console.log('⚠️ Input contains null/undefined fields:', problematicFields);
+        }
+        
+        // Validate required fields according to GraphQL schema
+        const requiredFields = ['date', 'dateCreated', 'lastTextEntry', 'formType', 'formInitial', 'status', 'entries'];
+        const missingFields = requiredFields.filter(field => !input[field]);
+        if (missingFields.length > 0) {
+          console.log('❌ Missing required fields:', missingFields);
+        }
+        
+        // Validate entries array
+        if (!Array.isArray(input.entries) || input.entries.length === 0) {
+          console.log('❌ Entries must be a non-empty array');
+        }
+        
+        // Validate each entry has required fields
+        input.entries?.forEach((entry, index) => {
+          if (!entry.type || !entry.rack) {
+            console.log(`⚠️ Entry ${index} missing type or rack:`, entry);
+          }
+        });
+        
+        // For create operations, remove the id field since it's optional in the schema
+        const createInput = { ...input };
+        delete createInput.id;
+        
+        console.log('Create input without ID:', createInput);
+        
         const result = await client.graphql({
           query: mutations.createPaperFormEntry,
-          variables: { input }
+          variables: { input: createInput }
         });
-        console.log('Create result:', result);
-      }
-    } catch (error) {
-      console.error('Error saving paper form:', {
-        error,
-        errorMessage: error instanceof Error ? error.message : String(error),
-        errorName: error instanceof Error ? error.name : 'Unknown',
-        errorStack: error instanceof Error ? error.stack : 'No stack trace',
-        formId: form.id,
-        formEntries: form.entries?.length || 0,
-        input: mapPaperFormEntryToGraphQLInput(form)
-      });
-      
-      // Log the specific GraphQL error if available
-      if (error && typeof error === 'object' && 'errors' in error) {
-        console.error('GraphQL errors:', (error as any).errors);
-      }
-      
-      // Log AWS-specific error details
-      if (error && typeof error === 'object' && 'message' in error) {
-        console.error('AWS Error message:', (error as any).message);
-      }
-      
-      // Log the full error object for debugging
-      console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-      
-      // Check for network or authentication errors
-      if (error && typeof error === 'object' && 'name' in error) {
-        const errorName = (error as any).name;
-        if (errorName === 'UnauthorizedException' || errorName === 'ForbiddenException') {
-          console.error('Authentication/Authorization error:', errorName);
-        } else if (errorName === 'NetworkError' || errorName === 'TimeoutError') {
-          console.error('Network error:', errorName);
-        } else if (errorName === 'ValidationError') {
-          console.error('GraphQL validation error:', errorName);
-        } else if (errorName === 'ConflictException') {
-          console.error('Conflict error (duplicate ID):', errorName);
+        
+        // Check for GraphQL errors in the result
+        if (result.errors && result.errors.length > 0) {
+          console.error('GraphQL errors in create result:', result.errors);
+          throw new Error(`GraphQL errors: ${result.errors.map(e => e.message).join(', ')}`);
+        }
+      } catch (graphqlError) {
+          // Log detailed error information before Next.js devtools can intercept it
+          console.log('=== GRAPHQL CREATE ERROR DETAILS ===');
+          console.log('Error type:', typeof graphqlError);
+          console.log('Error constructor:', graphqlError?.constructor?.name);
+          
+          if (graphqlError instanceof Error) {
+            console.log('Error name:', graphqlError.name);
+            console.log('Error message:', graphqlError.message);
+            console.log('Error stack:', graphqlError.stack);
+          }
+          
+          // Try to extract GraphQL-specific error information
+          if (graphqlError && typeof graphqlError === 'object') {
+            const errorObj = graphqlError as any;
+            console.log('Error object keys:', Object.keys(errorObj));
+            
+            if (errorObj.errors) {
+              console.log('GraphQL errors:', errorObj.errors);
+            }
+            if (errorObj.message) {
+              console.log('Error message:', errorObj.message);
+            }
+            if (errorObj.extensions) {
+              console.log('Error extensions:', errorObj.extensions);
+            }
+            if (errorObj.cause) {
+              console.log('Error cause:', errorObj.cause);
+            }
+            
+            // Log the full error object as a string
+            try {
+              console.log('Full error object:', JSON.stringify(errorObj, null, 2));
+            } catch (stringifyError) {
+              console.log('Could not stringify error object:', stringifyError);
+            }
+          }
+          
+          console.error('GraphQL create failed:', graphqlError);
+          throw graphqlError;
         }
       }
-      
+    } catch (error) {
+      console.error('Failed to save paper form:', error);
       throw error;
     }
   }
@@ -579,15 +776,9 @@ class AWSStorageManager {
 
   async getPaperForms(): Promise<PaperFormEntry[]> {
     try {
-      console.log('Attempting to fetch paper forms from AWS...');
-      
       const result = await client.graphql({
         query: queries.listPaperFormEntries
       }) as GraphQLResult<any>;
-
-      console.log('GraphQL result:', result);
-      console.log('Result data:', result.data);
-      console.log('List paper form entries:', result.data?.listPaperFormEntries);
 
       if (result.data?.listPaperFormEntries?.items) {
         const forms = result.data.listPaperFormEntries.items.map(mapGraphQLResultToPaperFormEntry);
