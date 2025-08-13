@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { LogEntry, StageType, MOCK_USER, MOCK_THRESHOLDS } from '@/lib/types';
 import { storageManager } from '@/lib/storage';
 
@@ -108,8 +107,7 @@ const getNextStage = (currentStage: StageType): StageType | null => {
 };
 
 export const useLogStore = create<LogStore>()(
-  persist(
-    (set, get) => ({
+  (set, get) => ({
       currentLog: null,
       logs: [],
 
@@ -352,11 +350,12 @@ export const useLogStore = create<LogStore>()(
 
         set({ logs: updatedLogs });
 
-        // Save to IndexedDB
+        // Save to AWS DynamoDB
         try {
           await storageManager.saveLog(currentLog);
         } catch (error) {
-          console.error('Failed to save log to IndexedDB:', error);
+          console.error('Failed to save log to AWS DynamoDB:', error);
+          throw error; // Re-throw to let UI handle the error
         }
       },
 
@@ -373,15 +372,10 @@ export const useLogStore = create<LogStore>()(
           const logsFromStorage = await storageManager.getLogs();
           set({ logs: logsFromStorage });
         } catch (error) {
-          console.error('Failed to load logs from IndexedDB:', error);
-          // Fallback to empty array if IndexedDB fails
-          set({ logs: [] });
+          console.error('Failed to load logs from AWS DynamoDB:', error);
+          // No fallback - AWS is required
+          throw error;
         }
       },
-    }),
-    {
-      name: 'food-chilling-log-storage',
-      partialize: (state) => ({ logs: state.logs }),
-    }
-  )
-);
+    })
+  );

@@ -15,7 +15,7 @@ import { shouldHighlightCell } from '@/lib/validation';
 
 export default function AdminDashboard() {
   const { savedForms, currentForm, loadForm, loadFormsFromStorage, updateFormStatus, deleteForm, isFormBlank, exportState, syncFormsToAWS } = usePaperFormStore();
-  const { initials, addInitial, removeInitial, toggleInitialStatus } = useInitialsStore();
+  const { initials, addInitial, removeInitial, toggleInitialStatus, loadInitials } = useInitialsStore();
   const { createPin, updatePin, deletePin, getAllPins, getPinForInitials } = usePinStore();
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
@@ -46,47 +46,33 @@ export default function AdminDashboard() {
 
   const adminUser = MOCK_USERS.find(user => user.role === 'admin');
 
-  // Load forms from storage when admin page loads
+  // Load forms and initials from AWS when admin page loads
   useEffect(() => {
-    const loadForms = async () => {
+    const loadData = async () => {
       try {
-        console.log('Admin page: Loading forms from storage...');
+        console.log('Admin page: Loading data from AWS...');
+        
+        // Load forms
         await loadFormsFromStorage();
         console.log('Admin page: Forms loaded successfully');
         
-        // Debug: Check forms count after loading
-        const { savedForms } = usePaperFormStore.getState();
-        console.log(`Admin page: After loading, savedForms count: ${savedForms.length}`);
-        if (savedForms.length > 0) {
-          console.log('Admin page: First form details:', {
-            id: savedForms[0].id,
-            title: savedForms[0].title,
-            status: savedForms[0].status,
-            date: savedForms[0].date
-          });
-        }
-      } catch (error) {
-        console.error('Admin page: Error loading forms from storage:', error);
+        // Load initials
+        await loadInitials();
+        console.log('Admin page: Initials loaded successfully');
         
-        // Fallback: Try to get forms from local store state
-        try {
-          const { savedForms } = usePaperFormStore.getState();
-          console.log(`Admin page: Fallback - using ${savedForms.length} forms from local store`);
-          if (savedForms.length > 0) {
-            console.log('Admin page: Local forms available:', savedForms.map(f => ({
-              id: f.id.slice(-6),
-              title: f.title,
-              status: f.status
-            })));
-          }
-        } catch (fallbackError) {
-          console.error('Admin page: Fallback also failed:', fallbackError);
-        }
+        // Debug: Check data count after loading
+        const { savedForms } = usePaperFormStore.getState();
+        const { initials } = useInitialsStore.getState();
+        console.log(`Admin page: After loading, savedForms count: ${savedForms.length}, initials count: ${initials.length}`);
+        
+      } catch (error) {
+        console.error('Admin page: Error loading data from AWS:', error);
+        // No fallback to local storage - AWS is required
       }
     };
     
-    loadForms();
-  }, [loadFormsFromStorage]);
+    loadData();
+  }, [loadFormsFromStorage, loadInitials]);
 
   // NEW: Real-time dashboard refresh effect with status change detection
   useEffect(() => {

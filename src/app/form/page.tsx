@@ -10,7 +10,8 @@ import { validateForm, shouldHighlightCell } from '@/lib/validation';
 import BagelDogForm from '@/components/BagelDogForm';
 
 export default function FormPage() {
-  const { currentForm, createNewForm, updateFormStatus, saveForm, savedForms, loadForm, deleteForm } = usePaperFormStore();
+  const { currentForm, createNewForm, updateFormStatus, saveForm, savedForms, loadForm, deleteForm, loadFormsFromStorage } = usePaperFormStore();
+  const store = usePaperFormStore; // Get store reference for getState()
   const [formUpdateKey, setFormUpdateKey] = useState(0); // Force re-render when form updates
   const [isLoadingForm, setIsLoadingForm] = useState(false);
 
@@ -69,35 +70,40 @@ export default function FormPage() {
     }
   };
 
-  // Create a default form on page load
+  // Load forms from AWS on page load (only once)
   useEffect(() => {
-    const loadDefaultForm = async () => {
-      console.log('Loading forms from storage');
+    const loadFormsFromAWS = async () => {
+      console.log('Loading forms from AWS DynamoDB');
       setIsLoadingForm(true);
       
       try {
-        // Load existing forms from storage but don't create new ones automatically
-        // Only show forms that the user has explicitly created
-        if (savedForms.length === 0) {
-          // If no forms exist, don't create any automatically
-          console.log('No forms found - user must create forms manually');
-        } else {
-          // If forms exist, load the most recent one as current
-          const mostRecentForm = savedForms[0]; // Forms are sorted by date, newest first
+        // Load existing forms from AWS
+        await loadFormsFromStorage();
+        
+        // Get the current state after loading
+        const { savedForms: loadedForms } = store.getState();
+        
+        // If forms exist, load the most recent one as current
+        if (loadedForms.length > 0) {
+          const mostRecentForm = loadedForms[0]; // Forms are sorted by date, newest first
           if (!currentForm || currentForm.id !== mostRecentForm.id) {
             console.log('Loading most recent form:', mostRecentForm.id);
             loadForm(mostRecentForm.id);
           }
+        } else {
+          console.log('No forms found in AWS - user must create forms manually');
         }
       } catch (error) {
-        console.error('Error loading forms:', error);
+        console.error('Error loading forms from AWS:', error);
+        // Show error message to user
+        alert('Failed to load forms from AWS DynamoDB. Please check your connection and try again.');
       } finally {
         setIsLoadingForm(false);
       }
     };
 
-    loadDefaultForm();
-  }, [savedForms, currentForm, loadForm]);
+    loadFormsFromAWS();
+  }, []); // Empty dependency array - only run once on mount
 
   // Automatically open newly created forms
   useEffect(() => {

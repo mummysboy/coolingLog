@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { PaperFormEntry, FormType, createEmptyForm, ensureDate } from '@/lib/paperFormTypes';
 import { awsStorageManager } from '@/lib/awsService';
 
@@ -49,8 +48,7 @@ interface PaperFormStore {
 }
 
 export const usePaperFormStore = create<PaperFormStore>()(
-  persist(
-    (set, get) => ({
+  (set, get) => ({
       currentForm: null,
       savedForms: [],
       selectedInitial: null,
@@ -126,13 +124,9 @@ export const usePaperFormStore = create<PaperFormStore>()(
       
       loadFormsFromStorage: async () => {
         try {
-          // Get current local forms before loading from AWS
-          const currentState = get();
-          const currentLocalForms = currentState.savedForms;
+          console.log('Loading forms from AWS DynamoDB...');
           
-          console.log(`Current local forms count: ${currentLocalForms.length}`);
-          
-          // Load forms from AWS DynamoDB
+          // Load forms from AWS DynamoDB only
           const awsForms = await awsStorageManager.getPaperForms();
           console.log(`AWS forms count: ${awsForms.length}`);
           
@@ -171,44 +165,10 @@ export const usePaperFormStore = create<PaperFormStore>()(
             return { ...form, entries: migratedEntries };
           });
           
-          // Create a map of AWS forms by ID for easy lookup
-          const awsFormMap = new Map(migratedForms.map(f => [f.id, f]));
+          console.log(`Successfully loaded ${migratedForms.length} forms from AWS DynamoDB`);
           
-          // Merge AWS forms with locally created forms
-          const mergedForms: PaperFormEntry[] = [];
-          
-          // First, add all AWS forms
-          mergedForms.push(...migratedForms);
-          
-          // Then, add local forms that don't exist in AWS (or update existing ones with local data)
-          currentLocalForms.forEach(localForm => {
-            const existingAwsForm = awsFormMap.get(localForm.id);
-            
-            if (!existingAwsForm) {
-              // This is a new local form that hasn't been saved to AWS yet
-              console.log(`Adding local-only form: ${localForm.id}`);
-              mergedForms.push(localForm);
-            } else {
-              // This form exists in both places - use the local version if it's more recent
-              const localLastModified = localForm.lastTextEntry || localForm.date;
-              const awsLastModified = existingAwsForm.lastTextEntry || existingAwsForm.date;
-              
-              if (localLastModified > awsLastModified) {
-                console.log(`Using local version of form ${localForm.id} (more recent)`);
-                // Replace AWS version with local version
-                const index = mergedForms.findIndex(f => f.id === localForm.id);
-                if (index !== -1) {
-                  mergedForms[index] = localForm;
-                }
-              } else {
-                console.log(`Using AWS version of form ${localForm.id} (more recent)`);
-              }
-            }
-          });
-          
-          console.log(`Final merged forms count: ${mergedForms.length} (${migratedForms.length} from AWS, ${mergedForms.length - migratedForms.length} from local)`);
-          
-          set({ savedForms: mergedForms });
+          // Set forms directly from AWS (no local merging)
+          set({ savedForms: migratedForms });
         } catch (error) {
           console.error('Error loading forms from AWS:', error);
           console.error('Error details:', {
@@ -218,14 +178,9 @@ export const usePaperFormStore = create<PaperFormStore>()(
             error: error
           });
           
-          // Fallback to local storage if AWS fails
-          console.log('Falling back to local storage only');
-          const currentState = get();
-          if (currentState.savedForms.length > 0) {
-            console.log(`Using ${currentState.savedForms.length} forms from local storage`);
-            // Even if AWS fails, we should still show the local forms
-            set({ savedForms: currentState.savedForms });
-          }
+          // No fallback to local storage - AWS is required
+          console.log('AWS is required - no local fallback available');
+          throw error; // Re-throw to let UI handle the error
         }
       },
 
@@ -691,13 +646,5 @@ export const usePaperFormStore = create<PaperFormStore>()(
           console.log('No current form to force update');
         }
       }
-    }),
-    {
-      name: 'paper-form-store',
-      partialize: (state) => ({
-        savedForms: state.savedForms,
-        currentForm: state.currentForm
-      })
-    }
-  )
-);
+    })
+  );
