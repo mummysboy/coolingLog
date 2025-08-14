@@ -1,592 +1,158 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
-export const getLogsByDateRange = /* GraphQL */ `
-  query GetLogsByDateRange($startDate: AWSDateTime!, $endDate: AWSDateTime!) {
-    getLogsByDateRange(startDate: $startDate, endDate: $endDate) {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const getTodaysLogs = /* GraphQL */ `
-  query GetTodaysLogs {
-    getTodaysLogs {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const getLogsRequiringReview = /* GraphQL */ `
-  query GetLogsRequiringReview {
-    getLogsRequiringReview {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const getLogsByEmployee = /* GraphQL */ `
-  query GetLogsByEmployee($employeeId: ID!) {
-    getLogsByEmployee(employeeId: $employeeId) {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const getLogsByShift = /* GraphQL */ `
-  query GetLogsByShift($shift: Shift!) {
-    getLogsByShift(shift: $shift) {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const getPaperFormsByDateRange = /* GraphQL */ `
-  query GetPaperFormsByDateRange(
+export const getCookingCoolingFormsByDateRange = /* GraphQL */ `
+  query GetCookingCoolingFormsByDateRange(
     $startDate: AWSDateTime!
     $endDate: AWSDateTime!
   ) {
-    getPaperFormsByDateRange(startDate: $startDate, endDate: $endDate) {
+    getCookingCoolingFormsByDateRange(
+      startDate: $startDate
+      endDate: $endDate
+    ) {
       id
       date
       dateCreated
       lastTextEntry
-      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const getTodaysCookingCoolingForms = /* GraphQL */ `
+  query GetTodaysCookingCoolingForms {
+    getTodaysCookingCoolingForms {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const getCookingCoolingFormsByStatus = /* GraphQL */ `
+  query GetCookingCoolingFormsByStatus($status: FormStatus!) {
+    getCookingCoolingFormsByStatus(status: $status) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const getCookingCoolingFormsByInitial = /* GraphQL */ `
+  query GetCookingCoolingFormsByInitial($initial: String!) {
+    getCookingCoolingFormsByInitial(initial: $initial) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const getPiroshkiFormsByDateRange = /* GraphQL */ `
+  query GetPiroshkiFormsByDateRange(
+    $startDate: AWSDateTime!
+    $endDate: AWSDateTime!
+  ) {
+    getPiroshkiFormsByDateRange(startDate: $startDate, endDate: $endDate) {
+      id
+      date
+      dateCreated
+      lastTextEntry
       formInitial
       status
       title
@@ -607,6 +173,166 @@ export const getPaperFormsByDateRange = /* GraphQL */ `
         results
         __typename
       }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const getTodaysPiroshkiForms = /* GraphQL */ `
+  query GetTodaysPiroshkiForms {
+    getTodaysPiroshkiForms {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const getPiroshkiFormsByStatus = /* GraphQL */ `
+  query GetPiroshkiFormsByStatus($status: FormStatus!) {
+    getPiroshkiFormsByStatus(status: $status) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const getPiroshkiFormsByInitial = /* GraphQL */ `
+  query GetPiroshkiFormsByInitial($initial: String!) {
+    getPiroshkiFormsByInitial(initial: $initial) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const getBagelDogFormsByDateRange = /* GraphQL */ `
+  query GetBagelDogFormsByDateRange(
+    $startDate: AWSDateTime!
+    $endDate: AWSDateTime!
+  ) {
+    getBagelDogFormsByDateRange(startDate: $startDate, endDate: $endDate) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
       frankFlavorSizeTable
       bagelDogPreShipmentReview {
         date
@@ -628,14 +354,13 @@ export const getPaperFormsByDateRange = /* GraphQL */ `
     }
   }
 `;
-export const getTodaysPaperForms = /* GraphQL */ `
-  query GetTodaysPaperForms {
-    getTodaysPaperForms {
+export const getTodaysBagelDogForms = /* GraphQL */ `
+  query GetTodaysBagelDogForms {
+    getTodaysBagelDogForms {
       id
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -649,13 +374,6 @@ export const getTodaysPaperForms = /* GraphQL */ `
       ingredients
       lotNumbers
       correctiveActionsComments
-      quantityAndFlavor
-      preShipmentReview {
-        date
-        initials
-        results
-        __typename
-      }
       frankFlavorSizeTable
       bagelDogPreShipmentReview {
         date
@@ -677,14 +395,13 @@ export const getTodaysPaperForms = /* GraphQL */ `
     }
   }
 `;
-export const getPaperFormsByStatus = /* GraphQL */ `
-  query GetPaperFormsByStatus($status: FormStatus!) {
-    getPaperFormsByStatus(status: $status) {
+export const getBagelDogFormsByStatus = /* GraphQL */ `
+  query GetBagelDogFormsByStatus($status: FormStatus!) {
+    getBagelDogFormsByStatus(status: $status) {
       id
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -698,13 +415,6 @@ export const getPaperFormsByStatus = /* GraphQL */ `
       ingredients
       lotNumbers
       correctiveActionsComments
-      quantityAndFlavor
-      preShipmentReview {
-        date
-        initials
-        results
-        __typename
-      }
       frankFlavorSizeTable
       bagelDogPreShipmentReview {
         date
@@ -726,14 +436,13 @@ export const getPaperFormsByStatus = /* GraphQL */ `
     }
   }
 `;
-export const getPaperFormsByInitial = /* GraphQL */ `
-  query GetPaperFormsByInitial($initial: String!) {
-    getPaperFormsByInitial(initial: $initial) {
+export const getBagelDogFormsByInitial = /* GraphQL */ `
+  query GetBagelDogFormsByInitial($initial: String!) {
+    getBagelDogFormsByInitial(initial: $initial) {
       id
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -747,13 +456,6 @@ export const getPaperFormsByInitial = /* GraphQL */ `
       ingredients
       lotNumbers
       correctiveActionsComments
-      quantityAndFlavor
-      preShipmentReview {
-        date
-        initials
-        results
-        __typename
-      }
       frankFlavorSizeTable
       bagelDogPreShipmentReview {
         date
@@ -775,106 +477,47 @@ export const getPaperFormsByInitial = /* GraphQL */ `
     }
   }
 `;
-export const getUser = /* GraphQL */ `
-  query GetUser($id: ID!) {
-    getUser(id: $id) {
+export const getCookingCoolingFormEntry = /* GraphQL */ `
+  query GetCookingCoolingFormEntry($id: ID!) {
+    getCookingCoolingFormEntry(id: $id) {
       id
-      initials
-      name
-      role
-      certificationNumber
-      email
-      isActive
-      createdAt
-      updatedAt
-      logEntries {
-        nextToken
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
         __typename
       }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
       __typename
     }
   }
 `;
-export const listUsers = /* GraphQL */ `
-  query ListUsers(
-    $filter: ModelUserFilterInput
+export const listCookingCoolingFormEntries = /* GraphQL */ `
+  query ListCookingCoolingFormEntries(
+    $filter: ModelCookingCoolingFormEntryFilterInput
     $limit: Int
     $nextToken: String
   ) {
-    listUsers(filter: $filter, limit: $limit, nextToken: $nextToken) {
-      items {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      nextToken
-      __typename
-    }
-  }
-`;
-export const getPaperFormEntry = /* GraphQL */ `
-  query GetPaperFormEntry($id: ID!) {
-    getPaperFormEntry(id: $id) {
-      id
-      date
-      dateCreated
-      lastTextEntry
-      formType
-      formInitial
-      status
-      title
-      entries {
-        type
-        rack
-        __typename
-        __typename
-      }
-      thermometerNumber
-      ingredients
-      lotNumbers
-      correctiveActionsComments
-      quantityAndFlavor
-      preShipmentReview {
-        date
-        initials
-        results
-        __typename
-      }
-      frankFlavorSizeTable
-      bagelDogPreShipmentReview {
-        date
-        results
-        signature
-        __typename
-      }
-      adminComments {
-        id
-        adminInitial
-        timestamp
-        comment
-        __typename
-      }
-      resolvedErrors
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const listPaperFormEntries = /* GraphQL */ `
-  query ListPaperFormEntries(
-    $filter: ModelPaperFormEntryFilterInput
-    $limit: Int
-    $nextToken: String
-  ) {
-    listPaperFormEntries(
+    listCookingCoolingFormEntries(
       filter: $filter
       limit: $limit
       nextToken: $nextToken
@@ -884,7 +527,6 @@ export const listPaperFormEntries = /* GraphQL */ `
         date
         dateCreated
         lastTextEntry
-        formType
         formInitial
         status
         title
@@ -892,8 +534,6 @@ export const listPaperFormEntries = /* GraphQL */ `
         ingredients
         lotNumbers
         correctiveActionsComments
-        quantityAndFlavor
-        frankFlavorSizeTable
         resolvedErrors
         createdAt
         updatedAt
@@ -904,229 +544,54 @@ export const listPaperFormEntries = /* GraphQL */ `
     }
   }
 `;
-export const getLogEntry = /* GraphQL */ `
-  query GetLogEntry($id: ID!) {
-    getLogEntry(id: $id) {
+export const getPiroshkiFormEntry = /* GraphQL */ `
+  query GetPiroshkiFormEntry($id: ID!) {
+    getPiroshkiFormEntry(id: $id) {
       id
       date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
       thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const listLogEntries = /* GraphQL */ `
-  query ListLogEntries(
-    $filter: ModelLogEntryFilterInput
-    $limit: Int
-    $nextToken: String
-  ) {
-    listLogEntries(filter: $filter, limit: $limit, nextToken: $nextToken) {
-      items {
-        id
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
         date
-        shift
-        product
-        productCode
-        supplier
-        receivedDate
-        expirationDate
-        thermometerNumber
-        lotNumber
-        batchSize
-        packagingType
-        employeeId
-        employeeName
-        employeeInitials
-        supervisorInitials
-        ccp1Verified
-        ccp2Verified
-        monitoringCompleted
-        correctiveActionsDocumented
-        visualInspectionColor
-        visualInspectionTexture
-        visualInspectionOdor
-        visualInspectionNotes
-        storageLocation
-        storageTemperature
-        storageTime
-        currentStage
-        isComplete
-        requiresReview
-        isApproved
-        adminComments
-        reviewedBy
-        reviewDate
-        complianceIssues
-        riskLevel
-        employeeSignature
-        supervisorSignature
-        adminSignature
-        completedAt
-        submittedAt
-        photos
-        attachments
-        notes
-        createdAt
-        updatedAt
+        initials
+        results
         __typename
       }
-      nextToken
-      __typename
-    }
-  }
-`;
-export const getInitialEntry = /* GraphQL */ `
-  query GetInitialEntry($id: ID!) {
-    getInitialEntry(id: $id) {
-      id
-      initials
-      name
-      isActive
-      createdBy
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const listInitialEntries = /* GraphQL */ `
-  query ListInitialEntries(
-    $filter: ModelInitialEntryFilterInput
+export const listPiroshkiFormEntries = /* GraphQL */ `
+  query ListPiroshkiFormEntries(
+    $filter: ModelPiroshkiFormEntryFilterInput
     $limit: Int
     $nextToken: String
   ) {
-    listInitialEntries(filter: $filter, limit: $limit, nextToken: $nextToken) {
-      items {
-        id
-        initials
-        name
-        isActive
-        createdBy
-        createdAt
-        updatedAt
-        __typename
-      }
-      nextToken
-      __typename
-    }
-  }
-`;
-export const logEntriesByEmployeeId = /* GraphQL */ `
-  query LogEntriesByEmployeeId(
-    $employeeId: ID!
-    $sortDirection: ModelSortDirection
-    $filter: ModelLogEntryFilterInput
-    $limit: Int
-    $nextToken: String
-  ) {
-    logEntriesByEmployeeId(
-      employeeId: $employeeId
-      sortDirection: $sortDirection
+    listPiroshkiFormEntries(
       filter: $filter
       limit: $limit
       nextToken: $nextToken
@@ -1134,48 +599,92 @@ export const logEntriesByEmployeeId = /* GraphQL */ `
       items {
         id
         date
-        shift
-        product
-        productCode
-        supplier
-        receivedDate
-        expirationDate
+        dateCreated
+        lastTextEntry
+        formInitial
+        status
+        title
         thermometerNumber
-        lotNumber
-        batchSize
-        packagingType
-        employeeId
-        employeeName
-        employeeInitials
-        supervisorInitials
-        ccp1Verified
-        ccp2Verified
-        monitoringCompleted
-        correctiveActionsDocumented
-        visualInspectionColor
-        visualInspectionTexture
-        visualInspectionOdor
-        visualInspectionNotes
-        storageLocation
-        storageTemperature
-        storageTime
-        currentStage
-        isComplete
-        requiresReview
-        isApproved
-        adminComments
-        reviewedBy
-        reviewDate
-        complianceIssues
-        riskLevel
-        employeeSignature
-        supervisorSignature
-        adminSignature
-        completedAt
-        submittedAt
-        photos
-        attachments
-        notes
+        ingredients
+        lotNumbers
+        correctiveActionsComments
+        quantityAndFlavor
+        resolvedErrors
+        createdAt
+        updatedAt
+        __typename
+      }
+      nextToken
+      __typename
+    }
+  }
+`;
+export const getBagelDogFormEntry = /* GraphQL */ `
+  query GetBagelDogFormEntry($id: ID!) {
+    getBagelDogFormEntry(id: $id) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const listBagelDogFormEntries = /* GraphQL */ `
+  query ListBagelDogFormEntries(
+    $filter: ModelBagelDogFormEntryFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listBagelDogFormEntries(
+      filter: $filter
+      limit: $limit
+      nextToken: $nextToken
+    ) {
+      items {
+        id
+        date
+        dateCreated
+        lastTextEntry
+        formInitial
+        status
+        title
+        thermometerNumber
+        ingredients
+        lotNumbers
+        correctiveActionsComments
+        frankFlavorSizeTable
+        resolvedErrors
         createdAt
         updatedAt
         __typename

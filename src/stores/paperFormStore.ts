@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { PaperFormEntry, FormType, createEmptyForm, ensureDate } from '@/lib/paperFormTypes';
-import { awsStorageManager } from '@/lib/awsService';
+import { storageManager } from '@/lib/storageManager';
 
 interface PaperFormStore {
   currentForm: PaperFormEntry | null;
@@ -57,6 +57,17 @@ export const usePaperFormStore = create<PaperFormStore>()(
         // Use the selected initial if no formInitial is provided
         const initialToUse = formInitial || get().selectedInitial || '';
         const newForm = createEmptyForm(formType, initialToUse);
+        
+        // Debug: Log the created form structure
+        console.log('🔍 createNewForm - Created form:', {
+          id: newForm.id,
+          type: newForm.formType,
+          entriesCount: newForm.entries?.length || 0,
+          hasEntries: !!(newForm.entries && newForm.entries.length > 0),
+          entriesType: typeof newForm.entries,
+          entriesIsArray: Array.isArray(newForm.entries)
+        });
+        
         set((state) => ({
           currentForm: newForm,
           savedForms: [newForm, ...state.savedForms]
@@ -78,6 +89,21 @@ export const usePaperFormStore = create<PaperFormStore>()(
         const { currentForm, savedForms } = get();
         if (!currentForm) return;
         
+        console.log('💾 saveForm called with currentForm:', {
+          id: currentForm.id,
+          title: currentForm.title,
+          entriesCount: currentForm.entries?.length || 0,
+          firstEntryData: currentForm.entries?.[0] ? {
+            type: currentForm.entries[0].type,
+            rack: currentForm.entries[0].rack,
+            ccp1: currentForm.entries[0].ccp1,
+            ccp2: currentForm.entries[0].ccp2,
+            coolingTo80: currentForm.entries[0].coolingTo80,
+            coolingTo54: currentForm.entries[0].coolingTo54,
+            finalChill: currentForm.entries[0].finalChill
+          } : 'No entries'
+        });
+        
         try {
           // Update the form in the savedForms array
           const updatedSavedForms = savedForms.map(form => 
@@ -86,11 +112,29 @@ export const usePaperFormStore = create<PaperFormStore>()(
           
           set({ savedForms: updatedSavedForms });
           
+          // Debug: Log the exact form data being sent to storage manager
+          console.log('🔍 Form data being sent to storage manager:', {
+            id: currentForm.id,
+            title: currentForm.title,
+            formType: currentForm.formType,
+            status: currentForm.status,
+            formInitial: currentForm.formInitial,
+            date: currentForm.date,
+            dateCreated: currentForm.dateCreated,
+            lastTextEntry: currentForm.lastTextEntry,
+            entriesCount: currentForm.entries?.length || 0,
+            entriesType: typeof currentForm.entries,
+            entriesIsArray: Array.isArray(currentForm.entries),
+            hasTitle: !!currentForm.title,
+            hasFormInitial: !!currentForm.formInitial,
+            hasDate: !!currentForm.date
+          });
+          
           // Save to AWS DynamoDB
-          await awsStorageManager.savePaperForm(currentForm);
-          console.log('Form saved successfully to AWS DynamoDB');
+          await storageManager.savePaperForm(currentForm);
+          console.log('✅ Form saved successfully to AWS DynamoDB');
         } catch (error) {
-          console.error('Error updating form locally:', error);
+          console.error('❌ Error updating form locally:', error);
           console.error('Form data that failed to update:', currentForm);
           throw error;
         }
@@ -107,7 +151,21 @@ export const usePaperFormStore = create<PaperFormStore>()(
       deleteForm: async (formId: string) => {
         try {
           // Delete from AWS DynamoDB
-          await awsStorageManager.deletePaperForm(formId);
+          const { savedForms } = get();
+          const formToDelete = savedForms.find((form: PaperFormEntry) => form.id === formId);
+          
+          if (!formToDelete) {
+            console.error(`Form with ID ${formId} not found in saved forms`);
+            throw new Error(`Form with ID ${formId} not found`);
+          }
+          
+          console.log(`Attempting to delete form:`, {
+            id: formToDelete.id,
+            formType: formToDelete.formType,
+            title: formToDelete.title
+          });
+          
+          await storageManager.deletePaperForm(formId, formToDelete.formType);
           
           // Remove from local state
           set((state) => ({
@@ -118,6 +176,13 @@ export const usePaperFormStore = create<PaperFormStore>()(
           console.log('Form deleted successfully from AWS DynamoDB');
         } catch (error) {
           console.error('Error deleting form from AWS:', error);
+          if (error instanceof Error) {
+            console.error('Error details:', {
+              message: error.message,
+              stack: error.stack,
+              name: error.name
+            });
+          }
           throw error;
         }
       },
@@ -127,14 +192,33 @@ export const usePaperFormStore = create<PaperFormStore>()(
           console.log('Loading forms from AWS DynamoDB...');
           
           // Load forms from AWS DynamoDB only
-          const awsForms = await awsStorageManager.getPaperForms();
+          const awsForms = await storageManager.getPaperForms();
           console.log(`AWS forms count: ${awsForms.length}`);
           
-          // Migrate existing forms to include rack field and dataLog field if missing
-          const migratedForms = awsForms.map(form => {
-            if (!form.entries) return form;
+          // Debug: Log the first form structure to see what we're getting
+          if (awsForms.length > 0) {
+            console.log('=== FIRST FORM DEBUG ===');
+            console.log('Form ID:', awsForms[0].id);
+            console.log('Form type:', awsForms[0].formType);
+            console.log('Form entries count:', awsForms[0].entries?.length);
+            console.log('Form entries from AWS:', awsForms[0].entries);
+            console.log('=== END FIRST FORM DEBUG ===');
+          }
+          
+          // Ensure all forms have valid data and consistent structure
+          const validatedForms = awsForms.map(form => {
+            if (!form.entries) {
+              console.warn(`Form ${form.id} has no entries, creating empty entries array`);
+              return { ...form, entries: [] };
+            }
             
-            const migratedEntries = form.entries.map(entry => {
+            // Ensure each entry has all required fields with defaults
+            const validatedEntries = form.entries.map(entry => {
+              if (!entry) {
+                console.warn(`Form ${form.id} has null/undefined entry, skipping`);
+                return null;
+              }
+              
               let updatedEntry = { ...entry };
               
               // Add rack field if missing
@@ -142,33 +226,50 @@ export const usePaperFormStore = create<PaperFormStore>()(
                 updatedEntry = { ...updatedEntry, rack: '1st Rack' as const };
               }
               
-              // Add dataLog field to each stage if missing
-              if (entry.ccp1 && !entry.ccp1.dataLog) {
-                updatedEntry.ccp1 = { ...entry.ccp1, dataLog: false };
-              }
-              if (entry.ccp2 && !entry.ccp2.dataLog) {
-                updatedEntry.ccp2 = { ...entry.ccp2, dataLog: false };
-              }
-              if (entry.coolingTo80 && !entry.coolingTo80.dataLog) {
-                updatedEntry.coolingTo80 = { ...entry.coolingTo80, dataLog: false };
-              }
-              if (entry.coolingTo54 && !entry.coolingTo54.dataLog) {
-                updatedEntry.coolingTo54 = { ...entry.coolingTo54, dataLog: false };
-              }
-              if (entry.finalChill && !entry.finalChill.dataLog) {
-                updatedEntry.finalChill = { ...entry.finalChill, dataLog: false };
-              }
+              // Ensure all stage data has consistent structure
+              const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'] as const;
+              stages.forEach(stage => {
+                const stageData = entry[stage];
+                if (stageData && typeof stageData === 'object' && 'temp' in stageData) {
+                  if (!stageData.dataLog) {
+                    updatedEntry = {
+                      ...updatedEntry,
+                      [stage]: { ...stageData, dataLog: false }
+                    };
+                  }
+                }
+              });
               
               return updatedEntry;
-            });
+            }).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
             
-            return { ...form, entries: migratedEntries };
+            return { ...form, entries: validatedEntries };
           });
           
-          console.log(`Successfully loaded ${migratedForms.length} forms from AWS DynamoDB`);
+          // Sort forms consistently: newest first by date, then by creation time, then by ID
+          const sortedForms = validatedForms.sort((a, b) => {
+            // First sort by date (newest first)
+            const dateA = new Date(a.date).getTime();
+            const dateB = new Date(b.date).getTime();
+            if (dateA !== dateB) {
+              return dateB - dateA;
+            }
+            
+            // If dates are the same, sort by creation time (newest first)
+            const createdA = new Date(a.dateCreated || a.date).getTime();
+            const createdB = new Date(b.dateCreated || b.date).getTime();
+            if (createdA !== createdB) {
+              return createdB - createdA;
+            }
+            
+            // If creation times are the same, sort by ID (for consistency)
+            return a.id.localeCompare(b.id);
+          });
+          
+          console.log(`Successfully loaded and sorted ${sortedForms.length} forms from AWS DynamoDB`);
           
           // Set forms directly from AWS (no local merging)
-          set({ savedForms: migratedForms });
+          set({ savedForms: sortedForms as PaperFormEntry[] });
         } catch (error) {
           console.error('Error loading forms from AWS:', error);
           console.error('Error details:', {
@@ -202,7 +303,7 @@ export const usePaperFormStore = create<PaperFormStore>()(
           
           for (const form of localForms) {
             try {
-              await awsStorageManager.savePaperForm(form);
+              await storageManager.savePaperForm(form);
               synced++;
               console.log(`Successfully synced form ${form.id} to AWS`);
             } catch (error) {
@@ -226,10 +327,13 @@ export const usePaperFormStore = create<PaperFormStore>()(
           // Check if ANY keystroke was detected (for bottom section fields)
           const hasTextEntry = value !== null && value !== undefined;
           
-          console.log(`updateFormField called for field: ${field}, value: ${value}, hasTextEntry: ${hasTextEntry}`);
-          
-          if (hasTextEntry) {
-            console.log(`Updating lastTextEntry for form field ${field} with value:`, value);
+          // Only log in development mode
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`updateFormField called for field: ${field}, value: ${value}, hasTextEntry: ${hasTextEntry}`);
+            
+            if (hasTextEntry) {
+              console.log(`Updating lastTextEntry for form field ${field} with value:`, value);
+            }
           }
           
           return {
@@ -253,7 +357,9 @@ export const usePaperFormStore = create<PaperFormStore>()(
       
       updateFormRow: (formId: string, rowIndex: number, rowData: any) => {
         set((state) => {
-          console.log(`updateFormRow called for formId: ${formId}, row: ${rowIndex}, data:`, rowData);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`updateFormRow called for formId: ${formId}, row: ${rowIndex}, data:`, rowData);
+          }
           
           // Check if any keystroke was detected
           const hasTextEntry = Object.entries(rowData).some(([key, value]) => 
@@ -290,7 +396,9 @@ export const usePaperFormStore = create<PaperFormStore>()(
       
       updateFormRowStage: (formId: string, rowIndex: number, stage: string, stageData: any) => {
         set((state) => {
-          console.log(`updateFormRowStage called for formId: ${formId}, row: ${rowIndex}, stage: ${stage}, data:`, stageData);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`updateFormRowStage called for formId: ${formId}, row: ${rowIndex}, stage: ${stage}, data:`, stageData);
+          }
           
           // Check if any keystroke was detected (excluding dataLog checkbox)
           const hasTextEntry = Object.entries(stageData).some(([key, value]) => 
@@ -458,7 +566,10 @@ export const usePaperFormStore = create<PaperFormStore>()(
         const { currentForm } = get();
         if (!currentForm) return;
         
-        console.log(`updateEntry called for row: ${rowIndex}, field: ${field}, value: ${value}, type: ${typeof value}, isNull: ${value === null}, isUndefined: ${value === undefined}, isEmpty: ${value === ''}`);
+        // Gate console logging to development only
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`updateEntry called for row: ${rowIndex}, field: ${field}, value: ${value}`);
+        }
         
         // Parse the field path (e.g., "ccp1.initial" -> stage: "ccp1", field: "initial")
         const [stage, fieldName] = field.split('.');
@@ -480,15 +591,6 @@ export const usePaperFormStore = create<PaperFormStore>()(
           // Update lastTextEntry when ANY keystroke is detected (but not for dataLog checkbox)
           const shouldUpdateLastTextEntry = fieldName !== 'dataLog' && 
             (value !== null && value !== undefined);
-          
-          if (shouldUpdateLastTextEntry) {
-            console.log(`✅ UPDATING lastTextEntry for field ${field} with value:`, value);
-            console.log(`Old lastTextEntry:`, currentForm.lastTextEntry);
-            console.log(`New lastTextEntry:`, new Date());
-          } else {
-            console.log(`❌ NOT updating lastTextEntry for field ${field} with value:`, value);
-            console.log(`Reason: fieldName=${fieldName}, isDataLog=${fieldName === 'dataLog'}, isNull=${value === null}, isUndefined=${value === undefined}`);
-          }
           
           const newLastTextEntry = shouldUpdateLastTextEntry ? new Date() : currentForm.lastTextEntry;
           
@@ -556,7 +658,7 @@ export const usePaperFormStore = create<PaperFormStore>()(
       clearAllForms: async () => {
         try {
           // Clear all forms from AWS DynamoDB
-          await awsStorageManager.clearAllPaperForms();
+          await storageManager.clearAllPaperForms();
           
           // Clear local state regardless of AWS success
           set({ savedForms: [], currentForm: null });

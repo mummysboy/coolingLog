@@ -7,12 +7,6 @@ export enum FormType {
   BAGEL_DOG_COOKING_COOLING = 'BAGEL_DOG_COOKING_COOLING'
 }
 
-// Example of how to add a new form type:
-// 1. Add the new type to the FormType enum above
-// 2. Update the helper functions below to handle the new type
-// 3. Add the new form type to the dropdown in src/app/form/page.tsx
-// 4. Create the corresponding form component and logic
-
 // Helper function to get display names for form types
 export const getFormTypeDisplayName = (formType: FormType): string => {
   switch (formType) {
@@ -76,20 +70,17 @@ export interface AdminComment {
   comment: string;
 }
 
-export interface PaperFormEntry {
+// Base form interface with common fields
+export interface BaseFormEntry {
   id: string;
   date: Date;
-  dateCreated: Date; // When the form was first created
-  lastTextEntry: Date; // When text was last entered on the form
-  formType: FormType; // The type of form
-  formInitial: string; // The initial this form is associated with
-  status: 'Complete' | 'In Progress' | 'Error'; // Automatically determined status
-  title: string; // Custom title for the form
-  
-  // Row entries (1-9)
-  entries: PaperFormRow[];
-  
-  // Bottom section
+  dateCreated: Date;
+  lastTextEntry: Date;
+  formType: FormType;
+  formInitial: string;
+  status: 'Complete' | 'In Progress' | 'Error';
+  title: string;
+  entries: BaseFormRow[];
   thermometerNumber: string;
   ingredients: {
     beef: string;
@@ -102,109 +93,38 @@ export interface PaperFormEntry {
     liquidEggs: string;
   };
   correctiveActionsComments: string;
-  
-  // For Piroshki form - Quantity and Flavor
-  quantityAndFlavor?: {
-    [key: number]: {
-      quantity: string;
-      flavor: string;
-    };
-  };
-  
-  // For Piroshki form - Pre Shipment Review
-  preShipmentReview?: {
-    date: string;
-    initials: string;
-    results: string; // 'P' for Pass, 'F' for Fail
-  };
-  
-  // For Bagel Dog form - Frank Flavor/Size Table
-  frankFlavorSizeTable?: {
-    beef81: { flavor: string; lotNumbers: string; packagesUsed: string };
-    polish81: { flavor: string; lotNumbers: string; packagesUsed: string };
-    jalapeno81: { flavor: string; lotNumbers: string; packagesUsed: string };
-    jumboBeef41: { flavor: string; lotNumbers: string; packagesUsed: string };
-    jumboPolish41: { flavor: string; lotNumbers: string; packagesUsed: string };
-  };
-  
-  // For Bagel Dog form - Pre Shipment Review
-  bagelDogPreShipmentReview?: {
-    date: string;
-    results: string;
-    signature: string;
-  };
-  
-  // Admin comments and resolution
   adminComments: AdminComment[];
-  resolvedErrors: string[]; // Array of error IDs that have been resolved
+  resolvedErrors: string[];
 }
 
-export interface PaperFormRow {
-  rack: '1st Rack' | 'Last Rack'; // Track whether this is 1st or Last rack
-  type: string; // Product type
-  
-  // For Piroshki form - Heat Treating Step
-  heatTreating?: {
-    type: string;
-    temp: string;
-    time: string;
-    initial: string;
-  };
-  
-  // For Piroshki form - CCP 2 126°F
-  ccp2_126?: {
-    temp: string;
-    time: string;
-    initial: string;
-  };
-  
-  // For Piroshki form - CCP 2 80°F
-  ccp2_80?: {
-    temp: string;
-    time: string;
-    initial: string;
-  };
-  
-  // For Piroshki form - CCP 2 55°F
-  ccp2_55?: {
-    temp: string;
-    time: string;
-    initial: string;
-  };
-  
-  // CCP 1 - Temperature Must reach 166°F or greater
+// Base form row interface with common fields
+export interface BaseFormRow {
+  rack: '1st Rack' | 'Last Rack';
+  type: string;
   ccp1: {
     temp: string;
     time: string;
     initial: string;
     dataLog: boolean;
   };
-  
-  // CCP 2 - 127°F or greater (Record Temperature of 1st and LAST rack/batch of the day)
   ccp2: {
     temp: string;
     time: string;
     initial: string;
     dataLog: boolean;
   };
-  
-  // 80°F or below within 105 minutes (Record Temperature of 1st rack/batch of the day)
   coolingTo80: {
     temp: string;
     time: string;
     initial: string;
     dataLog: boolean;
   };
-  
-  // 54°F or below within 4.75 hr
   coolingTo54: {
     temp: string;
     time: string;
     initial: string;
     dataLog: boolean;
   };
-  
-  // Chill Continuously to 39°F or below
   finalChill: {
     temp: string;
     time: string;
@@ -213,40 +133,130 @@ export interface PaperFormRow {
   };
 }
 
-export const EMPTY_ROW: PaperFormRow = {
-  rack: '1st Rack', // Default to 1st Rack for empty rows
+// Cooking and Cooling Form (Standard)
+export interface CookingCoolingFormEntry extends BaseFormEntry {
+  formType: FormType.COOKING_AND_COOLING;
+  entries: CookingCoolingFormRow[];
+}
+
+export interface CookingCoolingFormRow extends BaseFormRow {
+  // No additional fields beyond base
+}
+
+// Piroshki Form
+export interface PiroshkiFormEntry extends BaseFormEntry {
+  formType: FormType.PIROSHKI_CALZONE_EMPANADA;
+  entries: PiroshkiFormRow[];
+  quantityAndFlavor: {
+    [key: number]: {
+      quantity: string;
+      flavor: string;
+    };
+  };
+  preShipmentReview: {
+    date: string;
+    initials: string;
+    results: string; // 'P' for Pass, 'F' for Fail
+  };
+}
+
+export interface PiroshkiFormRow extends BaseFormRow {
+  heatTreating: {
+    type: string;
+    temp: string;
+    time: string;
+    initial: string;
+  };
+  ccp2_126: {
+    temp: string;
+    time: string;
+    initial: string;
+  };
+  ccp2_80: {
+    temp: string;
+    time: string;
+    initial: string;
+  };
+  ccp2_55: {
+    temp: string;
+    time: string;
+    initial: string;
+  };
+}
+
+// Bagel Dog Form
+export interface BagelDogFormEntry extends BaseFormEntry {
+  formType: FormType.BAGEL_DOG_COOKING_COOLING;
+  entries: BagelDogFormRow[];
+  frankFlavorSizeTable: {
+    beef81: { flavor: string; lotNumbers: string; packagesUsed: string };
+    polish81: { flavor: string; lotNumbers: string; packagesUsed: string };
+    jalapeno81: { flavor: string; lotNumbers: string; packagesUsed: string };
+    jumboBeef41: { flavor: string; lotNumbers: string; packagesUsed: string };
+    jumboPolish41: { flavor: string; lotNumbers: string; packagesUsed: string };
+  };
+  bagelDogPreShipmentReview: {
+    date: string;
+    results: string;
+    signature: string;
+  };
+}
+
+export interface BagelDogFormRow extends BaseFormRow {
+  // No additional fields beyond base
+}
+
+// Union type for all form types
+export type PaperFormEntry = CookingCoolingFormEntry | PiroshkiFormEntry | BagelDogFormEntry;
+
+export const EMPTY_BASE_ROW: BaseFormRow = {
+  rack: '1st Rack',
   type: '',
-  // For Piroshki form - Heat Treating Step
-  heatTreating: { temp: '', time: '', initial: '', type: '' },
-  // For Piroshki form - CCP 2 126°F
-  ccp2_126: { temp: '', time: '', initial: '' },
-  // For Piroshki form - CCP 2 80°F
-  ccp2_80: { temp: '', time: '', initial: '' },
-  // For Piroshki form - CCP 2 55°F
-  ccp2_55: { temp: '', time: '', initial: '' },
-  // CCP 1 - Temperature Must reach 166°F or greater
   ccp1: { temp: '', time: '', initial: '', dataLog: false },
-  // CCP 2 - 127°F or greater (Record Temperature of 1st and LAST rack/batch of the day)
   ccp2: { temp: '', time: '', initial: '', dataLog: false },
-  // 80°F or below within 105 minutes (Record Temperature of 1st rack/batch of the day)
   coolingTo80: { temp: '', time: '', initial: '', dataLog: false },
-  // 54°F or below within 4.75 hr
   coolingTo54: { temp: '', time: '', initial: '', dataLog: false },
-  // Chill Continuously to 39°F or below
   finalChill: { temp: '', time: '', initial: '', dataLog: false },
 };
 
+export const EMPTY_PIROSHKI_ROW: PiroshkiFormRow = {
+  ...EMPTY_BASE_ROW,
+  heatTreating: { temp: '', time: '', initial: '', type: '' },
+  ccp2_126: { temp: '', time: '', initial: '' },
+  ccp2_80: { temp: '', time: '', initial: '' },
+  ccp2_55: { temp: '', time: '', initial: '' },
+};
+
 export const createEmptyForm = (formType: FormType = FormType.COOKING_AND_COOLING, formInitial: string = ''): PaperFormEntry => {
-  const baseForm: Omit<PaperFormEntry, 'quantityAndFlavor' | 'preShipmentReview' | 'frankFlavorSizeTable' | 'bagelDogPreShipmentReview'> = {
+  const now = new Date();
+  const timeString = now.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  });
+  const dateString = now.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric' 
+  });
+  
+  // Generate default title based on form type and time
+  let defaultTitle = '';
+  if (formType === FormType.COOKING_AND_COOLING) {
+    defaultTitle = `Cooking & Cooling - ${dateString} ${timeString}`;
+  } else if (formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
+    defaultTitle = `Piroshki - ${dateString} ${timeString}`;
+  } else if (formType === FormType.BAGEL_DOG_COOKING_COOLING) {
+    defaultTitle = `Bagel Dog - ${dateString} ${timeString}`;
+  }
+  
+  const baseForm: Omit<BaseFormEntry, 'formType' | 'entries'> = {
     id: `form-${Date.now()}`,
-    date: new Date(),
-    dateCreated: new Date(), // Set dateCreated to current date
-    lastTextEntry: new Date(), // Set lastTextEntry to current date
-    formType,
+    date: now,
+    dateCreated: now,
+    lastTextEntry: now,
     formInitial,
-    status: 'In Progress' as const, // Default status for new forms
-    title: '', // Default empty title for new forms
-    entries: Array.from({ length: 9 }, () => ({ ...EMPTY_ROW })),
+    status: 'In Progress' as const,
+    title: defaultTitle,
     thermometerNumber: '',
     ingredients: {
       beef: '',
@@ -263,29 +273,37 @@ export const createEmptyForm = (formType: FormType = FormType.COOKING_AND_COOLIN
     resolvedErrors: [],
   };
 
-  // Add form-specific fields based on type
+  if (formType === FormType.COOKING_AND_COOLING) {
+    return {
+      ...baseForm,
+      formType: FormType.COOKING_AND_COOLING,
+      entries: Array.from({ length: 9 }, () => ({ ...EMPTY_BASE_ROW })),
+    } as CookingCoolingFormEntry;
+  }
+
   if (formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
     return {
       ...baseForm,
-      // For Piroshki form - Quantity and Flavor
+      formType: FormType.PIROSHKI_CALZONE_EMPANADA,
+      entries: Array.from({ length: 9 }, () => ({ ...EMPTY_PIROSHKI_ROW })),
       quantityAndFlavor: {
         1: { quantity: '', flavor: '' },
         2: { quantity: '', flavor: '' },
         3: { quantity: '', flavor: '' }
       },
-      // For Piroshki form - Pre Shipment Review
       preShipmentReview: {
         date: '',
         initials: '',
         results: ''
       },
-    };
+    } as PiroshkiFormEntry;
   }
 
   if (formType === FormType.BAGEL_DOG_COOKING_COOLING) {
     return {
       ...baseForm,
-      // For Bagel Dog form - Frank Flavor/Size Table
+      formType: FormType.BAGEL_DOG_COOKING_COOLING,
+      entries: Array.from({ length: 9 }, () => ({ ...EMPTY_BASE_ROW })),
       frankFlavorSizeTable: {
         beef81: { flavor: 'Beef 8-1', lotNumbers: '', packagesUsed: '' },
         polish81: { flavor: 'Polish 8-1', lotNumbers: '', packagesUsed: '' },
@@ -293,26 +311,55 @@ export const createEmptyForm = (formType: FormType = FormType.COOKING_AND_COOLIN
         jumboBeef41: { flavor: 'Jumbo Beef 4-1', lotNumbers: '', packagesUsed: '' },
         jumboPolish41: { flavor: 'Jumbo Polish 4-1', lotNumbers: '', packagesUsed: '' },
       },
-      // For Bagel Dog form - Pre Shipment Review
       bagelDogPreShipmentReview: {
         date: '',
         results: '',
         signature: ''
       },
-    };
+    } as BagelDogFormEntry;
   }
 
-  return baseForm;
+  // Default to cooking and cooling
+  return {
+    ...baseForm,
+    formType: FormType.COOKING_AND_COOLING,
+    entries: Array.from({ length: 9 }, () => ({ ...EMPTY_BASE_ROW })),
+  } as CookingCoolingFormEntry;
 };
 
 // Utility function to safely convert dates
 export const ensureDate = (date: Date | string | any): Date => {
   if (date instanceof Date) {
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid Date object, using current date');
+      return new Date();
+    }
     return date;
   }
+  
   if (typeof date === 'string') {
-    return new Date(date);
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime())) {
+      console.warn('Invalid date string, using current date:', date);
+      return new Date();
+    }
+    return parsedDate;
   }
+  
   // Fallback for any other type
+  console.warn('Invalid date type, using current date:', typeof date, date);
   return new Date();
+};
+
+// Type guards for form types
+export const isCookingCoolingForm = (form: PaperFormEntry): form is CookingCoolingFormEntry => {
+  return form.formType === FormType.COOKING_AND_COOLING;
+};
+
+export const isPiroshkiForm = (form: PaperFormEntry): form is PiroshkiFormEntry => {
+  return form.formType === FormType.PIROSHKI_CALZONE_EMPANADA;
+};
+
+export const isBagelDogForm = (form: PaperFormEntry): form is BagelDogFormEntry => {
+  return form.formType === FormType.BAGEL_DOG_COOKING_COOLING;
 };

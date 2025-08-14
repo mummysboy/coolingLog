@@ -2,28 +2,24 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
-import { useInitialsStore } from '@/stores/initialsStore';
 import { usePinStore } from '@/stores/pinStore';
 import { MOCK_USERS } from '@/lib/types';
 import { PaperFormEntry, FormType } from '@/lib/paperFormTypes';
 import { PaperForm } from '@/components/PaperForm';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
 import BagelDogForm from '@/components/BagelDogForm';
-
 import { shouldHighlightCell } from '@/lib/validation';
 
 
 export default function AdminDashboard() {
   const { savedForms, currentForm, loadForm, loadFormsFromStorage, updateFormStatus, deleteForm, isFormBlank, exportState, syncFormsToAWS } = usePaperFormStore();
-  const { initials, addInitial, removeInitial, toggleInitialStatus, loadInitials } = useInitialsStore();
+
   const { createPin, updatePin, deletePin, getAllPins, getPinForInitials } = usePinStore();
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
-  const [showInitialModal, setShowInitialModal] = useState(false);
-  const [showPinModal, setShowPinModal] = useState(false);
+
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
-  const [newInitialData, setNewInitialData] = useState({ initials: '', name: '', pin: '' });
-  const [pinModalData, setPinModalData] = useState({ initials: '', pin: '', isEdit: false });
+
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0); // Force dashboard refresh
   const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
 
@@ -41,8 +37,7 @@ export default function AdminDashboard() {
   }>>([]);
 
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
-  const initialModalRef = useRef<HTMLDivElement>(null);
-  const pinModalRef = useRef<HTMLDivElement>(null);
+
 
   const adminUser = MOCK_USERS.find(user => user.role === 'admin');
 
@@ -56,14 +51,10 @@ export default function AdminDashboard() {
         await loadFormsFromStorage();
         console.log('Admin page: Forms loaded successfully');
         
-        // Load initials
-        await loadInitials();
-        console.log('Admin page: Initials loaded successfully');
-        
         // Debug: Check data count after loading
         const { savedForms } = usePaperFormStore.getState();
-        const { initials } = useInitialsStore.getState();
-        console.log(`Admin page: After loading, savedForms count: ${savedForms.length}, initials count: ${initials.length}`);
+    
+        console.log(`Admin page: After loading, savedForms count: ${savedForms.length}`);
         
       } catch (error) {
         console.error('Admin page: Error loading data from AWS:', error);
@@ -72,7 +63,7 @@ export default function AdminDashboard() {
     };
     
     loadData();
-  }, [loadFormsFromStorage, loadInitials]);
+  }, [loadFormsFromStorage]);
 
   // NEW: Real-time dashboard refresh effect with status change detection
   useEffect(() => {
@@ -229,24 +220,14 @@ export default function AdminDashboard() {
         setShowSettingsDropdown(false);
       }
       
-      // Close initial modal
-      if (showInitialModal && initialModalRef.current && !initialModalRef.current.contains(event.target as Node)) {
-        setShowInitialModal(false);
-        setNewInitialData({ initials: '', name: '', pin: '' });
-      }
-      
-      // Close PIN modal
-      if (showPinModal && pinModalRef.current && !pinModalRef.current.contains(event.target as Node)) {
-        setShowPinModal(false);
-        setPinModalData({ initials: '', pin: '', isEdit: false });
-      }
+
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showInitialModal, showPinModal]);
+  }, []);
 
   // Auto-clear success message after 5 seconds
   useEffect(() => {
@@ -265,89 +246,7 @@ export default function AdminDashboard() {
     // Don't load the form into currentForm - we want to edit it as an admin form
   };
 
-  const handleAddInitial = () => {
-    if (newInitialData.initials.trim() && newInitialData.name.trim() && adminUser) {
-      addInitial(newInitialData.initials.trim().toUpperCase(), newInitialData.name.trim(), adminUser.initials);
-      
-      // Create PIN if provided
-      if (newInitialData.pin.trim()) {
-        if (!/^\d{4}$/.test(newInitialData.pin)) {
-          alert('PIN must be exactly 4 digits');
-          return;
-        }
-        createPin(newInitialData.initials.trim().toUpperCase(), newInitialData.pin, adminUser.initials);
-      }
-      
-      setNewInitialData({ initials: '', name: '', pin: '' });
-      setShowInitialModal(false);
-    }
-  };
 
-  const handleRemoveInitial = (id: string) => {
-    if (confirm('Are you sure you want to remove this initial? This action cannot be undone.')) {
-      const initial = initials.find(i => i.id === id);
-      if (initial) {
-        // Also remove PIN if it exists
-        deletePin(initial.initials);
-      }
-      removeInitial(id);
-    }
-  };
-
-  // PIN Management Functions
-  const handleCreatePin = (initials: string) => {
-    setPinModalData({ initials, pin: '', isEdit: false });
-    setShowPinModal(true);
-  };
-
-  const handleEditPin = (initials: string) => {
-    const existingPin = getPinForInitials(initials);
-    setPinModalData({ 
-      initials, 
-      pin: existingPin?.pin || '', 
-      isEdit: true 
-    });
-    setShowPinModal(true);
-  };
-
-  const handleDeletePin = (initials: string) => {
-    if (confirm(`Are you sure you want to delete the PIN for "${initials}"? This will prevent them from accessing their forms.`)) {
-      deletePin(initials);
-    }
-  };
-
-  const handlePinSubmit = () => {
-    const { initials: targetInitials, pin, isEdit } = pinModalData;
-    
-    if (!targetInitials.trim() || !pin.trim()) {
-      alert('Please enter both initials and PIN');
-      return;
-    }
-
-    if (!/^\d{4}$/.test(pin)) {
-      alert('PIN must be exactly 4 digits');
-      return;
-    }
-
-    if (!adminUser) {
-      alert('Admin user not found');
-      return;
-    }
-
-    let success = false;
-    if (isEdit) {
-      success = updatePin(targetInitials, pin, adminUser.initials);
-    } else {
-      success = createPin(targetInitials, pin, adminUser.initials);
-    }
-
-    if (success) {
-      setShowPinModal(false);
-      setPinModalData({ initials: '', pin: '', isEdit: false });
-    } else {
-      alert(isEdit ? 'Failed to update PIN' : 'Failed to create PIN. PIN may already exist.');
-    }
-  };
 
 
 
@@ -934,130 +833,6 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* NEW: Real-time Alerts Section */}
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">System Status</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* AWS Connection Test */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-blue-800">AWS Connection</p>
-                      <p className="text-sm text-blue-700">Test DynamoDB connection</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={async () => {
-                      try {
-                        const { awsStorageManager } = await import('@/lib/awsService');
-                        const isConnected = await awsStorageManager.testConnection();
-                        if (isConnected) {
-                          setToasts(prev => [...prev, {
-                            id: Date.now().toString(),
-                            type: 'success',
-                            message: 'AWS connection successful!',
-                            timestamp: new Date()
-                          }]);
-                        } else {
-                          setToasts(prev => [...prev, {
-                            id: Date.now().toString(),
-                            type: 'warning',
-                            message: 'AWS connection failed',
-                            timestamp: new Date()
-                          }]);
-                        }
-                                             } catch (error) {
-                         const errorMessage = error instanceof Error ? error.message : String(error);
-                         setToasts(prev => [...prev, {
-                           id: Date.now().toString(),
-                           type: 'error',
-                           message: `AWS connection error: ${errorMessage}`,
-                           timestamp: new Date()
-                         }]);
-                       }
-                    }}
-                    className="bg-blue-600 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-700 transition-colors"
-                  >
-                    Test
-                  </button>
-                </div>
-              </div>
-              
-              {/* Forms requiring attention */}
-              {errorForms.length > 0 && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-red-800">Forms Requiring Attention</p>
-                      <p className="text-sm text-red-700">{errorForms.length} forms need review</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Sync to AWS */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-green-800">Sync to AWS</p>
-                      <p className="text-sm text-green-700">Sync all forms to DynamoDB</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={async () => {
-                      try {
-                        const result = await syncFormsToAWS();
-                        if (result.success) {
-                          setToasts(prev => [...prev, {
-                            id: Date.now().toString(),
-                            type: 'success',
-                            message: `Successfully synced ${result.synced} forms to AWS`,
-                            timestamp: new Date()
-                          }]);
-                        } else {
-                          setToasts(prev => [...prev, {
-                            id: Date.now().toString(),
-                            type: 'warning',
-                            message: `Synced ${result.synced} forms, ${result.errors} failed`,
-                            timestamp: new Date()
-                          }]);
-                        }
-                      } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : String(error);
-                        setToasts(prev => [...prev, {
-                          id: Date.now().toString(),
-                          type: 'error',
-                          message: `Sync error: ${errorMessage}`,
-                          timestamp: new Date()
-                        }]);
-                      }
-                    }}
-                    className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 transition-colors"
-                  >
-                    Sync
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Pending Forms Table */}
           {/* Active Forms Section */}
           <div className="mb-8">
@@ -1105,18 +880,11 @@ export default function AdminDashboard() {
                             <div className="text-sm text-gray-500">
                               Therm: {form.thermometerNumber || 'Not set'}
                             </div>
-                            <div className="text-sm text-blue-600 font-medium">
-                              Initial: {form.formInitial || 'No initial'}
-                            </div>
                             {form.title && (
                               <div className="text-xs text-gray-400">
                                 Form #{form.id.slice(-6)}
                               </div>
                             )}
-                            {/* NEW: Show last modified time */}
-                            <div className="text-xs text-gray-400 mt-1">
-                              Last modified: {new Date().toLocaleTimeString()}
-                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1434,162 +1202,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Add Initial Modal */}
-      {showInitialModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div ref={initialModalRef} className="bg-white rounded-2xl w-full max-w-md">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-semibold">Add New Initial</h3>
-              <button
-                onClick={() => {
-                  setShowInitialModal(false);
-                  setNewInitialData({ initials: '', name: '', pin: '' });
-                }}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Initials
-                </label>
-                <input
-                  type="text"
-                  value={newInitialData.initials}
-                  onChange={(e) => setNewInitialData(prev => ({ ...prev, initials: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="e.g., JD"
-                  maxLength={4}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={newInitialData.name}
-                  onChange={(e) => setNewInitialData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="e.g., John Doe"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  4-Digit PIN (Optional)
-                </label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={newInitialData.pin}
-                  onChange={(e) => setNewInitialData(prev => ({ ...prev, pin: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="e.g., 1234"
-                />
-              </div>
-            </div>
-            
-            <div className="flex justify-end space-x-3 p-6 border-t">
-              <button
-                onClick={() => {
-                  setShowInitialModal(false);
-                  setNewInitialData({ initials: '', name: '', pin: '' });
-                }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddInitial}
-                disabled={!newInitialData.initials.trim() || !newInitialData.name.trim()}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Add Initial
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* PIN Management Modal */}
-      {showPinModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div ref={pinModalRef} className="bg-white rounded-2xl w-full max-w-md">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-semibold">
-                {pinModalData.isEdit ? 'Edit PIN' : 'Create PIN'} for {pinModalData.initials}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowPinModal(false);
-                  setPinModalData({ initials: '', pin: '', isEdit: false });
-                }}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  4-Digit PIN
-                </label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={4}
-                  value={pinModalData.pin}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, ''); // Only digits
-                    setPinModalData(prev => ({ ...prev, pin: value }));
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-center text-xl font-mono tracking-widest"
-                  placeholder="••••"
-                />
-                <p className="text-xs text-gray-500 mt-1">Enter exactly 4 digits</p>
-              </div>
-              
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <div className="flex items-start space-x-2">
-                  <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                  <div className="text-sm text-yellow-800">
-                    <p className="font-medium">Security Notice:</p>
-                    <p>This PIN will be required to access forms for this initial. Share it securely with the user.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex justify-end space-x-3 p-6 border-t">
-              <button
-                onClick={() => {
-                  setShowPinModal(false);
-                  setPinModalData({ initials: '', pin: '', isEdit: false });
-                }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handlePinSubmit}
-                disabled={pinModalData.pin.length !== 4}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {pinModalData.isEdit ? 'Update PIN' : 'Create PIN'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Toast Notifications */}
       {toasts.map(toast => (

@@ -1,5 +1,5 @@
-import { LogEntry, InitialEntry, User } from './types';
-import { awsStorageManager } from './awsService';
+import { multiDatabaseStorageManager } from './multiDatabaseStorageManager';
+import { type PaperFormEntry, FormType } from './paperFormTypes';
 
 // AWS-only storage manager - no local fallback
 class AWSOnlyStorageManager {
@@ -9,7 +9,7 @@ class AWSOnlyStorageManager {
   async testConnection(): Promise<boolean> {
     try {
       console.log('Testing AWS connection...');
-      const isConnected = await awsStorageManager.testConnection();
+      const isConnected = await multiDatabaseStorageManager.testConnection();
       this.useAWS = isConnected;
       return isConnected;
     } catch (error) {
@@ -29,65 +29,88 @@ class AWSOnlyStorageManager {
     }
   }
 
-  async saveLogs(logs: LogEntry[]): Promise<void> {
+  // Paper Form Methods - Now using multi-table approach
+  async savePaperForm(form: PaperFormEntry): Promise<void> {
     await this.ensureAWS();
-    return awsStorageManager.saveLogs(logs);
+    return multiDatabaseStorageManager.savePaperForm(form);
   }
 
-  async saveLog(log: LogEntry): Promise<void> {
+  async savePaperForms(forms: PaperFormEntry[]): Promise<void> {
     await this.ensureAWS();
-    return awsStorageManager.saveLog(log);
+    return multiDatabaseStorageManager.savePaperForms(forms);
   }
 
-  async getLogs(): Promise<LogEntry[]> {
+  async getPaperForm(id: string, formType: FormType): Promise<PaperFormEntry | undefined> {
     await this.ensureAWS();
-    return awsStorageManager.getLogs();
+    return multiDatabaseStorageManager.getPaperForm(id, formType);
   }
 
-  async getLog(id: string): Promise<LogEntry | undefined> {
+  async getPaperForms(): Promise<PaperFormEntry[]> {
     await this.ensureAWS();
-    return awsStorageManager.getLog(id);
+    return multiDatabaseStorageManager.getPaperForms();
   }
 
-  async deleteLog(id: string): Promise<void> {
+  async deletePaperForm(id: string, formType: FormType): Promise<void> {
     await this.ensureAWS();
-    return awsStorageManager.deleteLog(id);
+    return multiDatabaseStorageManager.deletePaperForm(id, formType);
   }
 
-  async clearAllLogs(): Promise<void> {
+  async clearAllPaperForms(): Promise<void> {
     await this.ensureAWS();
-    return awsStorageManager.clearAllLogs();
+    return multiDatabaseStorageManager.clearAllPaperForms();
   }
 
-  async getLogsByDateRange(startDate: Date, endDate: Date): Promise<LogEntry[]> {
+  // Date-based queries for paper forms
+  async getPaperFormsByDateRange(startDate: Date, endDate: Date): Promise<PaperFormEntry[]> {
     await this.ensureAWS();
-    return awsStorageManager.getLogsByDateRange(startDate, endDate);
+    // For now, get all forms and filter by date range
+    // This could be optimized with database-specific queries later
+    const allForms = await this.getPaperForms();
+    return allForms.filter(form => {
+      const formDate = new Date(form.date);
+      return formDate >= startDate && formDate <= endDate;
+    });
   }
 
-  async getTodaysLogs(): Promise<LogEntry[]> {
+  async getTodaysPaperForms(): Promise<PaperFormEntry[]> {
     await this.ensureAWS();
-    return awsStorageManager.getTodaysLogs();
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+    return this.getPaperFormsByDateRange(startOfDay, endOfDay);
   }
 
-  // AWS-specific methods
-  async createUser(user: Omit<User, 'id'>): Promise<User> {
+  async getPaperFormsByStatus(status: string): Promise<PaperFormEntry[]> {
     await this.ensureAWS();
-    return awsStorageManager.createUser(user);
+    const allForms = await this.getPaperForms();
+    return allForms.filter(form => form.status.toLowerCase() === status.toLowerCase());
   }
 
-  async getUsers(): Promise<User[]> {
+  async getPaperFormsByInitial(initial: string): Promise<PaperFormEntry[]> {
     await this.ensureAWS();
-    return awsStorageManager.getUsers();
+    const allForms = await this.getPaperForms();
+    return allForms.filter(form => form.formInitial.toLowerCase() === initial.toLowerCase());
   }
 
-  async createInitialEntry(entry: Omit<InitialEntry, 'id' | 'createdAt'>): Promise<InitialEntry> {
+
+
+  // Custom mutations for paper forms
+  async updatePaperFormStatus(formId: string, status: string): Promise<PaperFormEntry> {
     await this.ensureAWS();
-    return awsStorageManager.createInitialEntry(entry);
+    // This would need to be implemented in the multi-table manager
+    throw new Error('updatePaperFormStatus not yet implemented in multi-table manager');
   }
 
-  async getInitialEntries(): Promise<InitialEntry[]> {
+  async addAdminComment(formId: string, comment: any): Promise<PaperFormEntry> {
     await this.ensureAWS();
-    return awsStorageManager.getInitialEntries();
+    // This would need to be implemented in the multi-table manager
+    throw new Error('addAdminComment not yet implemented in multi-table manager');
+  }
+
+  async resolveError(formId: string, errorId: string): Promise<PaperFormEntry> {
+    await this.ensureAWS();
+    // This would need to be implemented in the multi-table manager
+    throw new Error('resolveError not yet implemented in multi-table manager');
   }
 
   // Check if we're using AWS

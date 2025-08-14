@@ -9,7 +9,23 @@ import { KeypadInput } from './KeypadInput';
 import { TimerBadge } from './TimerBadge';
 import { HACCPCompliance } from './HACCPCompliance';
 import { CorrectiveActionSheet } from './CorrectiveActionSheet';
+import { TextCell } from './TextCell';
+import { shallow } from 'zustand/shallow';
 
+// Field-level selector hook to prevent unnecessary re-renders
+function useField(formId: string, field: string) {
+  return usePaperFormStore(
+    useCallback(
+      (s) => {
+        const form = s.savedForms.find(f => f.id === formId);
+        if (!form) return undefined;
+        return (form as any)[field];
+      }, 
+      [formId, field]
+    ),
+    shallow
+  );
+}
 
 interface PaperFormProps {
   formData?: PaperFormEntry;
@@ -21,45 +37,102 @@ interface PaperFormProps {
 export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: PaperFormProps = {}) {
   const { currentForm, updateEntry, updateFormField, updateFormStatus, saveForm, updateAdminForm, savedForms } = usePaperFormStore();
 
+  // Debug logging - only in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('PaperForm render:', { formData, readOnly, currentForm: !!currentForm });
+  }
+
   // Check if we're working with a form from the admin dashboard
   // isAdminForm should only be true when explicitly editing as an admin
   // The current logic was incorrectly treating regular form editing as admin editing
   const isAdminForm = false; // Temporarily disable admin form logic to fix lastTextEntry updates
   
   // For admin forms, always get the latest data from the store
-  // For regular forms, use provided formData or fall back to currentForm from store
+  // For regular forms, prioritize formData (which comes from the parent component) over currentForm from store
   const form = React.useMemo(() => {
     if (isAdminForm && formData) {
       return savedForms.find(f => f.id === formData.id) || formData;
     }
-    // Always prioritize currentForm from store for real-time updates
-    return currentForm || formData;
+    // Prioritize formData over currentForm to ensure complete form data is displayed
+    // formData contains the complete form passed from the parent, while currentForm might be incomplete after refresh
+    const resolvedForm = formData || currentForm;
+    
+    return resolvedForm;
   }, [isAdminForm, formData, savedForms, currentForm]);
+
+  // Stable commit function that only updates the specific field without cloning the whole form
+  const commitField = useCallback((rowIndex: number, field: string, value: any) => {
+    updateEntry(rowIndex, field, value);
+  }, [updateEntry]);
+
+  // Memoize form entries to prevent unnecessary re-renders
+  const memoizedEntries = React.useMemo(() => {
+    if (!form) return [];
+    return form.entries || [];
+  }, [form?.entries]);
+    
+  // Early return if no form data
+  if (!form) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('PaperForm: No form data available, returning null');
+    }
+    return null;
+  }
+
+  // Debug form data structure
+  if (process.env.NODE_ENV === 'development') {
+    console.log('PaperForm: Form data structure:', {
+      id: form.id,
+      title: form.title,
+      formInitial: form.formInitial,
+      entriesCount: form.entries?.length,
+      firstEntry: form.entries?.[0],
+      hasDataLog: form.entries?.[0]?.ccp1?.dataLog !== undefined,
+      firstEntryDataLog: form.entries?.[0]?.ccp1?.dataLog,
+      firstEntryCCP1: form.entries?.[0]?.ccp1
+    });
+  }
     
   // Track the resolved data snapshot to compare against new changes
   const [resolvedDataSnapshot, setResolvedDataSnapshot] = React.useState<any>(null);
   
-  // Add debounced save mechanism to prevent excessive AWS calls
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const debouncedSave = useCallback(() => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    saveTimeoutRef.current = setTimeout(() => {
+  // Remove debounced save mechanism - only save on window close
+  const saveFormRef = useRef(saveForm);
+  
+  // Update the ref when saveForm changes
+  useEffect(() => {
+    saveFormRef.current = saveForm;
+  }, [saveForm]);
+
+  // Auto-save on window/tab close
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (form && !isAdminForm) {
         saveForm();
       }
-    }, 2000); // Save after 2 seconds of no typing
-  }, [form, isAdminForm, saveForm]);
+    };
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        if (form && !isAdminForm) {
+          saveForm();
+        }
       }
     };
-  }, []);
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      
+      // Final save on unmount
+      if (form && !isAdminForm) {
+        saveForm();
+      }
+    };
+  }, [form, isAdminForm, saveForm]);
 
   // NEW: Toast notification state for validation errors
   const [toasts, setToasts] = React.useState<Array<{
@@ -94,7 +167,21 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
           ? `${existingComments}\n${targetComment}`
           : targetComment;
         
-        handleFormFieldChange('correctiveActionsComments', updatedComments);
+        // Update local state immediately
+        if (form) {
+          form.correctiveActionsComments = updatedComments;
+        }
+        // Update store when needed
+        if (!readOnly) {
+          if (isAdminForm) {
+            updateAdminForm(form.id, { correctiveActionsComments: updatedComments });
+            if (onFormUpdate) {
+              onFormUpdate(form.id, { correctiveActionsComments: updatedComments });
+            }
+          } else {
+            updateFormField(form.id, 'correctiveActionsComments', updatedComments);
+          }
+        }
       }
     } else {
       // Remove comment if it exists
@@ -105,7 +192,21 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
           .join('\n')
           .trim();
         
-        handleFormFieldChange('correctiveActionsComments', updatedComments);
+        // Update local state immediately
+        if (form) {
+          form.correctiveActionsComments = updatedComments;
+        }
+        // Update store when needed
+        if (!readOnly) {
+          if (isAdminForm) {
+            updateAdminForm(form.id, { correctiveActionsComments: updatedComments });
+            if (onFormUpdate) {
+              onFormUpdate(form.id, { correctiveActionsComments: updatedComments });
+            }
+          } else {
+            updateFormField(form.id, 'correctiveActionsComments', updatedComments);
+          }
+        }
       }
     }
   };
@@ -143,11 +244,15 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
   // Monitor form status changes
   React.useEffect(() => {
     if (form) {
-      console.log('Form status changed to:', form.status, 'Form ID:', form.id);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Form status changed to:', form.status, 'Form ID:', form.id);
+      }
       
       // If form ID changes, clear the snapshot (different form)
       if (resolvedDataSnapshot && resolvedDataSnapshot.id !== form.id) {
-        console.log('Form ID changed, clearing resolved snapshot');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Form ID changed, clearing resolved snapshot');
+        }
         setResolvedDataSnapshot(null);
       }
     }
@@ -157,9 +262,11 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
 
   // Monitor resolvedDataSnapshot changes
   React.useEffect(() => {
-    console.log('resolvedDataSnapshot changed:', !!resolvedDataSnapshot);
-    if (resolvedDataSnapshot) {
-      console.log('Snapshot has entries:', resolvedDataSnapshot.entries?.length);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('resolvedDataSnapshot changed:', !!resolvedDataSnapshot);
+      if (resolvedDataSnapshot) {
+        console.log('Snapshot has entries:', resolvedDataSnapshot.entries?.length);
+      }
     }
   }, [resolvedDataSnapshot]);
 
@@ -167,13 +274,19 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
 
   // Function to check if there are new errors compared to the resolved snapshot
   const hasNewErrors = (currentForm: any, resolvedSnapshot: any) => {
-    console.log('=== hasNewErrors FUNCTION CALLED ===');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('=== hasNewErrors FUNCTION CALLED ===');
+    }
     if (!resolvedSnapshot) {
-      console.log('No resolved snapshot, returning false');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('No resolved snapshot, returning false');
+      }
       return false;
     }
     
-    console.log('Checking for new errors against resolved snapshot...');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Checking for new errors against resolved snapshot...');
+    }
     
     // Compare entries to see if there are new errors in newly modified data
     const currentEntries = currentForm.entries || [];
@@ -198,7 +311,9 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         const fields = ['temp', 'time', 'initial'];
         for (const field of fields) {
           if (currentStage[field] !== resolvedStage[field]) {
-            console.log(`Field ${stage}.${field} at row ${i + 1} was modified: "${resolvedStage[field]}" -> "${currentStage[field]}"`);
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`Field ${stage}.${field} at row ${i + 1} was modified: "${resolvedStage[field]}" -> "${currentStage[field]}"`);
+            }
             
             // This field was modified, check if it now has validation errors
             const validation = shouldHighlightCell(currentForm, i, `${stage}.${field}`);
@@ -210,13 +325,17 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             
             if (validation.highlight && validation.severity === 'error' && 
                 (!resolvedValidation.highlight || resolvedValidation.severity !== 'error')) {
-              console.log(`New error detected in ${stage}.${field} at row ${i + 1}`);
-              console.log(`Resolved field had errors: ${resolvedValidation.highlight && resolvedValidation.severity === 'error'}`);
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`New error detected in ${stage}.${field} at row ${i + 1}`);
+                console.log(`Resolved field had errors: ${resolvedValidation.highlight && resolvedValidation.severity === 'error'}`);
+              }
               return true;
             } else {
-              console.log(`No new validation errors in modified field ${stage}.${field} at row ${i + 1}`);
-              console.log(`Current validation: ${validation.highlight ? validation.severity : 'none'}`);
-              console.log(`Resolved validation: ${resolvedValidation.highlight ? resolvedValidation.severity : 'none'}`);
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`No new validation errors in modified field ${stage}.${field} at row ${i + 1}`);
+                console.log(`Current validation: ${validation.highlight ? validation.severity : 'none'}`);
+                console.log(`Resolved validation: ${resolvedValidation.highlight ? resolvedValidation.severity : 'none'}`);
+              }
             }
           }
         }
@@ -224,7 +343,9 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
       
       // Check if type field was modified
       if (currentEntry.type !== resolvedEntry.type) {
-        console.log(`Type field at row ${i + 1} was modified: "${resolvedEntry.type}" -> "${currentEntry.type}"`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Type field at row ${i + 1} was modified: "${resolvedEntry.type}" -> "${currentEntry.type}"`);
+        }
         
         const validation = shouldHighlightCell(currentForm, i, 'type');
         
@@ -235,13 +356,17 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         
         if (validation.highlight && validation.severity === 'error' && 
             (!resolvedValidation.highlight || resolvedValidation.severity !== 'error')) {
-          console.log(`New error detected in type field at row ${i + 1}`);
-          console.log(`Resolved type field had errors: ${resolvedValidation.highlight && resolvedValidation.severity === 'error'}`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`New error detected in type field at row ${i + 1}`);
+            console.log(`Resolved type field had errors: ${resolvedValidation.highlight && resolvedValidation.severity === 'error'}`);
+          }
           return true;
         } else {
-          console.log(`No new validation errors in modified type field at row ${i + 1}`);
-          console.log(`Current type validation: ${validation.highlight ? validation.severity : 'none'}`);
-          console.log(`Resolved type validation: ${resolvedValidation.highlight ? resolvedValidation.severity : 'none'}`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`No new validation errors in modified type field at row ${i + 1}`);
+            console.log(`Current type validation: ${validation.highlight ? validation.severity : 'none'}`);
+            console.log(`Resolved type validation: ${resolvedValidation.highlight ? resolvedValidation.severity : 'none'}`);
+          }
         }
       }
     }
@@ -250,28 +375,44 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
     const formFields = ['thermometerNumber', 'lotNumbers'];
     for (const field of formFields) {
       if (JSON.stringify(currentForm[field]) !== JSON.stringify(resolvedSnapshot[field])) {
-        console.log(`Form field ${field} was modified`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Form field ${field} was modified`);
+        }
         // For form-level fields, we'll be more conservative and only flag if there are actual validation errors
         // rather than just any change
         return false; // Don't immediately flag form field changes as errors
       }
     }
     
-    console.log('No new errors detected in modified data');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('No new errors detected in modified data');
+    }
     return false;
   };
 
-  if (!form) return null;
+  // Development-only performance monitoring
+  const onRenderCallback = (id: string, phase: string, actualDuration: number) => {
+    if (process.env.NODE_ENV === 'development' && actualDuration > 16) {
+      console.warn(`Form render took ${actualDuration.toFixed(2)}ms (${phase})`);
+    }
+  };
 
-
+  // Performance warning for excessive re-renders
+  const renderCount = React.useRef(0);
+  React.useEffect(() => {
+    renderCount.current += 1;
+    if (process.env.NODE_ENV === 'development' && renderCount.current > 10) {
+      console.warn(`PaperForm has rendered ${renderCount.current} times - check for unnecessary re-renders`);
+    }
+  });
 
   const handleCellChange = (rowIndex: number, field: string, value: string | boolean) => {
-    console.log('🔍 handleCellChange called:', { rowIndex, field, value, readOnly, isAdminForm, formStatus: form?.status });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 handleCellChange called:', { rowIndex, field, value });
+    }
     
     if (!readOnly) {
-      console.log('🔓 Form is not read-only, proceeding with update');
       if (isAdminForm) {
-        console.log('👑 This is an admin form, using updateAdminForm');
         // For admin forms, update the specific form directly
         const updatedEntries = [...form.entries];
         const [section, subField] = field.split('.');
@@ -295,258 +436,20 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         
         updateAdminForm(form.id, { entries: updatedEntries });
       } else {
-        console.log('👤 This is a regular form, will use updateEntry');
         // For regular forms, use the store's updateEntry
-        console.log('🚀 About to call updateEntry for regular form:', { rowIndex, field, value });
         try {
           updateEntry(rowIndex, field, value);
-          console.log('✅ updateEntry called successfully');
         } catch (error) {
           console.error('❌ Error calling updateEntry:', error);
         }
       }
       
-
-      
-      // NEW: Comprehensive validation check when all three fields (temp, time, initial) are complete
-      const currentEntry = form.entries[rowIndex];
-      const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
-      
-      // Add a small delay to prevent validation from running on every keystroke
-      // Only validate when the user has finished entering data
-      setTimeout(() => {
-        // Run validation whenever all three fields (temp, time, initial) are complete for any stage
-        stages.forEach(stage => {
-        const stageData = currentEntry[stage as keyof typeof currentEntry] as any;
-        
-        // Check if all three fields are complete for this stage (not just truthy, but actually filled in)
-        if (stageData && 
-            stageData.temp && String(stageData.temp).trim() !== '' && 
-            stageData.time && String(stageData.time).trim() !== '' && 
-            stageData.initial && String(stageData.initial).trim() !== '') {
-          console.log(`=== VALIDATING COMPLETE CELL: ${stage} at row ${rowIndex} ===`);
-          
-          // Validate temperature against column header rules
-          const tempValue = parseFloat(String(stageData.temp));
-          if (!isNaN(tempValue)) {
-            let validationError = '';
-            
-            // Check against specific column requirements
-            if (stage === 'ccp1') {
-              // CCP 1: Temperature Must reach 166°F or greater
-              if (tempValue < 166) {
-                validationError = `CCP1 temperature ${tempValue}°F is below minimum required 166°F`;
-              }
-                          } else if (stage === 'ccp2') {
-                // CCP 2: 127°F or greater
-                if (tempValue < 127) {
-                  validationError = `CCP2 temperature ${tempValue}°F is below minimum required 127°F`;
-                }
-                
-                // Check time sequence - CCP2 time must be after CCP1 time
-                if (!validationError && stageData.time && currentEntry.ccp1.time) {
-                  const timeDiff = getTimeDifferenceMinutes(currentEntry.ccp1.time, stageData.time);
-                  if (timeDiff !== null && timeDiff < 0) {
-                    validationError = `CCP2 time cannot be before CCP1 time`;
-                  }
-                }
-              } else if (stage === 'coolingTo80') {
-              // 80°F Cooling: 80°F or below within 105 minutes
-              if (tempValue > 80) {
-                validationError = `80°F Cooling temperature ${tempValue}°F is above maximum allowed 80°F`;
-              }
-              
-              // Check time limit - must be within 105 minutes of CCP2 time (previous cell on the left)
-              if (!validationError && currentEntry.ccp2.time && stageData.time) {
-                const timeDiff = getTimeDifferenceMinutes(currentEntry.ccp2.time, stageData.time);
-                if (timeDiff !== null && timeDiff > 105) {
-                  validationError = `Time limit exceeded`;
-                } else if (timeDiff !== null && timeDiff < 0) {
-                  // Prevent negative time differences (coolingTo80 time before CCP2 time)
-                  validationError = `Invalid time sequence`;
-                }
-              } else if (!validationError && !currentEntry.ccp2.time) {
-                // Warn if CCP2 time is missing but coolingTo80 time is entered
-                validationError = `Missing reference time`;
-              }
-                          } else if (stage === 'coolingTo54') {
-                // 54°F Cooling: 54°F or below within 4.75 hours
-                if (tempValue > 54) {
-                  validationError = `54°F Cooling temperature ${tempValue}°F is above maximum allowed 54°F`;
-                }
-                
-                // Check time limit - must be within 4.75 hours of CCP2 time (127°F or greater)
-                if (!validationError && stageData.time) {
-                  const referenceTime = currentEntry.ccp2.time;
-                  if (referenceTime) {
-                    const timeDiff = getTimeDifferenceMinutes(referenceTime, stageData.time);
-                    if (timeDiff !== null && timeDiff > 4.75 * 60) { // Convert 4.75 hours to minutes
-                      validationError = `Time limit exceeded`;
-                    } else if (timeDiff !== null && timeDiff < 0) {
-                      // Prevent negative time differences
-                      validationError = `Invalid time sequence`;
-                    }
-                  } else {
-                    validationError = `Missing reference time`;
-                  }
-                }
-            } else if (stage === 'finalChill') {
-              // Final Chill: 39°F or below
-              if (tempValue > 39) {
-                validationError = `Final Chill temperature ${tempValue}°F is above maximum allowed 39°F`;
-              }
-            }
-            
-            // If validation error found, log it and update form status
-            if (validationError) {
-              console.error(`VALIDATION ERROR in ${stage}: ${validationError}`);
-              
-              console.log(`=== UPDATING FORM STATUS TO ERROR ===`);
-              console.log(`Form ID: ${form.id}, Current status: ${form.status}`);
-              console.log(`Validation error: ${validationError}`);
-              
-              // Update form status to 'Error' when validation fails
-              if (onFormUpdate) {
-                console.log('Calling onFormUpdate with status: Error');
-                onFormUpdate(form.id, { status: 'Error' });
-              }
-              
-              if (isAdminForm) {
-                console.log('Updating admin form status to Error');
-                updateAdminForm(form.id, { status: 'Error' });
-              } else {
-                console.log('Updating regular form status to Error via store');
-                // Use the store's updateFormStatus function directly for immediate effect
-                updateFormStatus(form.id, 'Error');
-                // Also update the current form status locally for immediate UI update
-                updateFormField(form.id, 'status', 'Error');
-                // Save the form to persist the status change
-                debouncedSave();
-              }
-              
-              console.log(`=== FORM STATUS UPDATE COMPLETED ===`);
-            } else {
-              // Check if this was a validation error that's now resolved
-              // If so, check if we can update status back to 'In Progress'
-              if (form.status === 'Error') {
-                // Validate the entire form to see if there are still errors
-                const validation = validateForm(form);
-                const hasUnresolvedErrors = validation.errors.some(error => {
-                  const errorId = `${error.rowIndex}-${error.field}-${error.message}`;
-                  return !form.resolvedErrors?.includes(errorId);
-                });
-                
-                if (!hasUnresolvedErrors) {
-                  console.log('All validation errors resolved, updating status to In Progress');
-                  if (onFormUpdate) {
-                    onFormUpdate(form.id, { status: 'In Progress' });
-                  }
-                  
-                  if (isAdminForm) {
-                    updateAdminForm(form.id, { status: 'In Progress' });
-                  } else {
-                    updateFormStatus(form.id, 'In Progress');
-                    updateFormField(form.id, 'status', 'In Progress');
-                    debouncedSave();
-                  }
-                }
-              }
-            }
-          }
-        }
-      });
-    }, 500); // 500ms delay to prevent validation on every keystroke
-    
-    // NEW: Validate logical temperature progression
-      if (currentEntry.ccp1.temp && currentEntry.ccp2.temp) {
-        const ccp1Temp = parseFloat(String(currentEntry.ccp1.temp));
-        const ccp2Temp = parseFloat(String(currentEntry.ccp2.temp));
-        
-        if (!isNaN(ccp1Temp) && !isNaN(ccp2Temp)) {
-          // CCP1 should be the cooking temperature (higher) and CCP2 should be the cooling temperature (lower)
-          // But we should allow some flexibility for edge cases and not block the user
-          if (ccp2Temp > ccp1Temp) {
-            console.warn(`Temperature progression note: CCP2 temperature (${ccp2Temp}°F) is higher than CCP1 temperature (${ccp1Temp}°F). This may indicate a data entry order issue.`);
-          }
-        }
-      }
-      
-      // REMOVED: Aggressive validation that runs on every cell change
-      // Validation will now only run when the form is being completed or reviewed
-      // This prevents the form from immediately marking as Error while users are still entering data
-      
-      // Legacy validation logic removed to prevent input freezing
-      
-      // Auto-save after updating entry (only if form has data and not admin form)
-      if (!isAdminForm) {
-        debouncedSave();
-      }
+      // Light validation on blur only - moved to TextCell component
+      // Heavy validation runs on save/submit, not on every keystroke
     }
   };
 
-  const handleFormFieldChange = (field: string, value: any) => {
-    if (!readOnly) {
-      if (isAdminForm) {
-        console.log('Admin form update - field:', field, 'value:', value, 'formId:', form.id, 'isAdminForm:', isAdminForm);
-        // For admin forms, update the specific form directly
-        updateAdminForm(form.id, { [field]: value });
-        console.log('updateAdminForm called for field:', field, 'with value:', value);
-        
-        // Notify parent component of the update
-        if (onFormUpdate) {
-          onFormUpdate(form.id, { [field]: value });
-        }
-      } else {
-        // Special handling for date changes
-        if (field === 'date') {
-          const newDate = new Date(value);
-          // Update the current form's date
-          updateFormField(form.id, field, value);
-        } else {
-          console.log('Regular form update - field:', field, 'value:', value, 'current status:', form.status);
-          updateFormField(form.id, field, value);
-          console.log('updateFormField called, new status should be:', value);
-          
-          // Check for new errors ONLY in the specific form field that was modified
-          if (form.status === 'In Progress' && resolvedDataSnapshot) {
-            console.log('=== CHECKING SPECIFIC FORM FIELD FOR NEW ERRORS ===');
-            console.log('Modified form field:', field, 'new value:', value);
-            
-            // Get the resolved value for this specific form field only
-            const resolvedValue = resolvedDataSnapshot[field];
-            console.log('Resolved form field value:', resolvedValue, 'Current form field value:', value);
-            
-            // Only check for errors if this specific form field actually changed
-            if (JSON.stringify(resolvedValue) !== JSON.stringify(value)) {
-              console.log('Form field value changed, checking ONLY this form field for validation...');
-              
-              // Validate ONLY this specific form field - no other fields, no other validation
-              if (field === 'thermometerNumber' && !value) {
-                console.log('Thermometer number is empty, updating status back to Error');
-                
-                // Update form status back to 'Error' when new errors occur
-                if (onFormUpdate) {
-                  onFormUpdate(form.id, { status: 'Error' });
-                }
-                
-                // Use direct update to avoid infinite loop
-                updateFormField(form.id, 'status', 'Error');
-              } else {
-                console.log('No validation errors in this specific form field, status remains In Progress');
-              }
-            } else {
-              console.log('Form field value unchanged, no need to check for errors');
-            }
-          } else {
-            console.log('Form field change - not checking for new errors - status:', form.status, 'has snapshot:', !!resolvedDataSnapshot);
-          }
-          
-          // Use debounced save instead of immediate save to prevent excessive AWS calls
-          debouncedSave();
-        }
-      }
-    }
-  };
+
 
 
 
@@ -591,133 +494,225 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
   };
 
   return (
-    <div className="bg-white p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="border-2 border-black mb-4">
-        <div className="bg-gray-100 p-4 text-center">
-          <h1 className="text-xl font-bold">Cooking and Cooling for Meat & Non Meat Ingredients</h1>
-        </div>
-        <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <span className="font-semibold">Title: </span>
-              <input
-                key={`title-${form?.id || 'new'}`}
-                type="text"
-                value={form?.title || ''}
-                onChange={(e) => {
-                  const newValue = e.target.value;
-                  console.log('Title input onChange:', newValue);
-                  handleFormFieldChange('title', newValue);
-                }}
-                placeholder="Enter form title (e.g., 'Morning Batch', 'Chicken Prep')"
-                className="border-b-2 border-gray-300 bg-transparent w-full px-2 py-1 transition-all duration-200 ease-in-out focus:border-blue-500 focus:outline-none hover:border-gray-400"
-                readOnly={readOnly}
-              />
-            </div>
-            <div>
-              <span className="font-semibold">Date: </span>
-              <input
-                type="date"
-                value={ensureDate(form.date).toISOString().split('T')[0]}
-                onChange={(e) => handleFormFieldChange('date', new Date(e.target.value))}
-                className="border-b border-black bg-transparent"
-                readOnly={readOnly}
-              />
+    <div className="p-6 bg-white rounded-xl border-2 border-gray-200 max-w-7xl mx-auto">
+      {/* Form Header */}
+      <div className="mb-6">
+        <div className="border-2 border-black mb-4">
+          <div className="bg-gray-100 p-4 text-center">
+            <h1 className="text-xl font-bold">Cooking and Cooling for Meat & Non Meat Ingredients</h1>
+          </div>
+          <div className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <span className="font-semibold">Title: </span>
+                <input
+                  key={`title-${form?.id || 'new'}`}
+                  type="text"
+                  value={form?.title || ''}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('Title input onChange:', newValue, 'Form object:', form);
+                      console.log('Form title before update:', form?.title);
+                    }
+                    // Update local state immediately for smooth typing
+                    if (form) {
+                      form.title = newValue;
+                      console.log('Title updated in form object:', form.title);
+                      console.log('Form object after title update:', form);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Only update the store when user finishes typing
+                    const newValue = e.target.value;
+                    if (form && !readOnly) {
+                      if (isAdminForm) {
+                        updateAdminForm(form.id, { title: newValue });
+                        if (onFormUpdate) {
+                          onFormUpdate(form.id, { title: newValue });
+                        }
+                      } else {
+                        updateFormField(form.id, 'title', newValue);
+                      }
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    // Also update on Enter key
+                    if (e.key === 'Enter') {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  placeholder="Enter form title (e.g., 'Morning Batch', 'Chicken Prep')"
+                  className="border-b-2 border-gray-300 bg-transparent w-full px-2 py-1 transition-all duration-200 ease-in-out focus:border-blue-500 focus:outline-none hover:border-gray-400"
+                  readOnly={readOnly}
+                />
+              </div>
+              <div>
+                <span className="font-semibold">Initial: </span>
+                <input
+                  key={`formInitial-${form?.id || 'new'}`}
+                  type="text"
+                  value={form?.formInitial || ''}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('FormInitial input onChange:', newValue);
+                    }
+                    // Update local state immediately for smooth typing
+                    if (form) {
+                      form.formInitial = newValue;
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Only update the store when user finishes typing
+                    const newValue = e.target.value;
+                    if (form && !readOnly) {
+                      if (isAdminForm) {
+                        updateAdminForm(form.id, { formInitial: newValue });
+                        if (onFormUpdate) {
+                          onFormUpdate(form.id, { formInitial: newValue });
+                        }
+                      } else {
+                        updateFormField(form.id, 'formInitial', newValue);
+                      }
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    // Also update on Enter key
+                    if (e.key === 'Enter') {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  placeholder="Enter your initials"
+                  className="border-b-2 border-gray-300 bg-transparent w-full px-2 py-1 transition-all duration-200 ease-in-out focus:border-blue-500 focus:outline-none hover:border-gray-400"
+                  readOnly={readOnly}
+                />
+              </div>
+              <div>
+                <span className="font-semibold">Date: </span>
+                <input
+                  type="date"
+                  value={ensureDate(form.date).toISOString().split('T')[0]}
+                  onChange={(e) => {
+                    // Update local state immediately for smooth interaction
+                    if (form) {
+                      form.date = new Date(e.target.value);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Only update the store when user finishes interaction
+                    const newDate = new Date(e.target.value);
+                    if (form && !readOnly) {
+                      if (isAdminForm) {
+                        updateAdminForm(form.id, { date: newDate });
+                        if (onFormUpdate) {
+                          onFormUpdate(form.id, { date: newDate });
+                        }
+                      } else {
+                        updateFormField(form.id, 'date', newDate);
+                      }
+                    }
+                  }}
+                  className="border-b border-black bg-transparent"
+                  readOnly={readOnly}
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
 
 
-      {/* Column Headers */}
-      <div className="border-2 border-black">
-        <table className="w-full border-collapse">
-          {/* Header Row 1 */}
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border border-black p-2 w-16">Rack</th>
-              <th className="border border-black p-2 w-16">Type</th>
-              <th className="border border-black p-2 w-32">
-                Temperature Must reach 166°F or greater<br/>
-                <strong>CCP 1</strong>
-              </th>
-              <th className="border border-black p-2 w-32">
-                127°F or greater<br/>
-                <strong>CCP 2</strong><br/>
-                <small>Record Temperature of 1st and LAST rack/batch of the day</small>
-              </th>
-              <th className="border border-black p-2 w-32">
-                80°F or below within 105 minutes<br/>
-                <strong>CCP 2</strong><br/>
-                <small>Record Temperature of 1st rack/batch of the day</small><br/>
-                <small>Time: from CCP2 (127°F)</small>
-              </th>
-              <th className="border border-black p-2 w-32">
-                <strong>54</strong> or below within 4.75 hr<br/>
-                <small>Time: from CCP2 (127°F)</small>
-              </th>
-              <th className="border border-black p-2 w-40">
-                Chill Continuously to<br/>
-                39°F or below<br/>
-                <div className="flex items-center justify-center mt-1 space-x-1">
-                  <span className="text-xs font-medium">Date:</span>
-                  <input
-                    type="date"
-                    className="w-20 text-xs border-0 bg-transparent text-center focus:outline-none focus:ring-1 focus:ring-blue-300 cursor-pointer"
-                    placeholder="Date"
-                    readOnly={readOnly}
-                    onClick={(e) => e.currentTarget.showPicker()}
-                  />
-                </div>
-              </th>
-            </tr>
-            {/* Header Row 2 - Sub columns */}
-            <tr className="bg-gray-50">
-              <th className="border border-black p-1 text-sm">Rack</th>
-              <th className="border border-black p-1 text-sm">Type</th>
-              <th className="border border-black p-1">
-                <div className="grid grid-cols-3 gap-1 text-xs">
-                  <div>Temp</div>
-                  <div>Time</div>
-                  <div>Initial</div>
-                </div>
-              </th>
-              <th className="border border-black p-1">
-                <div className="grid grid-cols-3 gap-1 text-xs">
-                  <div>Temp</div>
-                  <div>Time</div>
-                  <div>Initial</div>
-                </div>
-              </th>
-              <th className="border border-black p-1">
-                <div className="grid grid-cols-3 gap-1 text-xs">
-                  <div>Temp</div>
-                  <div>Time</div>
-                  <div>Initial</div>
-                </div>
-              </th>
-              <th className="border border-black p-1">
-                <div className="grid grid-cols-3 gap-1 text-xs">
-                  <div>Temp</div>
-                  <div>Time</div>
-                  <div>Initial</div>
-                </div>
-              </th>
-              <th className="border border-black p-1">
-                <div className="grid grid-cols-3 gap-1 text-xs">
-                  <div>Temp</div>
-                  <div>Time</div>
-                  <div>Initial</div>
-                </div>
-              </th>
-            </tr>
-          </thead>
-          
-                      {/* Data Rows */}
+        </div>
+
+        {/* Column Headers */}
+        <div className="border-2 border-black">
+          <React.Profiler id="PaperForm" onRender={onRenderCallback}>
+            <table className="w-full border-collapse">
+            {/* Header Row 1 */}
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-black p-2 w-16">Rack</th>
+                <th className="border border-black p-2 w-16">Type</th>
+                <th className="border border-black p-2 w-32">
+                  Temperature Must reach 166°F or greater<br/>
+                  <strong>CCP 1</strong>
+                </th>
+                <th className="border border-black p-2 w-32">
+                  127°F or greater<br/>
+                  <strong>CCP 2</strong><br/>
+                  <small>Record Temperature of 1st and LAST rack/batch of the day</small>
+                </th>
+                <th className="border border-black p-2 w-32">
+                  80°F or below within 105 minutes<br/>
+                  <strong>CCP 2</strong><br/>
+                  <small>Record Temperature of 1st rack/batch of the day</small><br/>
+                  <small>Time: from CCP2 (127°F)</small>
+                </th>
+                <th className="border border-black p-2 w-32">
+                  <strong>54</strong> or below within 4.75 hr<br/>
+                  <small>Time: from CCP2 (127°F)</small>
+                </th>
+                <th className="border border-black p-2 w-40">
+                  Chill Continuously to<br/>
+                  39°F or below<br/>
+                  <div className="flex items-center justify-center mt-1 space-x-1">
+                    <span className="text-xs font-medium">Date:</span>
+                    <input
+                      type="date"
+                      className="w-20 text-xs border-0 bg-transparent text-center focus:outline-none focus:ring-1 focus:ring-blue-300 cursor-pointer"
+                      placeholder="Date"
+                      readOnly={readOnly}
+                      onClick={(e) => e.currentTarget.showPicker()}
+                    />
+                  </div>
+                </th>
+              </tr>
+              {/* Header Row 2 - Sub columns */}
+              <tr className="bg-gray-50">
+                <th className="border border-black p-1 text-sm">Rack</th>
+                <th className="border border-black p-1 text-sm">Type</th>
+                <th className="border border-black p-1">
+                  <div className="grid grid-cols-3 gap-1 text-xs">
+                    <div>Temp</div>
+                    <div>Time</div>
+                    <div>Initial</div>
+                  </div>
+                </th>
+                <th className="border border-black p-1">
+                  <div className="grid grid-cols-3 gap-1 text-xs">
+                    <div>Temp</div>
+                    <div>Time</div>
+                    <div>Initial</div>
+                  </div>
+                </th>
+                <th className="border border-black p-1">
+                  <div className="grid grid-cols-3 gap-1 text-xs">
+                    <div>Temp</div>
+                    <div>Time</div>
+                    <div>Initial</div>
+                  </div>
+                </th>
+                <th className="border border-black p-1">
+                  <div className="grid grid-cols-3 gap-1 text-xs">
+                    <div>Temp</div>
+                    <div>Time</div>
+                    <div>Initial</div>
+                  </div>
+                </th>
+                <th className="border border-black p-1">
+                  <div className="grid grid-cols-3 gap-1 text-xs">
+                    <div>Temp</div>
+                    <div>Time</div>
+                    <div>Initial</div>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            
+            {/* Data Rows */}
             <tbody>
-              {form.entries.map((entry: any, rowIndex: number) => (
+              {memoizedEntries.map((entry: any, rowIndex: number) => (
                 <tr key={rowIndex} className={rowIndex === 5 ? 'border-t-4 border-black' : ''}>
                   {/* Rack selection */}
                   <td className="border border-black p-1 text-center">
@@ -736,13 +731,14 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                   <td className="border border-black p-1 text-center">
                     <div className="flex items-center justify-center space-x-1">
                       <span className="font-bold text-sm">{rowIndex + 1}.</span>
-                      <input
-                        type="text"
-                        value={entry.type}
-                        onChange={(e) => handleCellChange(rowIndex, 'type', e.target.value.charAt(0).toUpperCase() + e.target.value.slice(1).toLowerCase())}
+                      <TextCell
+                        formId={form.id}
+                        field={`${rowIndex}-type`}
+                        valueFromStore={entry.type || ''}
+                        readOnly={readOnly}
+                        commitField={(value) => commitField(rowIndex, 'type', value.charAt(0).toUpperCase() + value.slice(1).toLowerCase())}
                         className="w-full text-xs border-0 bg-transparent text-center"
                         placeholder="Type"
-                        readOnly={readOnly}
                       />
                     </div>
                   </td>
@@ -750,17 +746,19 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 {/* CCP 1 */}
                 <td className={`border border-black p-1 ${entry.ccp1.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
-                    <input
-                      type="number"
-                      value={entry.ccp1.temp}
-                      onChange={(e) => handleCellChange(rowIndex, 'ccp1.temp', e.target.value)}
+                    <TextCell
+                      formId={form.id}
+                      field={`${rowIndex}-ccp1.temp`}
+                      valueFromStore={entry.ccp1.temp || ''}
+                      readOnly={readOnly}
+                      commitField={(value) => commitField(rowIndex, 'ccp1.temp', value)}
                       className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="°F"
+                      type="number"
                       step="0.1"
                       min="0"
                       max="300"
                       inputMode="decimal"
-                      readOnly={readOnly}
                     />
                     <TimePicker
                       value={entry.ccp1.time}
@@ -771,49 +769,56 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                       showQuickTimes={false}
                       compact={true}
                       dataLog={entry.ccp1.dataLog || false}
-                                              onDataLogChange={(dataLog) => {
-                          console.log('CCP1 dataLog changed:', dataLog);
-                          // Update the local form state immediately
-                          if (form && form.entries[rowIndex]) {
-                            const updatedEntries = [...form.entries];
-                            updatedEntries[rowIndex] = {
-                              ...updatedEntries[rowIndex],
-                              ccp1: {
-                                ...updatedEntries[rowIndex].ccp1,
-                                dataLog: dataLog
-                              }
-                            };
-                            
-                            if (isAdminForm) {
-                              updateAdminForm(form.id, { entries: updatedEntries });
-                            } else {
-                              // Update the current form state directly
-                              const updatedForm = { ...form, entries: updatedEntries };
-                              // Force a re-render by updating the store
-                              updateFormField(form.id, 'entries', updatedEntries);
+                      onDataLogChange={(dataLog) => {
+                        console.log('CCP1 dataLog changed:', dataLog, 'Row:', rowIndex, 'Form:', form);
+                        console.log('Current entry dataLog:', form?.entries?.[rowIndex]?.ccp1?.dataLog);
+                        
+                        // Update the local form state immediately
+                        if (form && form.entries[rowIndex]) {
+                          const updatedEntries = [...form.entries];
+                          updatedEntries[rowIndex] = {
+                            ...updatedEntries[rowIndex],
+                            ccp1: {
+                              ...updatedEntries[rowIndex].ccp1,
+                              dataLog: dataLog
                             }
+                          };
+                          
+                          console.log('Updated entries:', updatedEntries[rowIndex]);
+                          console.log('Form entries after update:', form.entries);
+                          
+                          if (isAdminForm) {
+                            updateAdminForm(form.id, { entries: updatedEntries });
+                          } else {
+                            // Update the current form state directly
+                            const updatedForm = { ...form, entries: updatedEntries };
+                            // Force a re-render by updating the store
+                            updateFormField(form.id, 'entries', updatedEntries);
                           }
-                          
-                          // Update corrective actions when dataLog is checked
-                          updateCorrectiveActionsForDataLog(rowIndex, 'ccp1', dataLog);
-                          
-                          // Also call the original handleCellChange for consistency
-                          handleCellChange(rowIndex, 'ccp1.dataLog', dataLog);
-                          
-                          // Ensure form is saved after dataLog change
-                          if (!readOnly) {
-                            debouncedSave();
-                          }
-                        }}
+                        }
+                        
+                        // Update corrective actions when dataLog is checked
+                        updateCorrectiveActionsForDataLog(rowIndex, 'ccp1', dataLog);
+                        
+                        // Also call the original handleCellChange for consistency
+                        handleCellChange(rowIndex, 'ccp1.dataLog', dataLog);
+                        
+                        // Ensure form is saved after dataLog change
+                        if (!readOnly) {
+                          // Save form immediately when dataLog changes
+                          saveForm();
+                        }
+                      }}
                     />
-                    <input
-                      type="text"
-                      value={entry.ccp1.initial}
-                      onChange={(e) => handleCellChange(rowIndex, 'ccp1.initial', e.target.value.toUpperCase())}
+                    <TextCell
+                      formId={form.id}
+                      field={`${rowIndex}-ccp1.initial`}
+                      valueFromStore={entry.ccp1.initial || ''}
+                      readOnly={readOnly}
+                      commitField={(value) => commitField(rowIndex, 'ccp1.initial', value.toUpperCase())}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
-                      readOnly={readOnly}
                     />
                   </div>
                 </td>
@@ -821,17 +826,19 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 {/* CCP 2 */}
                 <td className={`border border-black p-1 ${entry.ccp2.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
-                    <input
-                      type="number"
-                      value={entry.ccp2.temp}
-                      onChange={(e) => handleCellChange(rowIndex, 'ccp2.temp', e.target.value)}
+                    <TextCell
+                      formId={form.id}
+                      field={`${rowIndex}-ccp2.temp`}
+                      valueFromStore={entry.ccp2.temp || ''}
+                      readOnly={readOnly}
+                      commitField={(value) => commitField(rowIndex, 'ccp2.temp', value)}
                       className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="°F"
+                      type="number"
                       step="0.1"
                       min="0"
                       max="300"
                       inputMode="decimal"
-                      readOnly={readOnly}
                     />
                     <TimePicker
                       value={entry.ccp2.time}
@@ -873,18 +880,20 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                           
                           // Ensure form is saved after dataLog change
                           if (!readOnly) {
-                            debouncedSave();
+                            // Save form immediately when dataLog changes
+                            saveForm();
                           }
                         }}
                     />
-                    <input
-                      type="text"
-                      value={entry.ccp2.initial}
-                      onChange={(e) => handleCellChange(rowIndex, 'ccp2.initial', e.target.value.toUpperCase())}
+                    <TextCell
+                      formId={form.id}
+                      field={`${rowIndex}-ccp2.initial`}
+                      valueFromStore={entry.ccp2.initial || ''}
+                      readOnly={readOnly}
+                      commitField={(value) => commitField(rowIndex, 'ccp2.initial', value.toUpperCase())}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
-                      readOnly={readOnly}
                     />
                   </div>
                 </td>
@@ -892,17 +901,19 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 {/* 80°F Cooling */}
                 <td className={`border border-black p-1 ${entry.coolingTo80.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
-                    <input
-                      type="number"
-                      value={entry.coolingTo80.temp}
-                      onChange={(e) => handleCellChange(rowIndex, 'coolingTo80.temp', e.target.value)}
+                    <TextCell
+                      formId={form.id}
+                      field={`${rowIndex}-coolingTo80.temp`}
+                      valueFromStore={entry.coolingTo80.temp || ''}
+                      readOnly={readOnly}
+                      commitField={(value) => commitField(rowIndex, 'coolingTo80.temp', value)}
                       className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="°F"
+                      type="number"
                       step="0.1"
                       min="0"
                       max="300"
                       inputMode="decimal"
-                      readOnly={readOnly}
                     />
                     <div className="relative">
                       <TimePicker
@@ -945,20 +956,22 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                           
                           // Ensure form is saved after dataLog change
                           if (!readOnly) {
-                            debouncedSave();
+                            // Save form immediately when dataLog changes
+                            saveForm();
                           }
                         }}
                       />
 
                     </div>
-                    <input
-                      type="text"
-                      value={entry.coolingTo80.initial}
-                      onChange={(e) => handleCellChange(rowIndex, 'coolingTo80.initial', e.target.value.toUpperCase())}
+                    <TextCell
+                      formId={form.id}
+                      field={`${rowIndex}-coolingTo80.initial`}
+                      valueFromStore={entry.coolingTo80.initial || ''}
+                      readOnly={readOnly}
+                      commitField={(value) => commitField(rowIndex, 'coolingTo80.initial', value.toUpperCase())}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
-                      readOnly={readOnly}
                     />
                   </div>
                 </td>
@@ -966,17 +979,19 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                                 {/* 54°F Cooling */}
                 <td className={`border border-black p-1 ${entry.coolingTo54.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
-                    <input
-                      type="number"
-                      value={entry.coolingTo54.temp}
-                      onChange={(e) => handleCellChange(rowIndex, 'coolingTo54.temp', e.target.value)}
+                    <TextCell
+                      formId={form.id}
+                      field={`${rowIndex}-coolingTo54.temp`}
+                      valueFromStore={entry.coolingTo54.temp || ''}
+                      readOnly={readOnly}
+                      commitField={(value) => commitField(rowIndex, 'coolingTo54.temp', value)}
                       className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="°F"
+                      type="number"
                       step="0.1"
                       min="0"
                       max="300"
                       inputMode="decimal"
-                      readOnly={readOnly}
                     />
                     <div className="relative">
                       <TimePicker
@@ -1019,20 +1034,22 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                           
                           // Ensure form is saved after dataLog change
                           if (!readOnly) {
-                            debouncedSave();
+                            // Save form immediately when dataLog changes
+                            saveForm();
                           }
                         }}
                       />
 
                     </div>
-                    <input
-                      type="text"
-                      value={entry.coolingTo54.initial}
-                      onChange={(e) => handleCellChange(rowIndex, 'coolingTo54.initial', e.target.value.toUpperCase())}
+                    <TextCell
+                      formId={form.id}
+                      field={`${rowIndex}-coolingTo54.initial`}
+                      valueFromStore={entry.coolingTo54.initial || ''}
+                      readOnly={readOnly}
+                      commitField={(value) => commitField(rowIndex, 'coolingTo54.initial', value.toUpperCase())}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
-                      readOnly={readOnly}
                     />
                   </div>
                 </td>
@@ -1040,17 +1057,19 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 {/* Final Chill */}
                 <td className={`border border-black p-1 ${entry.finalChill.dataLog ? 'bg-blue-100' : ''}`}>
                   <div className="grid grid-cols-3 gap-1">
-                    <input
-                      type="number"
-                      value={entry.finalChill.temp}
-                      onChange={(e) => handleCellChange(rowIndex, 'finalChill.temp', e.target.value)}
+                    <TextCell
+                      formId={form.id}
+                      field={`${rowIndex}-finalChill.temp`}
+                      valueFromStore={entry.finalChill.temp || ''}
+                      readOnly={readOnly}
+                      commitField={(value) => commitField(rowIndex, 'finalChill.temp', value)}
                       className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="°F"
+                      type="number"
                       step="0.1"
                       min="0"
                       max="300"
                       inputMode="decimal"
-                      readOnly={readOnly}
                     />
                     <TimePicker
                       value={entry.finalChill.time}
@@ -1092,18 +1111,20 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                         
                         // Ensure form is saved after dataLog change
                         if (!readOnly) {
-                          debouncedSave();
+                          // Save form immediately when dataLog changes
+                          saveForm();
                         }
                       }}
                     />
-                    <input
-                      type="text"
-                      value={entry.finalChill.initial}
-                      onChange={(e) => handleCellChange(rowIndex, 'finalChill.initial', e.target.value.toUpperCase())}
+                    <TextCell
+                      formId={form.id}
+                      field={`${rowIndex}-finalChill.initial`}
+                      valueFromStore={entry.finalChill.initial || ''}
+                      readOnly={readOnly}
+                      commitField={(value) => commitField(rowIndex, 'finalChill.initial', value.toUpperCase())}
                       className="w-full text-xs border-0 bg-transparent text-center"
                       placeholder="Init"
                       maxLength={3}
-                      readOnly={readOnly}
                     />
                   </div>
                 </td>
@@ -1111,6 +1132,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             ))}
           </tbody>
         </table>
+          </React.Profiler>
       </div>
 
       {/* Bottom Section */}
@@ -1124,7 +1146,35 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
               <input
                 type="text"
                 value={form.thermometerNumber}
-                onChange={(e) => handleFormFieldChange('thermometerNumber', e.target.value)}
+                onChange={(e) => {
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log('Thermometer input onChange triggered:', e.target.value);
+                  }
+                  // Update local state immediately for smooth typing
+                  if (form) {
+                    form.thermometerNumber = e.target.value;
+                  }
+                }}
+                onBlur={(e) => {
+                  // Only update the store when user finishes typing
+                  const newValue = e.target.value;
+                  if (form && !readOnly) {
+                    if (isAdminForm) {
+                      updateAdminForm(form.id, { thermometerNumber: newValue });
+                      if (onFormUpdate) {
+                        onFormUpdate(form.id, { thermometerNumber: newValue });
+                      }
+                    } else {
+                      updateFormField(form.id, 'thermometerNumber', newValue);
+                    }
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // Also update on Enter key
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  }
+                }}
                 className="ml-2 border-b border-black bg-transparent"
                 placeholder="Enter thermometer number"
                 readOnly={readOnly}
@@ -1148,7 +1198,32 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                     <input
                       type="text"
                       value={form.lotNumbers.beef}
-                      onChange={(e) => handleFormFieldChange('lotNumbers.beef', e.target.value)}
+                      onChange={(e) => {
+                        // Update local state immediately for smooth typing
+                        if (form) {
+                          form.lotNumbers.beef = e.target.value;
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // Only update the store when user finishes typing
+                        const newValue = e.target.value;
+                        if (form && !readOnly) {
+                          if (isAdminForm) {
+                            updateAdminForm(form.id, { lotNumbers: { ...form.lotNumbers, beef: newValue } });
+                            if (onFormUpdate) {
+                              onFormUpdate(form.id, { lotNumbers: { ...form.lotNumbers, beef: newValue } });
+                            }
+                          } else {
+                            updateFormField(form.id, 'lotNumbers', { ...form.lotNumbers, beef: newValue });
+                          }
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        // Also update on Enter key
+                        if (e.key === 'Enter') {
+                          e.currentTarget.blur();
+                        }
+                      }}
                       className="w-full border-0 bg-transparent text-sm"
                       readOnly={readOnly}
                     />
@@ -1157,7 +1232,32 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                     <input
                       type="text"
                       value={form.lotNumbers.chicken}
-                      onChange={(e) => handleFormFieldChange('lotNumbers.chicken', e.target.value)}
+                      onChange={(e) => {
+                        // Update local state immediately for smooth typing
+                        if (form) {
+                          form.lotNumbers.chicken = e.target.value;
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // Only update the store when user finishes typing
+                        const newValue = e.target.value;
+                        if (form && !readOnly) {
+                          if (isAdminForm) {
+                            updateAdminForm(form.id, { lotNumbers: { ...form.lotNumbers, chicken: newValue } });
+                            if (onFormUpdate) {
+                              onFormUpdate(form.id, { lotNumbers: { ...form.lotNumbers, chicken: newValue } });
+                            }
+                          } else {
+                            updateFormField(form.id, 'lotNumbers', { ...form.lotNumbers, chicken: newValue });
+                          }
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        // Also update on Enter key
+                        if (e.key === 'Enter') {
+                          e.currentTarget.blur();
+                        }
+                      }}
                       className="w-full border-0 bg-transparent text-sm"
                       readOnly={readOnly}
                     />
@@ -1166,7 +1266,32 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                     <input
                       type="text"
                       value={form.lotNumbers.liquidEggs}
-                      onChange={(e) => handleFormFieldChange('lotNumbers.liquidEggs', e.target.value)}
+                      onChange={(e) => {
+                        // Update local state immediately for smooth typing
+                        if (form) {
+                          form.lotNumbers.liquidEggs = e.target.value;
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // Only update the store when user finishes typing
+                        const newValue = e.target.value;
+                        if (form && !readOnly) {
+                          if (isAdminForm) {
+                            updateAdminForm(form.id, { lotNumbers: { ...form.lotNumbers, liquidEggs: newValue } });
+                            if (onFormUpdate) {
+                              onFormUpdate(form.id, { lotNumbers: { ...form.lotNumbers, liquidEggs: newValue } });
+                            }
+                          } else {
+                            updateFormField(form.id, 'lotNumbers', { ...form.lotNumbers, liquidEggs: newValue });
+                          }
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        // Also update on Enter key
+                        if (e.key === 'Enter') {
+                          e.currentTarget.blur();
+                        }
+                      }}
                       className="w-full border-0 bg-transparent text-sm"
                       readOnly={readOnly}
                     />
@@ -1183,7 +1308,26 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             </div>
             <textarea
               value={form.correctiveActionsComments}
-              onChange={(e) => handleFormFieldChange('correctiveActionsComments', e.target.value)}
+              onChange={(e) => {
+                // Update local state immediately for smooth typing
+                if (form) {
+                  form.correctiveActionsComments = e.target.value;
+                }
+              }}
+              onBlur={(e) => {
+                // Only update the store when user finishes typing
+                const newValue = e.target.value;
+                if (form && !readOnly) {
+                  if (isAdminForm) {
+                    updateAdminForm(form.id, { correctiveActionsComments: newValue });
+                    if (onFormUpdate) {
+                      onFormUpdate(form.id, { correctiveActionsComments: newValue });
+                    }
+                  } else {
+                    updateFormField(form.id, 'correctiveActionsComments', newValue);
+                  }
+                }
+              }}
               className="w-full h-32 border border-gray-300 p-2 text-sm resize-none"
               placeholder="Enter any corrective actions taken or additional comments..."
               readOnly={readOnly}
@@ -1218,7 +1362,8 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
               } else {
                 updateFormStatus(form.id, 'Complete');
                 updateFormField(form.id, 'status', 'Complete');
-                debouncedSave();
+                // Save form immediately when completing
+                saveForm();
               }
               
               // Show success toast

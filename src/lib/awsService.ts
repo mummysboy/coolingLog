@@ -1,6 +1,6 @@
 import { generateClient } from 'aws-amplify/api';
 import { GraphQLResult } from '@aws-amplify/api-graphql';
-import { type LogEntry, type User, type InitialEntry, type StageType } from './types';
+import { type LogEntry, type User, type StageType } from './types';
 import { type PaperFormEntry, FormType, ensureDate } from './paperFormTypes';
 import * as queries from '../graphql/queries';
 import * as mutations from '../graphql/mutations';
@@ -153,7 +153,7 @@ function mapLogEntryToGraphQLInput(log: LogEntry): any {
 
 // Map frontend PaperFormEntry to GraphQL input
 function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
-  return {
+  const mappedInput = {
     id: form.id,
     date: ensureDate(form.date).toISOString(),
     dateCreated: ensureDate(form.dateCreated || form.date).toISOString(),
@@ -162,114 +162,128 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
     formInitial: form.formInitial,
     status: form.status.toUpperCase().replace(' ', '_'),
     title: form.title,
-    entries: form.entries.filter(entry => entry && typeof entry === 'object' && entry.type !== undefined).map(entry => ({
-      type: entry.type,
-      rack: entry.rack || '1st Rack',
-      // Map all stage data
-      heatTreating: entry.heatTreating ? {
-        temperature: entry.heatTreating.temp ? parseFloat(entry.heatTreating.temp) : null,
-        time: entry.heatTreating.time ? convertTimeStringToDateTime(entry.heatTreating.time, form.date) : null,
-        isValid: true,
-        correctiveAction: '',
-        employeeInitials: entry.heatTreating.initial || '',
-        notes: '',
-        dataLog: false
-      } : null,
-      ccp2_126: entry.ccp2_126 ? {
-        temperature: entry.ccp2_126.temp ? parseFloat(entry.ccp2_126.temp) : null,
-        time: entry.ccp2_126.time ? convertTimeStringToDateTime(entry.ccp2_126.time, form.date) : null,
-        isValid: true,
-        correctiveAction: '',
-        employeeInitials: entry.ccp2_126.initial || '',
-        notes: '',
-        dataLog: false
-      } : null,
-      ccp2_80: entry.ccp2_80 ? {
-        temperature: entry.ccp2_80.temp ? parseFloat(entry.ccp2_80.temp) : null,
-        time: entry.ccp2_80.time ? convertTimeStringToDateTime(entry.ccp2_80.time, form.date) : null,
-        isValid: true,
-        correctiveAction: '',
-        employeeInitials: entry.ccp2_80.initial || '',
-        notes: '',
-        dataLog: false
-      } : null,
-      ccp2_55: entry.ccp2_55 ? {
-        temperature: entry.ccp2_55.temp ? parseFloat(entry.ccp2_55.temp) : null,
-        time: entry.ccp2_55.time ? convertTimeStringToDateTime(entry.ccp2_55.time, form.date) : null,
-        isValid: true,
-        correctiveAction: '',
-        employeeInitials: entry.ccp2_55.initial || '',
-        notes: '',
-        dataLog: false
-      } : null,
-      ccp1: entry.ccp1 ? {
-        temperature: entry.ccp1.temp ? parseFloat(entry.ccp1.temp) : null,
-        time: entry.ccp1.time ? convertTimeStringToDateTime(entry.ccp1.time, form.date) : null,
-        isValid: entry.ccp1.dataLog || false,
-        correctiveAction: '',
-        employeeInitials: entry.ccp1.initial || '',
-        notes: '',
-        dataLog: entry.ccp1.dataLog || false
-      } : null,
-      ccp2: entry.ccp2 ? {
-        temperature: entry.ccp2.temp ? parseFloat(entry.ccp2.temp) : null,
-        time: entry.ccp2.time ? convertTimeStringToDateTime(entry.ccp2.time, form.date) : null,
-        isValid: entry.ccp2.dataLog || false,
-        correctiveAction: '',
-        employeeInitials: entry.ccp2.initial || '',
-        notes: '',
-        dataLog: entry.ccp2.dataLog || false
-      } : null,
-      coolingTo80: entry.coolingTo80 ? {
-        temperature: entry.coolingTo80.temp ? parseFloat(entry.coolingTo80.temp) : null,
-        time: entry.coolingTo80.time ? convertTimeStringToDateTime(entry.coolingTo80.time, form.date) : null,
-        isValid: entry.coolingTo80.dataLog || false,
-        correctiveAction: '',
-        employeeInitials: entry.coolingTo80.initial || '',
-        notes: '',
-        dataLog: entry.coolingTo80.dataLog || false
-      } : null,
-      coolingTo54: entry.coolingTo54 ? {
-        temperature: entry.coolingTo54.temp ? parseFloat(entry.coolingTo54.temp) : null,
-        time: entry.coolingTo54.time ? convertTimeStringToDateTime(entry.coolingTo54.time, form.date) : null,
-        isValid: entry.coolingTo54.dataLog || false,
-        correctiveAction: '',
-        employeeInitials: entry.coolingTo54.initial || '',
-        notes: '',
-        dataLog: entry.coolingTo54.dataLog || false
-      } : null,
-      finalChill: entry.finalChill ? {
-        temperature: entry.finalChill.temp ? parseFloat(entry.finalChill.temp) : null,
-        time: entry.finalChill.time ? convertTimeStringToDateTime(entry.finalChill.time, form.date) : null,
-        isValid: entry.finalChill.dataLog || false,
-        correctiveAction: '',
-        employeeInitials: entry.finalChill.initial || '',
-        notes: '',
-        dataLog: entry.finalChill.dataLog || false
-      } : null
-    })),
+    entries: form.entries.filter(entry => entry && typeof entry === 'object').map(entry => {
+      // Base entry with common fields
+      const baseEntry = {
+        type: entry.type || '',
+        rack: entry.rack || '1st Rack',
+        ccp1: entry.ccp1 ? {
+          temperature: entry.ccp1.temp ? parseFloat(entry.ccp1.temp) : null,
+          time: entry.ccp1.time ? convertTimeStringToDateTime(entry.ccp1.time, form.date) : null,
+          isValid: entry.ccp1.dataLog || false,
+          correctiveAction: '',
+          employeeInitials: entry.ccp1.initial || '',
+          notes: '',
+          dataLog: entry.ccp1.dataLog || false
+        } : null,
+        ccp2: entry.ccp2 ? {
+          temperature: entry.ccp2.temp ? parseFloat(entry.ccp2.temp) : null,
+          time: entry.ccp2.time ? convertTimeStringToDateTime(entry.ccp2.time, form.date) : null,
+          isValid: entry.ccp2.dataLog || false,
+          correctiveAction: '',
+          employeeInitials: entry.ccp2.initial || '',
+          notes: '',
+          dataLog: entry.ccp2.dataLog || false
+        } : null,
+        coolingTo80: entry.coolingTo80 ? {
+          temperature: entry.coolingTo80.temp ? parseFloat(entry.coolingTo80.temp) : null,
+          time: entry.coolingTo80.time ? convertTimeStringToDateTime(entry.coolingTo80.time, form.date) : null,
+          isValid: entry.coolingTo80.dataLog || false,
+          correctiveAction: '',
+          employeeInitials: entry.coolingTo80.initial || '',
+          notes: '',
+          dataLog: entry.coolingTo80.dataLog || false
+        } : null,
+        coolingTo54: entry.coolingTo54 ? {
+          temperature: entry.coolingTo54.temp ? parseFloat(entry.coolingTo54.temp) : null,
+          time: entry.coolingTo54.time ? convertTimeStringToDateTime(entry.coolingTo54.time, form.date) : null,
+          isValid: entry.coolingTo54.dataLog || false,
+          correctiveAction: '',
+          employeeInitials: entry.coolingTo54.initial || '',
+          notes: '',
+          dataLog: entry.coolingTo54.dataLog || false
+        } : null,
+        finalChill: entry.finalChill ? {
+          temperature: entry.finalChill.temp ? parseFloat(entry.finalChill.temp) : null,
+          time: entry.finalChill.time ? convertTimeStringToDateTime(entry.finalChill.time, form.date) : null,
+          isValid: entry.finalChill.dataLog || false,
+          correctiveAction: '',
+          employeeInitials: entry.finalChill.initial || '',
+          notes: '',
+          dataLog: entry.finalChill.dataLog || false
+        } : null
+      };
+
+      // Add form-specific fields for Piroshki forms
+      if (form.formType === 'PIROSHKI_CALZONE_EMPANADA') {
+        const piroshkiEntry = entry as any; // Type assertion for form-specific fields
+        return {
+          ...baseEntry,
+          heatTreating: piroshkiEntry.heatTreating ? {
+            temperature: piroshkiEntry.heatTreating.temp ? parseFloat(piroshkiEntry.heatTreating.temp) : null,
+            time: piroshkiEntry.heatTreating.time ? convertTimeStringToDateTime(piroshkiEntry.heatTreating.time, form.date) : null,
+            isValid: true,
+            correctiveAction: '',
+            employeeInitials: piroshkiEntry.heatTreating.initial || '',
+            notes: '',
+            dataLog: false,
+            type: piroshkiEntry.heatTreating.type || ''
+          } : null,
+          ccp2_126: piroshkiEntry.ccp2_126 ? {
+            temperature: piroshkiEntry.ccp2_126.temp ? parseFloat(piroshkiEntry.ccp2_126.temp) : null,
+            time: piroshkiEntry.ccp2_126.time ? convertTimeStringToDateTime(piroshkiEntry.ccp2_126.time, form.date) : null,
+            isValid: true,
+            correctiveAction: '',
+            employeeInitials: piroshkiEntry.ccp2_126.initial || '',
+            notes: '',
+            dataLog: false
+          } : null,
+          ccp2_80: piroshkiEntry.ccp2_80 ? {
+            temperature: piroshkiEntry.ccp2_80.temp ? parseFloat(piroshkiEntry.ccp2_80.temp) : null,
+            time: piroshkiEntry.ccp2_80.time ? convertTimeStringToDateTime(piroshkiEntry.ccp2_80.time, form.date) : null,
+            isValid: true,
+            correctiveAction: '',
+            employeeInitials: piroshkiEntry.ccp2_80.initial || '',
+            notes: '',
+            dataLog: false
+          } : null,
+          ccp2_55: piroshkiEntry.ccp2_55 ? {
+            temperature: piroshkiEntry.ccp2_55.temp ? parseFloat(piroshkiEntry.ccp2_55.temp) : null,
+            time: piroshkiEntry.ccp2_55.time ? convertTimeStringToDateTime(piroshkiEntry.ccp2_55.time, form.date) : null,
+            isValid: true,
+            correctiveAction: '',
+            employeeInitials: piroshkiEntry.ccp2_55.initial || '',
+            notes: '',
+            dataLog: false
+          } : null
+        };
+      }
+
+      // Return base entry for other form types
+      return baseEntry;
+    }),
     thermometerNumber: form.thermometerNumber || '',
     ingredients: JSON.stringify(form.ingredients || { beef: '', chicken: '', liquidEggs: '' }),
     lotNumbers: JSON.stringify(form.lotNumbers || { beef: '', chicken: '', liquidEggs: '' }),
     correctiveActionsComments: form.correctiveActionsComments,
     // For Piroshki form - Quantity and Flavor
-    quantityAndFlavor: form.quantityAndFlavor ? JSON.stringify(form.quantityAndFlavor) : null,
+    quantityAndFlavor: (form as any).quantityAndFlavor ? JSON.stringify((form as any).quantityAndFlavor) : null,
     
     // For Piroshki form - Pre Shipment Review
-    preShipmentReview: form.preShipmentReview ? {
-      date: form.preShipmentReview.date,
-      initials: form.preShipmentReview.initials,
-      results: form.preShipmentReview.results
+    preShipmentReview: (form as any).preShipmentReview ? {
+      date: (form as any).preShipmentReview.date,
+      initials: (form as any).preShipmentReview.initials,
+      results: (form as any).preShipmentReview.results
     } : null,
     
     // For Bagel Dog form - Frank Flavor/Size Table
-    frankFlavorSizeTable: form.frankFlavorSizeTable ? JSON.stringify(form.frankFlavorSizeTable) : null,
+    frankFlavorSizeTable: (form as any).frankFlavorSizeTable ? JSON.stringify((form as any).frankFlavorSizeTable) : null,
     
     // For Bagel Dog form - Pre Shipment Review
-    bagelDogPreShipmentReview: form.bagelDogPreShipmentReview ? {
-      date: form.bagelDogPreShipmentReview.date,
-      results: form.bagelDogPreShipmentReview.results,
-      signature: form.bagelDogPreShipmentReview.signature
+    bagelDogPreShipmentReview: (form as any).bagelDogPreShipmentReview ? {
+      date: (form as any).bagelDogPreShipmentReview.date,
+      results: (form as any).bagelDogPreShipmentReview.results,
+      signature: (form as any).bagelDogPreShipmentReview.signature
     } : null,
     
     adminComments: form.adminComments?.filter(comment => comment && comment.id && comment.adminInitial && comment.comment)?.map(comment => ({
@@ -278,12 +292,29 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
       timestamp: ensureDate(comment.timestamp).toISOString(),
       comment: comment.comment
     })) || [],
-    resolvedErrors: form.resolvedErrors?.filter(error => error && typeof error === 'string') || []
+    resolvedErrors: form.resolvedErrors || []
   };
+
+  // Debug: Log what's being sent to AWS
+  console.log('🔍 AWS Service - Mapping form to GraphQL input:', {
+    formId: form.id,
+    formType: form.formType,
+    entriesCount: form.entries?.length || 0,
+    mappedEntriesCount: mappedInput.entries.length,
+    firstEntry: mappedInput.entries[0],
+    hasStageData: mappedInput.entries[0]?.ccp1 || mappedInput.entries[0]?.ccp2
+  });
+
+  return mappedInput;
 }
 
 // Map GraphQL result to frontend PaperFormEntry
 function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
+  console.log('=== MAPPING FORM DEBUG ===');
+  console.log('Mapping form ID:', result.id);
+  console.log('Mapping form type:', result.formType);
+  console.log('Mapping form entries count:', result.entries?.length);
+  
   // Map status from database values to frontend values
   let mappedStatus: 'Complete' | 'In Progress' | 'Error';
   if (!result.status) {
@@ -299,7 +330,55 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
     mappedStatus = result.status.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) as any;
   }
 
-  return {
+  // Parse JSON fields that are stored as strings in DynamoDB
+  let parsedIngredients = { beef: '', chicken: '', liquidEggs: '' };
+  let parsedLotNumbers = { beef: '', chicken: '', liquidEggs: '' };
+  let parsedQuantityAndFlavor: any = null;
+  let parsedFrankFlavorSizeTable: any = null;
+
+  try {
+    if (result.ingredients && typeof result.ingredients === 'string') {
+      parsedIngredients = JSON.parse(result.ingredients);
+    } else if (result.ingredients && typeof result.ingredients === 'object') {
+      parsedIngredients = result.ingredients;
+    }
+  } catch (e) {
+    console.warn('Failed to parse ingredients:', e);
+  }
+
+  try {
+    if (result.lotNumbers && typeof result.lotNumbers === 'string') {
+      parsedLotNumbers = JSON.parse(result.lotNumbers);
+    } else if (result.lotNumbers && typeof result.lotNumbers === 'object') {
+      parsedLotNumbers = result.lotNumbers;
+    }
+  } catch (e) {
+    console.warn('Failed to parse lotNumbers:', e);
+  }
+
+  try {
+    if (result.quantityAndFlavor && typeof result.quantityAndFlavor === 'string') {
+      parsedQuantityAndFlavor = JSON.parse(result.quantityAndFlavor);
+    } else if (result.quantityAndFlavor && typeof result.quantityAndFlavor === 'object') {
+      parsedQuantityAndFlavor = result.quantityAndFlavor;
+    }
+  } catch (e) {
+    console.warn('Failed to parse quantityAndFlavor:', e);
+  }
+
+  try {
+    if (result.frankFlavorSizeTable && typeof result.frankFlavorSizeTable === 'string') {
+      parsedFrankFlavorSizeTable = JSON.parse(result.frankFlavorSizeTable);
+    } else if (result.frankFlavorSizeTable && typeof result.frankFlavorSizeTable === 'object') {
+      parsedFrankFlavorSizeTable = result.frankFlavorSizeTable;
+    }
+  } catch (e) {
+    console.warn('Failed to parse frankFlavorSizeTable:', e);
+  }
+
+
+  
+  const mappedForm = {
     id: result.id,
     date: new Date(result.date),
     dateCreated: result.dateCreated ? new Date(result.dateCreated) : new Date(result.date), // Fallback to date if not available
@@ -311,6 +390,29 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
     entries: (result.entries || []).map((entry: any) => ({
       type: entry.type || '',
       rack: entry.rack || '1st Rack',
+      // Piroshki-specific fields
+      heatTreating: entry.heatTreating ? {
+        temp: entry.heatTreating.temperature?.toString() || '',
+        time: entry.heatTreating.time || '',
+        initial: entry.heatTreating.employeeInitials || '',
+        type: entry.heatTreating.type || ''
+      } : undefined,
+      ccp2_126: entry.ccp2_126 ? {
+        temp: entry.ccp2_126.temperature?.toString() || '',
+        time: entry.ccp2_126.time || '',
+        initial: entry.ccp2_126.employeeInitials || ''
+      } : undefined,
+      ccp2_80: entry.ccp2_80 ? {
+        temp: entry.ccp2_80.temperature?.toString() || '',
+        time: entry.ccp2_80.time || '',
+        initial: entry.ccp2_80.employeeInitials || ''
+      } : undefined,
+      ccp2_55: entry.ccp2_55 ? {
+        temp: entry.ccp2_55.temperature?.toString() || '',
+        time: entry.ccp2_55.time || '',
+        initial: entry.ccp2_55.employeeInitials || ''
+      } : undefined,
+      // Standard CCP fields
       ccp1: {
         temp: entry.ccp1?.temperature?.toString() || '',
         time: entry.ccp1?.time || '',
@@ -343,9 +445,23 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
       }
     })),
     thermometerNumber: result.thermometerNumber || '',
-    ingredients: result.ingredients || { beef: '', chicken: '', liquidEggs: '' },
-    lotNumbers: result.lotNumbers || { beef: '', chicken: '', liquidEggs: '' },
+    ingredients: parsedIngredients,
+    lotNumbers: parsedLotNumbers,
     correctiveActionsComments: result.correctiveActionsComments || '',
+    // Piroshki-specific fields
+    quantityAndFlavor: parsedQuantityAndFlavor,
+    preShipmentReview: result.preShipmentReview ? {
+      date: result.preShipmentReview.date || '',
+      initials: result.preShipmentReview.initials || '',
+      results: result.preShipmentReview.results || ''
+    } : undefined,
+    // Bagel Dog-specific fields
+    frankFlavorSizeTable: parsedFrankFlavorSizeTable,
+    bagelDogPreShipmentReview: result.bagelDogPreShipmentReview ? {
+      date: result.bagelDogPreShipmentReview.date || '',
+      results: result.bagelDogPreShipmentReview.results || '',
+      signature: result.bagelDogPreShipmentReview.signature || ''
+    } : undefined,
     adminComments: result.adminComments?.map((comment: any) => ({
       id: comment.id,
       adminInitial: comment.adminInitial,
@@ -354,6 +470,18 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
     })) || [],
     resolvedErrors: result.resolvedErrors || []
   };
+  
+  console.log('=== MAPPED FORM RESULT ===');
+  console.log('Mapped form ID:', mappedForm.id);
+  console.log('Mapped form has heatTreating:', !!mappedForm.entries?.[0]?.heatTreating);
+  console.log('Mapped form has ccp2_126:', !!mappedForm.entries?.[0]?.ccp2_126);
+  console.log('Mapped form has quantityAndFlavor:', !!mappedForm.quantityAndFlavor);
+  console.log('Mapped form has preShipmentReview:', !!mappedForm.preShipmentReview);
+  console.log('Mapped form has frankFlavorSizeTable:', !!mappedForm.frankFlavorSizeTable);
+  console.log('Mapped form has bagelDogPreShipmentReview:', !!mappedForm.bagelDogPreShipmentReview);
+  console.log('=== END MAPPED FORM RESULT ===');
+  
+  return mappedForm;
 }
 
 // Map GraphQL result to frontend LogEntry
@@ -796,6 +924,25 @@ class AWSStorageManager {
       }) as GraphQLResult<any>;
 
       if (result.data?.listPaperFormEntries?.items) {
+        console.log('=== RAW GRAPHQL RESULT DEBUG ===');
+        console.log('Raw items count:', result.data.listPaperFormEntries.items.length);
+        if (result.data.listPaperFormEntries.items.length > 0) {
+          const firstItem = result.data.listPaperFormEntries.items[0];
+          console.log('First raw item keys:', Object.keys(firstItem));
+          console.log('First item formType:', firstItem.formType);
+          console.log('First item entries count:', firstItem.entries?.length);
+          if (firstItem.entries && firstItem.entries.length > 0) {
+            console.log('First entry keys:', Object.keys(firstItem.entries[0]));
+            console.log('First entry has heatTreating:', !!firstItem.entries[0].heatTreating);
+            console.log('First entry has ccp2_126:', !!firstItem.entries[0].ccp2_126);
+          }
+          console.log('First item has quantityAndFlavor:', !!firstItem.quantityAndFlavor);
+          console.log('First item has preShipmentReview:', !!firstItem.preShipmentReview);
+          console.log('First item has frankFlavorSizeTable:', !!firstItem.frankFlavorSizeTable);
+          console.log('First item has bagelDogPreShipmentReview:', !!firstItem.bagelDogPreShipmentReview);
+        }
+        console.log('=== END RAW GRAPHQL RESULT DEBUG ===');
+        
         const forms = result.data.listPaperFormEntries.items.map(mapGraphQLResultToPaperFormEntry);
         console.log('Successfully mapped forms:', forms);
         return forms;
@@ -1072,74 +1219,7 @@ class AWSStorageManager {
     }
   }
 
-  // Initial Entry Methods
-  async createInitialEntry(entry: Omit<InitialEntry, 'id' | 'createdAt'>): Promise<InitialEntry> {
-    try {
-      const result = await client.graphql({
-        query: mutations.createInitialEntry,
-        variables: {
-          input: {
-            initials: entry.initials,
-            name: entry.name,
-            isActive: entry.isActive,
-            createdBy: entry.createdBy
-          }
-        }
-      }) as GraphQLResult<any>;
 
-      return {
-        ...result.data.createInitialEntry,
-        createdAt: new Date(result.data.createInitialEntry.createdAt)
-      };
-    } catch (error) {
-      console.error('Error creating initial entry:', error);
-      throw error;
-    }
-  }
-
-  async getInitialEntries(): Promise<InitialEntry[]> {
-    try {
-      const result = await client.graphql({
-        query: queries.listInitialEntries
-      }) as GraphQLResult<any>;
-
-      if (result.data?.listInitialEntries?.items) {
-        return result.data.listInitialEntries.items.map((entry: any) => ({
-          ...entry,
-          createdAt: new Date(entry.createdAt)
-        }));
-      }
-      return [];
-    } catch (error) {
-      console.error('Error getting initial entries:', error);
-      return [];
-    }
-  }
-
-  async updateInitialEntry(entry: InitialEntry): Promise<InitialEntry> {
-    try {
-      const result = await client.graphql({
-        query: mutations.updateInitialEntry,
-        variables: {
-          input: {
-            id: entry.id,
-            initials: entry.initials,
-            name: entry.name,
-            isActive: entry.isActive,
-            createdBy: entry.createdBy
-          }
-        }
-      }) as GraphQLResult<any>;
-
-      return {
-        ...result.data.updateInitialEntry,
-        createdAt: new Date(result.data.updateInitialEntry.createdAt)
-      };
-    } catch (error) {
-      console.error('Error updating initial entry:', error);
-      throw error;
-    }
-  }
 
   // Workflow Methods
   async updateLogEntryStage(logEntryId: string, stage: StageType, stageData: any): Promise<LogEntry> {

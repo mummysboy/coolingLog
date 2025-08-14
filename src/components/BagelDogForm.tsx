@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { PaperFormEntry, PaperFormRow, FormType } from '../lib/paperFormTypes';
+import { PaperFormEntry, BaseFormRow, FormType } from '../lib/paperFormTypes';
 import { shouldHighlightTemperature } from '../lib/validation';
 import { useLogStore } from '../stores/logStore';
-import { useInitialsStore } from '../stores/initialsStore';
+
 import { usePinStore } from '../stores/pinStore';
 import { usePaperFormStore } from '../stores/paperFormStore';
 import { validateForm } from '../lib/validation';
@@ -27,11 +27,13 @@ interface BagelDogFormProps {
 
 export default function BagelDogForm({ formData, readOnly, onFormUpdate }: BagelDogFormProps) {
   const { deleteForm } = usePaperFormStore();
-  const { initials } = useInitialsStore();
   const { isAuthenticated } = usePinStore();
   const [localForm, setLocalForm] = useState<PaperFormEntry>(formData);
   const [errors, setErrors] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(!readOnly);
+
+  // Debug logging
+  console.log('BagelDogForm render:', { formData, readOnly, isEditing, localForm: !!localForm });
 
   useEffect(() => {
     setLocalForm(formData);
@@ -51,7 +53,7 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
     onFormUpdate(localForm.id, { [field]: value });
   };
 
-  const handleRowChange = (rowIndex: number, field: keyof PaperFormRow, value: any) => {
+  const handleRowChange = (rowIndex: number, field: keyof BaseFormRow, value: any) => {
     const updated = { ...localForm };
     if (!updated.entries[rowIndex]) {
       updated.entries[rowIndex] = { ...updated.entries[0] };

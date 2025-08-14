@@ -1,359 +1,115 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
-export const onLogEntryCreated = /* GraphQL */ `
-  subscription OnLogEntryCreated {
-    onLogEntryCreated {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onLogEntryUpdated = /* GraphQL */ `
-  subscription OnLogEntryUpdated {
-    onLogEntryUpdated {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onLogEntrySubmittedForReview = /* GraphQL */ `
-  subscription OnLogEntrySubmittedForReview {
-    onLogEntrySubmittedForReview {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onPaperFormEntryCreated = /* GraphQL */ `
-  subscription OnPaperFormEntryCreated {
-    onPaperFormEntryCreated {
+export const onCookingCoolingFormEntryCreated = /* GraphQL */ `
+  subscription OnCookingCoolingFormEntryCreated {
+    onCookingCoolingFormEntryCreated {
       id
       date
       dateCreated
       lastTextEntry
-      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCookingCoolingFormEntryUpdated = /* GraphQL */ `
+  subscription OnCookingCoolingFormEntryUpdated {
+    onCookingCoolingFormEntryUpdated {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCookingCoolingFormStatusUpdated = /* GraphQL */ `
+  subscription OnCookingCoolingFormStatusUpdated {
+    onCookingCoolingFormStatusUpdated {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onPiroshkiFormEntryCreated = /* GraphQL */ `
+  subscription OnPiroshkiFormEntryCreated {
+    onPiroshkiFormEntryCreated {
+      id
+      date
+      dateCreated
+      lastTextEntry
       formInitial
       status
       title
@@ -374,6 +130,122 @@ export const onPaperFormEntryCreated = /* GraphQL */ `
         results
         __typename
       }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onPiroshkiFormEntryUpdated = /* GraphQL */ `
+  subscription OnPiroshkiFormEntryUpdated {
+    onPiroshkiFormEntryUpdated {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onPiroshkiFormStatusUpdated = /* GraphQL */ `
+  subscription OnPiroshkiFormStatusUpdated {
+    onPiroshkiFormStatusUpdated {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onBagelDogFormEntryCreated = /* GraphQL */ `
+  subscription OnBagelDogFormEntryCreated {
+    onBagelDogFormEntryCreated {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
       frankFlavorSizeTable
       bagelDogPreShipmentReview {
         date
@@ -395,14 +267,13 @@ export const onPaperFormEntryCreated = /* GraphQL */ `
     }
   }
 `;
-export const onPaperFormEntryUpdated = /* GraphQL */ `
-  subscription OnPaperFormEntryUpdated {
-    onPaperFormEntryUpdated {
+export const onBagelDogFormEntryUpdated = /* GraphQL */ `
+  subscription OnBagelDogFormEntryUpdated {
+    onBagelDogFormEntryUpdated {
       id
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -416,13 +287,6 @@ export const onPaperFormEntryUpdated = /* GraphQL */ `
       ingredients
       lotNumbers
       correctiveActionsComments
-      quantityAndFlavor
-      preShipmentReview {
-        date
-        initials
-        results
-        __typename
-      }
       frankFlavorSizeTable
       bagelDogPreShipmentReview {
         date
@@ -444,14 +308,13 @@ export const onPaperFormEntryUpdated = /* GraphQL */ `
     }
   }
 `;
-export const onPaperFormStatusUpdated = /* GraphQL */ `
-  subscription OnPaperFormStatusUpdated {
-    onPaperFormStatusUpdated {
+export const onBagelDogFormStatusUpdated = /* GraphQL */ `
+  subscription OnBagelDogFormStatusUpdated {
+    onBagelDogFormStatusUpdated {
       id
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -465,13 +328,6 @@ export const onPaperFormStatusUpdated = /* GraphQL */ `
       ingredients
       lotNumbers
       correctiveActionsComments
-      quantityAndFlavor
-      preShipmentReview {
-        date
-        initials
-        results
-        __typename
-      }
       frankFlavorSizeTable
       bagelDogPreShipmentReview {
         date
@@ -493,76 +349,123 @@ export const onPaperFormStatusUpdated = /* GraphQL */ `
     }
   }
 `;
-export const onCreateUser = /* GraphQL */ `
-  subscription OnCreateUser($filter: ModelSubscriptionUserFilterInput) {
-    onCreateUser(filter: $filter) {
-      id
-      initials
-      name
-      role
-      certificationNumber
-      email
-      isActive
-      createdAt
-      updatedAt
-      logEntries {
-        nextToken
-        __typename
-      }
-      __typename
-    }
-  }
-`;
-export const onUpdateUser = /* GraphQL */ `
-  subscription OnUpdateUser($filter: ModelSubscriptionUserFilterInput) {
-    onUpdateUser(filter: $filter) {
-      id
-      initials
-      name
-      role
-      certificationNumber
-      email
-      isActive
-      createdAt
-      updatedAt
-      logEntries {
-        nextToken
-        __typename
-      }
-      __typename
-    }
-  }
-`;
-export const onDeleteUser = /* GraphQL */ `
-  subscription OnDeleteUser($filter: ModelSubscriptionUserFilterInput) {
-    onDeleteUser(filter: $filter) {
-      id
-      initials
-      name
-      role
-      certificationNumber
-      email
-      isActive
-      createdAt
-      updatedAt
-      logEntries {
-        nextToken
-        __typename
-      }
-      __typename
-    }
-  }
-`;
-export const onCreatePaperFormEntry = /* GraphQL */ `
-  subscription OnCreatePaperFormEntry(
-    $filter: ModelSubscriptionPaperFormEntryFilterInput
+export const onCreateCookingCoolingFormEntry = /* GraphQL */ `
+  subscription OnCreateCookingCoolingFormEntry(
+    $filter: ModelSubscriptionCookingCoolingFormEntryFilterInput
   ) {
-    onCreatePaperFormEntry(filter: $filter) {
+    onCreateCookingCoolingFormEntry(filter: $filter) {
       id
       date
       dateCreated
       lastTextEntry
-      formType
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdateCookingCoolingFormEntry = /* GraphQL */ `
+  subscription OnUpdateCookingCoolingFormEntry(
+    $filter: ModelSubscriptionCookingCoolingFormEntryFilterInput
+  ) {
+    onUpdateCookingCoolingFormEntry(filter: $filter) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeleteCookingCoolingFormEntry = /* GraphQL */ `
+  subscription OnDeleteCookingCoolingFormEntry(
+    $filter: ModelSubscriptionCookingCoolingFormEntryFilterInput
+  ) {
+    onDeleteCookingCoolingFormEntry(filter: $filter) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreatePiroshkiFormEntry = /* GraphQL */ `
+  subscription OnCreatePiroshkiFormEntry(
+    $filter: ModelSubscriptionPiroshkiFormEntryFilterInput
+  ) {
+    onCreatePiroshkiFormEntry(filter: $filter) {
+      id
+      date
+      dateCreated
+      lastTextEntry
       formInitial
       status
       title
@@ -583,6 +486,128 @@ export const onCreatePaperFormEntry = /* GraphQL */ `
         results
         __typename
       }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onUpdatePiroshkiFormEntry = /* GraphQL */ `
+  subscription OnUpdatePiroshkiFormEntry(
+    $filter: ModelSubscriptionPiroshkiFormEntryFilterInput
+  ) {
+    onUpdatePiroshkiFormEntry(filter: $filter) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onDeletePiroshkiFormEntry = /* GraphQL */ `
+  subscription OnDeletePiroshkiFormEntry(
+    $filter: ModelSubscriptionPiroshkiFormEntryFilterInput
+  ) {
+    onDeletePiroshkiFormEntry(filter: $filter) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const onCreateBagelDogFormEntry = /* GraphQL */ `
+  subscription OnCreateBagelDogFormEntry(
+    $filter: ModelSubscriptionBagelDogFormEntryFilterInput
+  ) {
+    onCreateBagelDogFormEntry(filter: $filter) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
       frankFlavorSizeTable
       bagelDogPreShipmentReview {
         date
@@ -604,16 +629,15 @@ export const onCreatePaperFormEntry = /* GraphQL */ `
     }
   }
 `;
-export const onUpdatePaperFormEntry = /* GraphQL */ `
-  subscription OnUpdatePaperFormEntry(
-    $filter: ModelSubscriptionPaperFormEntryFilterInput
+export const onUpdateBagelDogFormEntry = /* GraphQL */ `
+  subscription OnUpdateBagelDogFormEntry(
+    $filter: ModelSubscriptionBagelDogFormEntryFilterInput
   ) {
-    onUpdatePaperFormEntry(filter: $filter) {
+    onUpdateBagelDogFormEntry(filter: $filter) {
       id
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -627,13 +651,6 @@ export const onUpdatePaperFormEntry = /* GraphQL */ `
       ingredients
       lotNumbers
       correctiveActionsComments
-      quantityAndFlavor
-      preShipmentReview {
-        date
-        initials
-        results
-        __typename
-      }
       frankFlavorSizeTable
       bagelDogPreShipmentReview {
         date
@@ -655,16 +672,15 @@ export const onUpdatePaperFormEntry = /* GraphQL */ `
     }
   }
 `;
-export const onDeletePaperFormEntry = /* GraphQL */ `
-  subscription OnDeletePaperFormEntry(
-    $filter: ModelSubscriptionPaperFormEntryFilterInput
+export const onDeleteBagelDogFormEntry = /* GraphQL */ `
+  subscription OnDeleteBagelDogFormEntry(
+    $filter: ModelSubscriptionBagelDogFormEntryFilterInput
   ) {
-    onDeletePaperFormEntry(filter: $filter) {
+    onDeleteBagelDogFormEntry(filter: $filter) {
       id
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -678,13 +694,6 @@ export const onDeletePaperFormEntry = /* GraphQL */ `
       ingredients
       lotNumbers
       correctiveActionsComments
-      quantityAndFlavor
-      preShipmentReview {
-        date
-        initials
-        results
-        __typename
-      }
       frankFlavorSizeTable
       bagelDogPreShipmentReview {
         date
@@ -700,399 +709,6 @@ export const onDeletePaperFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onCreateLogEntry = /* GraphQL */ `
-  subscription OnCreateLogEntry($filter: ModelSubscriptionLogEntryFilterInput) {
-    onCreateLogEntry(filter: $filter) {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onUpdateLogEntry = /* GraphQL */ `
-  subscription OnUpdateLogEntry($filter: ModelSubscriptionLogEntryFilterInput) {
-    onUpdateLogEntry(filter: $filter) {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onDeleteLogEntry = /* GraphQL */ `
-  subscription OnDeleteLogEntry($filter: ModelSubscriptionLogEntryFilterInput) {
-    onDeleteLogEntry(filter: $filter) {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onCreateInitialEntry = /* GraphQL */ `
-  subscription OnCreateInitialEntry(
-    $filter: ModelSubscriptionInitialEntryFilterInput
-  ) {
-    onCreateInitialEntry(filter: $filter) {
-      id
-      initials
-      name
-      isActive
-      createdBy
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onUpdateInitialEntry = /* GraphQL */ `
-  subscription OnUpdateInitialEntry(
-    $filter: ModelSubscriptionInitialEntryFilterInput
-  ) {
-    onUpdateInitialEntry(filter: $filter) {
-      id
-      initials
-      name
-      isActive
-      createdBy
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const onDeleteInitialEntry = /* GraphQL */ `
-  subscription OnDeleteInitialEntry(
-    $filter: ModelSubscriptionInitialEntryFilterInput
-  ) {
-    onDeleteInitialEntry(filter: $filter) {
-      id
-      initials
-      name
-      isActive
-      createdBy
       createdAt
       updatedAt
       __typename

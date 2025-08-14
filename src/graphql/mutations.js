@@ -1,500 +1,13 @@
 /* eslint-disable */
 // this is an auto generated file. This will be overwritten
 
-export const updateLogEntryStage = /* GraphQL */ `
-  mutation UpdateLogEntryStage(
-    $logEntryId: ID!
-    $stage: StageType!
-    $stageData: StageDataInput!
-  ) {
-    updateLogEntryStage(
-      logEntryId: $logEntryId
-      stage: $stage
-      stageData: $stageData
-    ) {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const submitLogEntryForReview = /* GraphQL */ `
-  mutation SubmitLogEntryForReview($logEntryId: ID!) {
-    submitLogEntryForReview(logEntryId: $logEntryId) {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const approveLogEntry = /* GraphQL */ `
-  mutation ApproveLogEntry(
-    $logEntryId: ID!
-    $adminComments: String
-    $adminSignature: String
-  ) {
-    approveLogEntry(
-      logEntryId: $logEntryId
-      adminComments: $adminComments
-      adminSignature: $adminSignature
-    ) {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const addCorrectiveAction = /* GraphQL */ `
-  mutation AddCorrectiveAction(
-    $logEntryId: ID!
-    $stage: StageType!
-    $action: String!
-    $employeeInitials: String!
-  ) {
-    addCorrectiveAction(
-      logEntryId: $logEntryId
-      stage: $stage
-      action: $action
-      employeeInitials: $employeeInitials
-    ) {
-      id
-      date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
-      thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
-        id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
-        __typename
-      }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
-      createdAt
-      updatedAt
-      __typename
-    }
-  }
-`;
-export const updatePaperFormStatus = /* GraphQL */ `
-  mutation UpdatePaperFormStatus($formId: ID!, $status: FormStatus!) {
-    updatePaperFormStatus(formId: $formId, status: $status) {
+export const updateCookingCoolingFormStatus = /* GraphQL */ `
+  mutation UpdateCookingCoolingFormStatus($formId: ID!, $status: FormStatus!) {
+    updateCookingCoolingFormStatus(formId: $formId, status: $status) {
       id
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -508,20 +21,6 @@ export const updatePaperFormStatus = /* GraphQL */ `
       ingredients
       lotNumbers
       correctiveActionsComments
-      quantityAndFlavor
-      preShipmentReview {
-        date
-        initials
-        results
-        __typename
-      }
-      frankFlavorSizeTable
-      bagelDogPreShipmentReview {
-        date
-        results
-        signature
-        __typename
-      }
       adminComments {
         id
         adminInitial
@@ -543,7 +42,6 @@ export const addAdminComment = /* GraphQL */ `
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -557,20 +55,6 @@ export const addAdminComment = /* GraphQL */ `
       ingredients
       lotNumbers
       correctiveActionsComments
-      quantityAndFlavor
-      preShipmentReview {
-        date
-        initials
-        results
-        __typename
-      }
-      frankFlavorSizeTable
-      bagelDogPreShipmentReview {
-        date
-        results
-        signature
-        __typename
-      }
       adminComments {
         id
         adminInitial
@@ -592,7 +76,6 @@ export const resolveError = /* GraphQL */ `
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -606,20 +89,6 @@ export const resolveError = /* GraphQL */ `
       ingredients
       lotNumbers
       correctiveActionsComments
-      quantityAndFlavor
-      preShipmentReview {
-        date
-        initials
-        results
-        __typename
-      }
-      frankFlavorSizeTable
-      bagelDogPreShipmentReview {
-        date
-        results
-        signature
-        __typename
-      }
       adminComments {
         id
         adminInitial
@@ -634,86 +103,13 @@ export const resolveError = /* GraphQL */ `
     }
   }
 `;
-export const createUser = /* GraphQL */ `
-  mutation CreateUser(
-    $input: CreateUserInput!
-    $condition: ModelUserConditionInput
-  ) {
-    createUser(input: $input, condition: $condition) {
-      id
-      initials
-      name
-      role
-      certificationNumber
-      email
-      isActive
-      createdAt
-      updatedAt
-      logEntries {
-        nextToken
-        __typename
-      }
-      __typename
-    }
-  }
-`;
-export const updateUser = /* GraphQL */ `
-  mutation UpdateUser(
-    $input: UpdateUserInput!
-    $condition: ModelUserConditionInput
-  ) {
-    updateUser(input: $input, condition: $condition) {
-      id
-      initials
-      name
-      role
-      certificationNumber
-      email
-      isActive
-      createdAt
-      updatedAt
-      logEntries {
-        nextToken
-        __typename
-      }
-      __typename
-    }
-  }
-`;
-export const deleteUser = /* GraphQL */ `
-  mutation DeleteUser(
-    $input: DeleteUserInput!
-    $condition: ModelUserConditionInput
-  ) {
-    deleteUser(input: $input, condition: $condition) {
-      id
-      initials
-      name
-      role
-      certificationNumber
-      email
-      isActive
-      createdAt
-      updatedAt
-      logEntries {
-        nextToken
-        __typename
-      }
-      __typename
-    }
-  }
-`;
-export const createPaperFormEntry = /* GraphQL */ `
-  mutation CreatePaperFormEntry(
-    $input: CreatePaperFormEntryInput!
-    $condition: ModelPaperFormEntryConditionInput
-  ) {
-    createPaperFormEntry(input: $input, condition: $condition) {
+export const updatePiroshkiFormStatus = /* GraphQL */ `
+  mutation UpdatePiroshkiFormStatus($formId: ID!, $status: FormStatus!) {
+    updatePiroshkiFormStatus(formId: $formId, status: $status) {
       id
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -734,13 +130,6 @@ export const createPaperFormEntry = /* GraphQL */ `
         results
         __typename
       }
-      frankFlavorSizeTable
-      bagelDogPreShipmentReview {
-        date
-        results
-        signature
-        __typename
-      }
       adminComments {
         id
         adminInitial
@@ -755,17 +144,13 @@ export const createPaperFormEntry = /* GraphQL */ `
     }
   }
 `;
-export const updatePaperFormEntry = /* GraphQL */ `
-  mutation UpdatePaperFormEntry(
-    $input: UpdatePaperFormEntryInput!
-    $condition: ModelPaperFormEntryConditionInput
-  ) {
-    updatePaperFormEntry(input: $input, condition: $condition) {
+export const addPiroshkiAdminComment = /* GraphQL */ `
+  mutation AddPiroshkiAdminComment($formId: ID!, $comment: AdminCommentInput!) {
+    addPiroshkiAdminComment(formId: $formId, comment: $comment) {
       id
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -786,13 +171,6 @@ export const updatePaperFormEntry = /* GraphQL */ `
         results
         __typename
       }
-      frankFlavorSizeTable
-      bagelDogPreShipmentReview {
-        date
-        results
-        signature
-        __typename
-      }
       adminComments {
         id
         adminInitial
@@ -807,17 +185,13 @@ export const updatePaperFormEntry = /* GraphQL */ `
     }
   }
 `;
-export const deletePaperFormEntry = /* GraphQL */ `
-  mutation DeletePaperFormEntry(
-    $input: DeletePaperFormEntryInput!
-    $condition: ModelPaperFormEntryConditionInput
-  ) {
-    deletePaperFormEntry(input: $input, condition: $condition) {
+export const resolvePiroshkiError = /* GraphQL */ `
+  mutation ResolvePiroshkiError($formId: ID!, $errorId: String!) {
+    resolvePiroshkiError(formId: $formId, errorId: $errorId) {
       id
       date
       dateCreated
       lastTextEntry
-      formType
       formInitial
       status
       title
@@ -838,6 +212,40 @@ export const deletePaperFormEntry = /* GraphQL */ `
         results
         __typename
       }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateBagelDogFormStatus = /* GraphQL */ `
+  mutation UpdateBagelDogFormStatus($formId: ID!, $status: FormStatus!) {
+    updateBagelDogFormStatus(formId: $formId, status: $status) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
       frankFlavorSizeTable
       bagelDogPreShipmentReview {
         date
@@ -859,405 +267,457 @@ export const deletePaperFormEntry = /* GraphQL */ `
     }
   }
 `;
-export const createLogEntry = /* GraphQL */ `
-  mutation CreateLogEntry(
-    $input: CreateLogEntryInput!
-    $condition: ModelLogEntryConditionInput
-  ) {
-    createLogEntry(input: $input, condition: $condition) {
+export const addBagelDogAdminComment = /* GraphQL */ `
+  mutation AddBagelDogAdminComment($formId: ID!, $comment: AdminCommentInput!) {
+    addBagelDogAdminComment(formId: $formId, comment: $comment) {
       id
       date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
       thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
+      adminComments {
         id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
+        adminInitial
+        timestamp
+        comment
         __typename
       }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
+      resolvedErrors
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const updateLogEntry = /* GraphQL */ `
-  mutation UpdateLogEntry(
-    $input: UpdateLogEntryInput!
-    $condition: ModelLogEntryConditionInput
-  ) {
-    updateLogEntry(input: $input, condition: $condition) {
+export const resolveBagelDogError = /* GraphQL */ `
+  mutation ResolveBagelDogError($formId: ID!, $errorId: String!) {
+    resolveBagelDogError(formId: $formId, errorId: $errorId) {
       id
       date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
       thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
+      adminComments {
         id
-        initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
+        adminInitial
+        timestamp
+        comment
         __typename
       }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
+      resolvedErrors
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const deleteLogEntry = /* GraphQL */ `
-  mutation DeleteLogEntry(
-    $input: DeleteLogEntryInput!
-    $condition: ModelLogEntryConditionInput
+export const createCookingCoolingFormEntry = /* GraphQL */ `
+  mutation CreateCookingCoolingFormEntry(
+    $input: CreateCookingCoolingFormEntryInput!
+    $condition: ModelCookingCoolingFormEntryConditionInput
   ) {
-    deleteLogEntry(input: $input, condition: $condition) {
+    createCookingCoolingFormEntry(input: $input, condition: $condition) {
       id
       date
-      shift
-      product
-      productCode
-      supplier
-      receivedDate
-      expirationDate
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
       thermometerNumber
-      lotNumber
-      batchSize
-      packagingType
-      employeeId
-      employeeName
-      employeeInitials
-      supervisorInitials
-      employee {
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
         id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateCookingCoolingFormEntry = /* GraphQL */ `
+  mutation UpdateCookingCoolingFormEntry(
+    $input: UpdateCookingCoolingFormEntryInput!
+    $condition: ModelCookingCoolingFormEntryConditionInput
+  ) {
+    updateCookingCoolingFormEntry(input: $input, condition: $condition) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteCookingCoolingFormEntry = /* GraphQL */ `
+  mutation DeleteCookingCoolingFormEntry(
+    $input: DeleteCookingCoolingFormEntryInput!
+    $condition: ModelCookingCoolingFormEntryConditionInput
+  ) {
+    deleteCookingCoolingFormEntry(input: $input, condition: $condition) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const createPiroshkiFormEntry = /* GraphQL */ `
+  mutation CreatePiroshkiFormEntry(
+    $input: CreatePiroshkiFormEntryInput!
+    $condition: ModelPiroshkiFormEntryConditionInput
+  ) {
+    createPiroshkiFormEntry(input: $input, condition: $condition) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
         initials
-        name
-        role
-        certificationNumber
-        email
-        isActive
-        createdAt
-        updatedAt
+        results
         __typename
       }
-      cookStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
         __typename
       }
-      startCoolingStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to80Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      to54Stage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      finalChillStage {
-        temperature
-        time
-        isValid
-        correctiveAction
-        employeeInitials
-        notes
-        dataLog
-        __typename
-      }
-      ccp1Verified
-      ccp2Verified
-      monitoringCompleted
-      correctiveActionsDocumented
-      visualInspectionColor
-      visualInspectionTexture
-      visualInspectionOdor
-      visualInspectionNotes
-      storageLocation
-      storageTemperature
-      storageTime
-      currentStage
-      isComplete
-      requiresReview
-      isApproved
-      adminComments
-      reviewedBy
-      reviewDate
-      complianceIssues
-      riskLevel
-      employeeSignature
-      supervisorSignature
-      adminSignature
-      completedAt
-      submittedAt
-      photos
-      attachments
-      notes
+      resolvedErrors
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const createInitialEntry = /* GraphQL */ `
-  mutation CreateInitialEntry(
-    $input: CreateInitialEntryInput!
-    $condition: ModelInitialEntryConditionInput
+export const updatePiroshkiFormEntry = /* GraphQL */ `
+  mutation UpdatePiroshkiFormEntry(
+    $input: UpdatePiroshkiFormEntryInput!
+    $condition: ModelPiroshkiFormEntryConditionInput
   ) {
-    createInitialEntry(input: $input, condition: $condition) {
+    updatePiroshkiFormEntry(input: $input, condition: $condition) {
       id
-      initials
-      name
-      isActive
-      createdBy
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const updateInitialEntry = /* GraphQL */ `
-  mutation UpdateInitialEntry(
-    $input: UpdateInitialEntryInput!
-    $condition: ModelInitialEntryConditionInput
+export const deletePiroshkiFormEntry = /* GraphQL */ `
+  mutation DeletePiroshkiFormEntry(
+    $input: DeletePiroshkiFormEntryInput!
+    $condition: ModelPiroshkiFormEntryConditionInput
   ) {
-    updateInitialEntry(input: $input, condition: $condition) {
+    deletePiroshkiFormEntry(input: $input, condition: $condition) {
       id
-      initials
-      name
-      isActive
-      createdBy
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      quantityAndFlavor
+      preShipmentReview {
+        date
+        initials
+        results
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
       createdAt
       updatedAt
       __typename
     }
   }
 `;
-export const deleteInitialEntry = /* GraphQL */ `
-  mutation DeleteInitialEntry(
-    $input: DeleteInitialEntryInput!
-    $condition: ModelInitialEntryConditionInput
+export const createBagelDogFormEntry = /* GraphQL */ `
+  mutation CreateBagelDogFormEntry(
+    $input: CreateBagelDogFormEntryInput!
+    $condition: ModelBagelDogFormEntryConditionInput
   ) {
-    deleteInitialEntry(input: $input, condition: $condition) {
+    createBagelDogFormEntry(input: $input, condition: $condition) {
       id
-      initials
-      name
-      isActive
-      createdBy
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const updateBagelDogFormEntry = /* GraphQL */ `
+  mutation UpdateBagelDogFormEntry(
+    $input: UpdateBagelDogFormEntryInput!
+    $condition: ModelBagelDogFormEntryConditionInput
+  ) {
+    updateBagelDogFormEntry(input: $input, condition: $condition) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
+      createdAt
+      updatedAt
+      __typename
+    }
+  }
+`;
+export const deleteBagelDogFormEntry = /* GraphQL */ `
+  mutation DeleteBagelDogFormEntry(
+    $input: DeleteBagelDogFormEntryInput!
+    $condition: ModelBagelDogFormEntryConditionInput
+  ) {
+    deleteBagelDogFormEntry(input: $input, condition: $condition) {
+      id
+      date
+      dateCreated
+      lastTextEntry
+      formInitial
+      status
+      title
+      entries {
+        type
+        rack
+        __typename
+        __typename
+      }
+      thermometerNumber
+      ingredients
+      lotNumbers
+      correctiveActionsComments
+      frankFlavorSizeTable
+      bagelDogPreShipmentReview {
+        date
+        results
+        signature
+        __typename
+      }
+      adminComments {
+        id
+        adminInitial
+        timestamp
+        comment
+        __typename
+      }
+      resolvedErrors
       createdAt
       updatedAt
       __typename

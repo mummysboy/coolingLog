@@ -15,6 +15,9 @@ interface PiroshkiFormProps {
 export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate }: PiroshkiFormProps = {}) {
   const { currentForm, updateEntry, updateFormField, updateFormStatus, saveForm, updateAdminForm, savedForms } = usePaperFormStore();
 
+  // Debug logging
+  console.log('PiroshkiForm render:', { formData, readOnly, currentForm: !!currentForm });
+
   // Check if we're working with a form from the admin dashboard
   const isAdminForm = false;
   

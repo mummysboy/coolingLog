@@ -1,35 +1,21 @@
-# Food Chilling Log GraphQL Schema
+# Food Chilling Log GraphQL Schema - Multi-Table Structure
+# This database handles all form types with separate tables for each
 
 # Global auth rule for testing - in production you'll want more specific auth rules
 input AMPLIFY { globalAuthRule: AuthRule = { allow: public } } # FOR TESTING ONLY!
 
-# User model for employees, supervisors, and admins
-type User @model {
-  id: ID!
-  initials: String!
-  name: String!
-  role: UserRole!
-  certificationNumber: String
-  email: String
-  isActive: Boolean!
-  createdAt: AWSDateTime!
-  updatedAt: AWSDateTime!
-  logEntries: [LogEntry] @hasMany(indexName: "byEmployee", fields: ["id"])
-}
-
-# Paper Form Entry model for food chilling logs
-type PaperFormEntry @model @auth(rules: [{ allow: public }]) {
+# Cooking and Cooling Form Entry model - Separate table
+type CookingCoolingFormEntry @model @auth(rules: [{ allow: public }]) {
   id: ID!
   date: AWSDateTime!
   dateCreated: AWSDateTime!
   lastTextEntry: AWSDateTime!
-  formType: FormType!
   formInitial: String!
   status: String!
   title: String
   
   # Row entries (1-9)
-  entries: [PaperFormRow!]!
+  entries: [CookingCoolingFormRow!]!
   
   # Bottom section
   thermometerNumber: String
@@ -37,16 +23,66 @@ type PaperFormEntry @model @auth(rules: [{ allow: public }]) {
   lotNumbers: AWSJSON
   correctiveActionsComments: String
   
-  # For Piroshki form - Quantity and Flavor
-  quantityAndFlavor: AWSJSON
+  # Admin comments and resolution
+  adminComments: [AdminComment!]
+  resolvedErrors: [String!]
   
-  # For Piroshki form - Pre Shipment Review
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+# Piroshki Form Entry model - Separate table
+type PiroshkiFormEntry @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  date: AWSDateTime!
+  dateCreated: AWSDateTime!
+  lastTextEntry: AWSDateTime!
+  formInitial: String!
+  status: String!
+  title: String
+  
+  # Row entries (1-9)
+  entries: [PiroshkiFormRow!]!
+  
+  # Bottom section
+  thermometerNumber: String
+  ingredients: AWSJSON
+  lotNumbers: AWSJSON
+  correctiveActionsComments: String
+  
+  # Piroshki-specific fields
+  quantityAndFlavor: AWSJSON
   preShipmentReview: PreShipmentReview
   
-  # For Bagel Dog form - Frank Flavor/Size Table
-  frankFlavorSizeTable: AWSJSON
+  # Admin comments and resolution
+  adminComments: [AdminComment!]
+  resolvedErrors: [String!]
   
-  # For Bagel Dog form - Pre Shipment Review
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+# Bagel Dog Form Entry model - Separate table
+type BagelDogFormEntry @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  date: AWSDateTime!
+  dateCreated: AWSDateTime!
+  lastTextEntry: AWSDateTime!
+  formInitial: String!
+  status: String!
+  title: String
+  
+  # Row entries (1-9)
+  entries: [BagelDogFormRow!]!
+  
+  # Bottom section
+  thermometerNumber: String
+  ingredients: AWSJSON
+  lotNumbers: AWSJSON
+  correctiveActionsComments: String
+  
+  # Bagel Dog-specific fields
+  frankFlavorSizeTable: AWSJSON
   bagelDogPreShipmentReview: BagelDogPreShipmentReview
   
   # Admin comments and resolution
@@ -57,19 +93,10 @@ type PaperFormEntry @model @auth(rules: [{ allow: public }]) {
   updatedAt: AWSDateTime
 }
 
-# Paper Form Row for individual entries
-type PaperFormRow {
+# Cooking and Cooling Form Row for individual entries
+type CookingCoolingFormRow {
   type: String
   rack: String
-  
-  # For Piroshki form - Heat Treating Step
-  heatTreating: StageData
-  # For Piroshki form - CCP 2 126°F
-  ccp2_126: StageData
-  # For Piroshki form - CCP 2 80°F
-  ccp2_80: StageData
-  # For Piroshki form - CCP 2 55°F
-  ccp2_55: StageData
   
   # CCP 1 - Temperature Must reach 166°F or greater
   ccp1: StageData
@@ -86,103 +113,42 @@ type PaperFormRow {
   __typename: String
 }
 
-# Ingredients information
-type Ingredients {
-  beef: String
-  chicken: String
-  liquidEggs: String
+# Piroshki Form Row for individual entries
+type PiroshkiFormRow {
+  type: String
+  rack: String
+  
+  # Piroshki-specific stages
+  heatTreating: StageData
+  ccp2_126: StageData
+  ccp2_80: StageData
+  ccp2_55: StageData
+  
+  # Standard CCP stages
+  ccp1: StageData
+  ccp2: StageData
+  coolingTo80: StageData
+  coolingTo54: StageData
+  finalChill: StageData
+  
+  # Add explicit fields for better GraphQL generation
+  __typename: String
 }
 
-# Lot numbers information
-type LotNumbers {
-  beef: String
-  chicken: String
-  liquidEggs: String
-}
-
-# Admin comment for paper forms
-type AdminComment {
-  id: ID!
-  adminInitial: String!
-  timestamp: AWSDateTime!
-  comment: String!
-}
-
-# Log entry model for food chilling records
-type LogEntry @model {
-  id: ID!
-  date: AWSDateTime!
-  shift: Shift!
+# Bagel Dog Form Row for individual entries
+type BagelDogFormRow {
+  type: String
+  rack: String
   
-  # Product Information
-  product: String!
-  productCode: String
-  supplier: String
-  receivedDate: AWSDateTime
-  expirationDate: AWSDateTime
-  thermometerNumber: String!
-  lotNumber: String!
-  batchSize: Int
-  packagingType: String
+  # Standard CCP stages
+  ccp1: StageData
+  ccp2: StageData
+  coolingTo80: StageData
+  coolingTo54: StageData
+  finalChill: StageData
   
-  # Employee Information
-  employeeId: ID! @index(name: "byEmployee")
-  employeeName: String!
-  employeeInitials: String!
-  supervisorInitials: String
-  employee: User @belongsTo(fields: ["employeeId"])
-  
-  # Cooking & Cooling Stages
-  cookStage: StageData
-  startCoolingStage: StageData
-  to80Stage: StageData
-  to54Stage: StageData
-  finalChillStage: StageData
-  
-  # HACCP Documentation
-  ccp1Verified: Boolean!
-  ccp2Verified: Boolean!
-  monitoringCompleted: Boolean!
-  correctiveActionsDocumented: Boolean!
-  
-  # Quality Control
-  visualInspectionColor: InspectionResult!
-  visualInspectionTexture: InspectionResult!
-  visualInspectionOdor: InspectionResult!
-  visualInspectionNotes: String
-  
-  # Storage Information
-  storageLocation: String!
-  storageTemperature: Float
-  storageTime: AWSDateTime
-  
-  # Workflow Status
-  currentStage: StageType!
-  isComplete: Boolean!
-  requiresReview: Boolean!
-  isApproved: Boolean
-  adminComments: String
-  reviewedBy: String
-  reviewDate: AWSDateTime
-  
-  # Compliance
-  complianceIssues: [String]
-  riskLevel: RiskLevel!
-  
-  # Signatures & Timestamps
-  employeeSignature: String
-  supervisorSignature: String
-  adminSignature: String
-  completedAt: AWSDateTime
-  submittedAt: AWSDateTime
-  
-  # Additional Documentation
-  photos: [String]
-  attachments: [String]
-  notes: String
-  
-  createdAt: AWSDateTime!
-  updatedAt: AWSDateTime!
+  # Add explicit fields for better GraphQL generation
+  __typename: String
 }
 
 # Stage data embedded type
@@ -196,60 +162,33 @@ type StageData {
   dataLog: Boolean
 }
 
-# Initial entry model for managing employee initials
-type InitialEntry @model {
+# Pre Shipment Review for Piroshki form
+type PreShipmentReview {
+  date: String
+  initials: String
+  results: String
+}
+
+# Pre Shipment Review for Bagel Dog form
+type BagelDogPreShipmentReview {
+  date: String
+  results: String
+  signature: String
+}
+
+# Admin comment for forms
+type AdminComment {
   id: ID!
-  initials: String!
-  name: String!
-  isActive: Boolean!
-  createdBy: String!
-  createdAt: AWSDateTime!
-  updatedAt: AWSDateTime!
+  adminInitial: String!
+  timestamp: AWSDateTime!
+  comment: String!
 }
 
 # Enums
-enum UserRole {
-  EMPLOYEE
-  SUPERVISOR
-  ADMIN
-}
-
-enum Shift {
-  MORNING
-  AFTERNOON
-  EVENING
-  OVERNIGHT
-}
-
-enum StageType {
-  COOK
-  START_COOLING
-  TO_80
-  TO_54
-  FINAL_CHILL
-}
-
-enum FormType {
-  COOKING_AND_COOLING
-  PIROSHKI_CALZONE_EMPANADA
-  BAGEL_DOG_COOKING_COOLING
-}
-
 enum FormStatus {
   COMPLETE
   IN_PROGRESS
   ERROR
-}
-
-enum InspectionResult {
-  NORMAL
-  ABNORMAL
-}
-
-enum RiskLevel {
-  LOW
-  MEDIUM
-  HIGH
 }
 
 # Custom input types for mutations
@@ -263,7 +202,17 @@ input StageDataInput {
   dataLog: Boolean
 }
 
-input PaperFormRowInput {
+input CookingCoolingFormRowInput {
+  type: String
+  rack: String
+  ccp1: StageDataInput
+  ccp2: StageDataInput
+  coolingTo80: StageDataInput
+  coolingTo54: StageDataInput
+  finalChill: StageDataInput
+}
+
+input PiroshkiFormRowInput {
   type: String
   rack: String
   heatTreating: StageDataInput
@@ -277,16 +226,26 @@ input PaperFormRowInput {
   finalChill: StageDataInput
 }
 
-input IngredientsInput {
-  beef: String
-  chicken: String
-  liquidEggs: String
+input BagelDogFormRowInput {
+  type: String
+  rack: String
+  ccp1: StageDataInput
+  ccp2: StageDataInput
+  coolingTo80: StageDataInput
+  coolingTo54: StageDataInput
+  finalChill: StageDataInput
 }
 
-input LotNumbersInput {
-  beef: String
-  chicken: String
-  liquidEggs: String
+input PreShipmentReviewInput {
+  date: String
+  initials: String
+  results: String
+}
+
+input BagelDogPreShipmentReviewInput {
+  date: String
+  results: String
+  signature: String
 }
 
 input AdminCommentInput {
@@ -296,24 +255,17 @@ input AdminCommentInput {
   comment: String!
 }
 
-input PreShipmentReviewInput {
-  date: String
-  initials: String
-  results: String
-}
-
-input CreatePaperFormEntryInput {
+input CreateCookingCoolingFormEntryInput {
   id: String
   date: AWSDateTime!
   dateCreated: AWSDateTime!
   lastTextEntry: AWSDateTime!
-  formType: FormType!
   formInitial: String!
   status: String!
   title: String
   
   # Row entries (1-9)
-  entries: [PaperFormRowInput!]!
+  entries: [CookingCoolingFormRowInput!]!
   
   # Bottom section
   thermometerNumber: String
@@ -321,35 +273,22 @@ input CreatePaperFormEntryInput {
   lotNumbers: AWSJSON
   correctiveActionsComments: String
   
-  # For Piroshki form - Quantity and Flavor
-  quantityAndFlavor: AWSJSON
-  
-  # For Piroshki form - Pre Shipment Review
-  preShipmentReview: PreShipmentReviewInput
-  
-  # For Bagel Dog form - Frank Flavor/Size Table
-  frankFlavorSizeTable: AWSJSON
-  
-  # For Bagel Dog form - Pre Shipment Review
-  bagelDogPreShipmentReview: BagelDogPreShipmentReviewInput
-  
   # Admin comments and resolution
   adminComments: [AdminCommentInput!]
   resolvedErrors: [String!]
 }
 
-input UpdatePaperFormEntryInput {
+input UpdateCookingCoolingFormEntryInput {
   id: String!
   date: AWSDateTime
   dateCreated: AWSDateTime
   lastTextEntry: AWSDateTime
-  formType: FormType
   formInitial: String
   status: String
   title: String
   
   # Row entries (1-9)
-  entries: [PaperFormRowInput!]
+  entries: [CookingCoolingFormRowInput!]
   
   # Bottom section
   thermometerNumber: String
@@ -357,16 +296,85 @@ input UpdatePaperFormEntryInput {
   lotNumbers: AWSJSON
   correctiveActionsComments: String
   
-  # For Piroshki form - Quantity and Flavor
-  quantityAndFlavor: AWSJSON
+  # Admin comments and resolution
+  adminComments: [AdminCommentInput!]
+  resolvedErrors: [String!]
+}
+
+input CreatePiroshkiFormEntryInput {
+  id: String
+  date: AWSDateTime!
+  dateCreated: AWSDateTime!
+  lastTextEntry: AWSDateTime!
+  formInitial: String!
+  status: String!
+  title: String
   
-  # For Piroshki form - Pre Shipment Review
+  # Row entries (1-9)
+  entries: [PiroshkiFormRowInput!]!
+  
+  # Bottom section
+  thermometerNumber: String
+  ingredients: AWSJSON
+  lotNumbers: AWSJSON
+  correctiveActionsComments: String
+  
+  # Piroshki-specific fields
+  quantityAndFlavor: AWSJSON
   preShipmentReview: PreShipmentReviewInput
   
-  # For Bagel Dog form - Frank Flavor/Size Table
-  frankFlavorSizeTable: AWSJSON
+  # Admin comments and resolution
+  adminComments: [AdminCommentInput!]
+  resolvedErrors: [String!]
+}
+
+input UpdatePiroshkiFormEntryInput {
+  id: String!
+  date: AWSDateTime
+  dateCreated: AWSDateTime
+  lastTextEntry: AWSDateTime
+  formInitial: String
+  status: String
+  title: String
   
-  # For Bagel Dog form - Pre Shipment Review
+  # Row entries (1-9)
+  entries: [PiroshkiFormRowInput!]
+  
+  # Bottom section
+  thermometerNumber: String
+  ingredients: AWSJSON
+  lotNumbers: AWSJSON
+  correctiveActionsComments: String
+  
+  # Piroshki-specific fields
+  quantityAndFlavor: AWSJSON
+  preShipmentReview: PreShipmentReviewInput
+  
+  # Admin comments and resolution
+  adminComments: [AdminCommentInput!]
+  resolvedErrors: [String!]
+}
+
+input CreateBagelDogFormEntryInput {
+  id: String
+  date: AWSDateTime!
+  dateCreated: AWSDateTime!
+  lastTextEntry: AWSDateTime!
+  formInitial: String!
+  status: String!
+  title: String
+  
+  # Row entries (1-9)
+  entries: [BagelDogFormRowInput!]!
+  
+  # Bottom section
+  thermometerNumber: String
+  ingredients: AWSJSON
+  lotNumbers: AWSJSON
+  correctiveActionsComments: String
+  
+  # Bagel Dog-specific fields
+  frankFlavorSizeTable: AWSJSON
   bagelDogPreShipmentReview: BagelDogPreShipmentReviewInput
   
   # Admin comments and resolution
@@ -374,215 +382,135 @@ input UpdatePaperFormEntryInput {
   resolvedErrors: [String!]
 }
 
-input CreateLogEntryInput {
-  id: ID
-  date: AWSDateTime!
-  shift: Shift!
-  product: String!
-  productCode: String
-  supplier: String
-  receivedDate: AWSDateTime
-  expirationDate: AWSDateTime
-  thermometerNumber: String!
-  lotNumber: String!
-  batchSize: Int
-  packagingType: String
-  employeeId: ID!
-  employeeName: String!
-  employeeInitials: String!
-  supervisorInitials: String
-  cookStage: StageDataInput
-  startCoolingStage: StageDataInput
-  to80Stage: StageDataInput
-  to54Stage: StageDataInput
-  finalChillStage: StageDataInput
-  ccp1Verified: Boolean!
-  ccp2Verified: Boolean!
-  monitoringCompleted: Boolean!
-  correctiveActionsDocumented: Boolean!
-  visualInspectionColor: InspectionResult!
-  visualInspectionTexture: InspectionResult!
-  visualInspectionOdor: InspectionResult!
-  visualInspectionNotes: String
-  storageLocation: String!
-  storageTemperature: Float
-  storageTime: AWSDateTime
-  currentStage: StageType!
-  isComplete: Boolean!
-  requiresReview: Boolean!
-  isApproved: Boolean
-  adminComments: String
-  reviewedBy: String
-  reviewDate: AWSDateTime
-  complianceIssues: [String]
-  riskLevel: RiskLevel!
-  employeeSignature: String
-  supervisorSignature: String
-  adminSignature: String
-  completedAt: AWSDateTime
-  submittedAt: AWSDateTime
-  photos: [String]
-  attachments: [String]
-  notes: String
-}
-
-input UpdateLogEntryInput {
-  id: ID!
+input UpdateBagelDogFormEntryInput {
+  id: String!
   date: AWSDateTime
-  shift: Shift
-  product: String
-  productCode: String
-  supplier: String
-  receivedDate: AWSDateTime
-  expirationDate: AWSDateTime
+  dateCreated: AWSDateTime
+  lastTextEntry: AWSDateTime
+  formInitial: String
+  status: String
+  title: String
+  
+  # Row entries (1-9)
+  entries: [BagelDogFormRowInput!]
+  
+  # Bottom section
   thermometerNumber: String
-  lotNumber: String
-  batchSize: Int
-  packagingType: String
-  employeeId: ID
-  employeeName: String
-  employeeInitials: String
-  supervisorInitials: String
-  cookStage: StageDataInput
-  startCoolingStage: StageDataInput
-  to80Stage: StageDataInput
-  to54Stage: StageDataInput
-  finalChillStage: StageDataInput
-  ccp1Verified: Boolean
-  ccp2Verified: Boolean
-  monitoringCompleted: Boolean
-  correctiveActionsDocumented: Boolean
-  visualInspectionColor: InspectionResult
-  visualInspectionTexture: InspectionResult
-  visualInspectionOdor: InspectionResult
-  visualInspectionNotes: String
-  storageLocation: String
-  storageTemperature: Float
-  storageTime: AWSDateTime
-  currentStage: StageType
-  isComplete: Boolean
-  requiresReview: Boolean
-  isApproved: Boolean
-  adminComments: String
-  reviewedBy: String
-  reviewDate: AWSDateTime
-  complianceIssues: [String]
-  riskLevel: RiskLevel
-  employeeSignature: String
-  supervisorSignature: String
-  adminSignature: String
-  completedAt: AWSDateTime
-  submittedAt: AWSDateTime
-  photos: [String]
-  attachments: [String]
-  notes: String
+  ingredients: AWSJSON
+  lotNumbers: AWSJSON
+  correctiveActionsComments: String
+  
+  # Bagel Dog-specific fields
+  frankFlavorSizeTable: AWSJSON
+  bagelDogPreShipmentReview: BagelDogPreShipmentReviewInput
+  
+  # Admin comments and resolution
+  adminComments: [AdminCommentInput!]
+  resolvedErrors: [String!]
 }
 
 # Custom queries
 type Query {
-  # Get logs by date range
-  getLogsByDateRange(startDate: AWSDateTime!, endDate: AWSDateTime!): [LogEntry]
+  # Cooking and Cooling Form queries
+  getCookingCoolingFormsByDateRange(startDate: AWSDateTime!, endDate: AWSDateTime!): [CookingCoolingFormEntry]
+  getTodaysCookingCoolingForms: [CookingCoolingFormEntry]
+  getCookingCoolingFormsByStatus(status: FormStatus!): [CookingCoolingFormEntry]
+  getCookingCoolingFormsByInitial(initial: String!): [CookingCoolingFormEntry]
   
-  # Get today's logs
-  getTodaysLogs: [LogEntry]
+  # Piroshki Form queries
+  getPiroshkiFormsByDateRange(startDate: AWSDateTime!, endDate: AWSDateTime!): [PiroshkiFormEntry]
+  getTodaysPiroshkiForms: [PiroshkiFormEntry]
+  getPiroshkiFormsByStatus(status: FormStatus!): [PiroshkiFormEntry]
+  getPiroshkiFormsByInitial(initial: String!): [PiroshkiFormEntry]
   
-  # Get logs requiring review
-  getLogsRequiringReview: [LogEntry]
-  
-  # Get logs by employee
-  getLogsByEmployee(employeeId: ID!): [LogEntry]
-  
-  # Get logs by shift
-  getLogsByShift(shift: Shift!): [LogEntry]
-  
-  # Paper Form queries
-  getPaperFormsByDateRange(startDate: AWSDateTime!, endDate: AWSDateTime!): [PaperFormEntry]
-  getTodaysPaperForms: [PaperFormEntry]
-  getPaperFormsByStatus(status: FormStatus!): [PaperFormEntry]
-  getPaperFormsByInitial(initial: String!): [PaperFormEntry]
+  # Bagel Dog Form queries
+  getBagelDogFormsByDateRange(startDate: AWSDateTime!, endDate: AWSDateTime!): [BagelDogFormEntry]
+  getTodaysBagelDogForms: [BagelDogFormEntry]
+  getBagelDogFormsByStatus(status: FormStatus!): [BagelDogFormEntry]
+  getBagelDogFormsByInitial(initial: String!): [BagelDogFormEntry]
 }
 
 # Custom mutations
 type Mutation {
-  # Update stage data for a log entry
-  updateLogEntryStage(
-    logEntryId: ID!
-    stage: StageType!
-    stageData: StageDataInput!
-  ): LogEntry
-  
-  # Submit log entry for review
-  submitLogEntryForReview(logEntryId: ID!): LogEntry
-  
-  # Approve log entry (admin only)
-  approveLogEntry(
-    logEntryId: ID!
-    adminComments: String
-    adminSignature: String
-  ): LogEntry
-  
-  # Add corrective action
-  addCorrectiveAction(
-    logEntryId: ID!
-    stage: StageType!
-    action: String!
-    employeeInitials: String!
-  ): LogEntry
-  
-  # Paper Form mutations
-  updatePaperFormStatus(
+  # Cooking and Cooling Form mutations
+  updateCookingCoolingFormStatus(
     formId: ID!
     status: FormStatus!
-  ): PaperFormEntry
+  ): CookingCoolingFormEntry
   
   addAdminComment(
     formId: ID!
     comment: AdminCommentInput!
-  ): PaperFormEntry
+  ): CookingCoolingFormEntry
   
   resolveError(
     formId: ID!
     errorId: String!
-  ): PaperFormEntry
+  ): CookingCoolingFormEntry
+  
+  # Piroshki Form mutations
+  updatePiroshkiFormStatus(
+    formId: ID!
+    status: FormStatus!
+  ): PiroshkiFormEntry
+  
+  addPiroshkiAdminComment(
+    formId: ID!
+    comment: AdminCommentInput!
+  ): PiroshkiFormEntry
+  
+  resolvePiroshkiError(
+    formId: ID!
+    errorId: String!
+  ): PiroshkiFormEntry
+  
+  # Bagel Dog Form mutations
+  updateBagelDogFormStatus(
+    formId: ID!
+    status: FormStatus!
+  ): BagelDogFormEntry
+  
+  addBagelDogAdminComment(
+    formId: ID!
+    comment: AdminCommentInput!
+  ): BagelDogFormEntry
+  
+  resolveBagelDogError(
+    formId: ID!
+    errorId: String!
+  ): BagelDogFormEntry
 }
 
 # Subscriptions for real-time updates
 type Subscription {
-  onLogEntryCreated: LogEntry
-    @aws_subscribe(mutations: ["createLogEntry"])
+  # Cooking and Cooling Form subscriptions
+  onCookingCoolingFormEntryCreated: CookingCoolingFormEntry
+    @aws_subscribe(mutations: ["createCookingCoolingFormEntry"])
   
-  onLogEntryUpdated: LogEntry
-    @aws_subscribe(mutations: ["updateLogEntry"])
+  onCookingCoolingFormEntryUpdated: CookingCoolingFormEntry
+    @aws_subscribe(mutations: ["updateCookingCoolingFormEntry"])
   
-  onLogEntrySubmittedForReview: LogEntry
-    @aws_subscribe(mutations: ["submitLogEntryForReview"])
+  onCookingCoolingFormStatusUpdated: CookingCoolingFormEntry
+    @aws_subscribe(mutations: ["updateCookingCoolingFormStatus"])
   
-  # Paper Form subscriptions
-  onPaperFormEntryCreated: PaperFormEntry
-    @aws_subscribe(mutations: ["createPaperFormEntry"])
+  # Piroshki Form subscriptions
+  onPiroshkiFormEntryCreated: PiroshkiFormEntry
+    @aws_subscribe(mutations: ["createPiroshkiFormEntry"])
   
-  onPaperFormEntryUpdated: PaperFormEntry
-    @aws_subscribe(mutations: ["updatePaperFormEntry"])
+  onPiroshkiFormEntryUpdated: PiroshkiFormEntry
+    @aws_subscribe(mutations: ["updatePiroshkiFormEntry"])
   
-  onPaperFormStatusUpdated: PaperFormEntry
-    @aws_subscribe(mutations: ["updatePaperFormStatus"])
+  onPiroshkiFormStatusUpdated: PiroshkiFormEntry
+    @aws_subscribe(mutations: ["updatePiroshkiFormStatus"])
+  
+  # Bagel Dog Form subscriptions
+  onBagelDogFormEntryCreated: BagelDogFormEntry
+    @aws_subscribe(mutations: ["createBagelDogFormEntry"])
+  
+  onBagelDogFormEntryUpdated: BagelDogFormEntry
+    @aws_subscribe(mutations: ["updateBagelDogFormEntry"])
+  
+  onBagelDogFormStatusUpdated: BagelDogFormEntry
+    @aws_subscribe(mutations: ["updateBagelDogFormStatus"])
 }
 
-# Pre Shipment Review for Piroshki form
-type PreShipmentReview {
-  date: String
-  initials: String
-  results: String
-}
-
-type BagelDogPreShipmentReview {
-  date: String
-  results: String
-  signature: String
-}
-
-input BagelDogPreShipmentReviewInput {
-  date: String
-  results: String
-  signature: String
-}

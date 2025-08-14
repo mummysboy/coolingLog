@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import type { PaperFormEntry } from '@/lib/paperFormTypes';
 import { FormType, getFormTypeDisplayName, getFormTypeDescription, getFormTypeIcon, getFormTypeColors, ensureDate } from '@/lib/paperFormTypes';
@@ -8,6 +8,9 @@ import { PaperForm } from '@/components/PaperForm';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
 import { validateForm, shouldHighlightCell } from '@/lib/validation';
 import BagelDogForm from '@/components/BagelDogForm';
+
+// Debug flag for development
+const DEBUG_ALLOW_EDIT = false;
 
 export default function FormPage() {
   const { currentForm, createNewForm, updateFormStatus, saveForm, savedForms, loadForm, deleteForm, loadFormsFromStorage } = usePaperFormStore();
@@ -17,14 +20,31 @@ export default function FormPage() {
 
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
-  const [isAddFormDropdownOpen, setIsAddFormDropdownOpen] = useState(false); // State for add form dropdown
-  const [newlyCreatedFormId, setNewlyCreatedFormId] = useState<string | null>(null); // Track newly created forms
+  const [isAddFormDropdownOpen, setIsAddFormDropdownOpen] = useState(false);
+  const [newlyCreatedFormId, setNewlyCreatedFormId] = useState<string | null>(null);
 
-  // Close dropdown when clicking outside
+  // Refs for outside-click detection
+  const addFormDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Memoized form lists to avoid repeated filtering/sorting on every render
+  const activeForms = useMemo(() => 
+    savedForms
+      .filter((form: PaperFormEntry) => form.status !== 'Complete')
+      .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [savedForms]
+  );
+
+  const completedForms = useMemo(() => 
+    savedForms
+      .filter((form: PaperFormEntry) => form.status === 'Complete')
+      .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [savedForms]
+  );
+
+  // Close dropdown when clicking outside using ref
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (isAddFormDropdownOpen && !target.closest('.add-form-dropdown')) {
+      if (isAddFormDropdownOpen && addFormDropdownRef.current && !addFormDropdownRef.current.contains(event.target as Node)) {
         setIsAddFormDropdownOpen(false);
       }
     };
@@ -33,14 +53,35 @@ export default function FormPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isAddFormDropdownOpen]);
 
-  // Function to handle form creation and make it pop out into view
-  const handleCreateForm = (formType: FormType) => {
-    createNewForm(formType);
+  // Body scroll lock when modal is open
+  useEffect(() => {
+    if (showFormModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showFormModal]);
+
+  // Function to handle form creation and return the new ID
+  const handleCreateForm = useCallback(async (formType: FormType) => {
+    // Set a default initial (can be changed later by the user)
+    const defaultInitial = 'USER';
+    store.getState().setSelectedInitial(defaultInitial);
+    
+    createNewForm(formType, defaultInitial);
     setIsAddFormDropdownOpen(false);
     
-    // Mark that we just created a new form
-    setNewlyCreatedFormId('pending');
-  };
+    // Get the newly created form from the store
+    const { currentForm } = store.getState();
+    if (currentForm) {
+      // Store the new form ID to track it
+      setNewlyCreatedFormId(currentForm.id);
+    }
+  }, [createNewForm, store]);
 
   // Function to open form in modal
   const handleViewForm = (form: PaperFormEntry) => {
@@ -70,8 +111,25 @@ export default function FormPage() {
     }
   };
 
-  // Load forms from AWS on page load (only once)
+  // Function to save a specific form to AWS
+  const handleSaveFormToAWS = useCallback(async (formId: string) => {
+    try {
+      // Load the specific form first
+      await loadForm(formId);
+      // Then save it
+      await saveForm();
+      alert('Form saved successfully to AWS DynamoDB!');
+    } catch (error) {
+      console.error('Error saving form:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(`Error saving form: ${errorMessage}`);
+    }
+  }, [loadForm, saveForm]);
+
+  // Load forms from AWS on page load with abort-safe pattern
   useEffect(() => {
+    let isMounted = true;
+    
     const loadFormsFromAWS = async () => {
       console.log('Loading forms from AWS DynamoDB');
       setIsLoadingForm(true);
@@ -80,14 +138,17 @@ export default function FormPage() {
         // Load existing forms from AWS
         await loadFormsFromStorage();
         
+        // Check if component is still mounted before setting state
+        if (!isMounted) return;
+        
         // Get the current state after loading
         const { savedForms: loadedForms } = store.getState();
         
-        // If forms exist, load the most recent one as current
+        // If forms exist, load the most recent one as current (but don't auto-open modal)
         if (loadedForms.length > 0) {
           const mostRecentForm = loadedForms[0]; // Forms are sorted by date, newest first
           if (!currentForm || currentForm.id !== mostRecentForm.id) {
-            console.log('Loading most recent form:', mostRecentForm.id);
+            console.log('Loading most recent form as currentForm (but not opening modal):', mostRecentForm.id);
             loadForm(mostRecentForm.id);
           }
         } else {
@@ -95,34 +156,64 @@ export default function FormPage() {
         }
       } catch (error) {
         console.error('Error loading forms from AWS:', error);
-        // Show error message to user
-        alert('Failed to load forms from AWS DynamoDB. Please check your connection and try again.');
+        // Only show error if component is still mounted
+        if (isMounted) {
+          alert('Failed to load forms from AWS DynamoDB. Please check your connection and try again.');
+        }
       } finally {
-        setIsLoadingForm(false);
+        if (isMounted) {
+          setIsLoadingForm(false);
+        }
       }
     };
 
     loadFormsFromAWS();
+
+    return () => {
+      isMounted = false;
+    };
   }, []); // Empty dependency array - only run once on mount
 
-  // Automatically open newly created forms
+  // Automatically open newly created forms and manage the flag
   useEffect(() => {
-    if (currentForm && newlyCreatedFormId === 'pending' && !showFormModal) {
-      console.log('Automatically opening newly created form:', currentForm.id);
-      setSelectedForm(currentForm);
-      setShowFormModal(true);
-      setNewlyCreatedFormId(currentForm.id); // Mark as opened
+    // Check if the newly created form ID has appeared in savedForms
+    if (newlyCreatedFormId && newlyCreatedFormId !== 'pending' && savedForms.some(form => form.id === newlyCreatedFormId)) {
+      const formToOpen = savedForms.find(form => form.id === newlyCreatedFormId);
+      if (formToOpen && !showFormModal) {
+        console.log('Automatically opening newly created form:', newlyCreatedFormId);
+        setSelectedForm(formToOpen);
+        setShowFormModal(true);
+        // Clear the flag after opening
+        setNewlyCreatedFormId(null);
+      }
     }
-  }, [currentForm, newlyCreatedFormId, showFormModal]);
-
-  // Reset newly created form flag when modal is closed
-  useEffect(() => {
+    
+    // Reset the flag when modal is closed
     if (!showFormModal && newlyCreatedFormId) {
       setNewlyCreatedFormId(null);
     }
-  }, [showFormModal, newlyCreatedFormId]);
+  }, [newlyCreatedFormId, savedForms, showFormModal]);
 
-
+  // Enhanced form update handler
+  const handleFormUpdate = useCallback((formId: string, updates: Partial<PaperFormEntry>) => {
+    console.log('Form updated in form modal:', formId, updates);
+    
+    // Handle status updates by calling the store's updateFormStatus function
+    if (updates.status) {
+      console.log('Status updated to:', updates.status, 'updating store');
+      updateFormStatus(formId, updates.status);
+      
+      // Force a re-render of the form list by updating the formUpdateKey
+      setFormUpdateKey(prev => prev + 1);
+    }
+    
+    // Update the selectedForm state to reflect changes
+    if (selectedForm && selectedForm.id === formId) {
+      const updatedForm = { ...selectedForm, ...updates } as PaperFormEntry;
+      setSelectedForm(updatedForm);
+      console.log('SelectedForm updated to:', updatedForm.status);
+    }
+  }, [updateFormStatus, selectedForm]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -143,7 +234,7 @@ export default function FormPage() {
           {/* NEW: Navigation and Add Form Section */}
           <div className="flex items-center space-x-4">
             {/* Add Form Button with Dropdown */}
-            <div className="relative add-form-dropdown">
+            <div className="relative" ref={addFormDropdownRef}>
               <button
                 onClick={() => setIsAddFormDropdownOpen(!isAddFormDropdownOpen)}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -159,7 +250,7 @@ export default function FormPage() {
               
               {/* Dropdown Menu */}
               {isAddFormDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10 add-form-dropdown">
+                <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                   <div className="py-1" role="menu" aria-orientation="vertical">
                     <button
                       onClick={() => {
@@ -220,11 +311,7 @@ export default function FormPage() {
                         </div>
                       </div>
                     </button>
-                    
-                    {/* Placeholder for future form types */}
-                    <div className="px-4 py-2 text-xs text-gray-400 border-t border-gray-100">
-                      More form types coming soon...
-                    </div>
+                  
                   </div>
                 </div>
               )}
@@ -262,10 +349,7 @@ export default function FormPage() {
                     </svg>
                     Active Forms
                   </h2>
-                  {savedForms
-                    .filter((form: PaperFormEntry) => form.status !== 'Complete')
-                    .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                    .map((form: PaperFormEntry, index: number) => (
+                  {activeForms.map((form: PaperFormEntry, index: number) => (
                       <div 
                         key={form.id} 
                         className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
@@ -306,27 +390,7 @@ export default function FormPage() {
                                  '⏳ In Progress'}
                               </span>
                               
-                              {/* Save Form Button */}
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    await saveForm();
-                                    // Show success message
-                                    alert('Form saved successfully to AWS DynamoDB!');
-                                  } catch (error) {
-                                    console.error('Error saving form:', error);
-                                    const errorMessage = error instanceof Error ? error.message : String(error);
-                                    alert(`Error saving form: ${errorMessage}`);
-                                  }
-                                }}
-                                className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-700 transition-colors mr-2"
-                                title="Save form to AWS DynamoDB"
-                              >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                                </svg>
-                                Save to AWS
-                              </button>
+                              
                               
                               {/* View Form Button */}
                               <button
@@ -392,7 +456,7 @@ export default function FormPage() {
                     ))}
                   
                   {/* No Active Forms Message */}
-                  {savedForms.filter((form: PaperFormEntry) => form.status !== 'Complete').length === 0 && (
+                  {activeForms.length === 0 && (
                     <div className="text-center py-8 bg-white rounded-xl border-2 border-gray-200">
                       <div className="text-4xl mb-3">✅</div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">All Forms Completed!</h3>
@@ -402,7 +466,7 @@ export default function FormPage() {
                 </div>
 
                 {/* Completed Forms Section */}
-                {savedForms.filter((form: PaperFormEntry) => form.status === 'Complete').length > 0 && (
+                {completedForms.length > 0 && (
                   <div className="mb-8">
                     <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
                       <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -411,10 +475,7 @@ export default function FormPage() {
                       Completed Forms
                     </h2>
                     
-                    {savedForms
-                      .filter((form: PaperFormEntry) => form.status === 'Complete')
-                      .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                      .map((form: PaperFormEntry, index: number) => (
+                    {completedForms.map((form: PaperFormEntry, index: number) => (
                         <div 
                           key={form.id} 
                           className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
@@ -475,10 +536,10 @@ export default function FormPage() {
                               <div className="bg-gray-50 rounded-lg p-3">
                                 <div className="font-medium text-gray-700">Completion Date</div>
                                 <div className="text-lg font-semibold text-gray-900">
-                                  {new Date().toLocaleDateString()}
+                                  {new Date(form.date).toLocaleDateString()}
                                 </div>
                                 <div className="text-sm text-gray-600 mt-1">
-                                  {new Date().toLocaleDateString()}
+                                  {new Date(form.date).toLocaleTimeString()}
                                 </div>
                               </div>
                               
@@ -522,18 +583,60 @@ export default function FormPage() {
                   {selectedForm.status === 'Complete' && (
                     <span className="ml-2 text-green-600 font-medium">(Read-Only)</span>
                   )}
+                  {selectedForm.status !== 'Complete' && (
+                    <span className="ml-2 text-blue-600 font-medium">💾 Auto-saves to AWS when closed</span>
+                  )}
+                  {DEBUG_ALLOW_EDIT && (
+                    <div className="mt-1 text-orange-600 font-medium">
+                      ⚠️ Debug mode: Forms are editable regardless of status
+                    </div>
+                  )}
                 </div>
               </div>
               <button
-                onClick={() => {
+                onClick={async () => {
+                  // Auto-save form to AWS when closing modal
+                  try {
+                    console.log('Modal closing - auto-saving form to AWS');
+                    await saveForm();
+                    console.log('Form auto-saved successfully to AWS');
+                  } catch (error) {
+                    console.error('Error auto-saving form when closing modal:', error);
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    alert(`Warning: Form could not be auto-saved: ${errorMessage}`);
+                  }
+                  
+                  // Close the modal
                   setShowFormModal(false);
                   setSelectedForm(null);
                   setNewlyCreatedFormId(null); // Reset the flag when closing
                 }}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
+                className="text-gray-400 hover:text-gray-600 text-2xl transition-colors"
+                title="Close and save form to AWS"
+                aria-label="Close modal and save form to AWS"
               >
-                ✕
+                💾✕
               </button>
+              
+              {/* Temporary button to reset form status */}
+              {selectedForm.status === 'Complete' && DEBUG_ALLOW_EDIT && (
+                <button
+                  onClick={() => {
+                    if (confirm('Reset form status from Complete to In Progress? This will allow editing.')) {
+                      updateFormStatus(selectedForm.id, 'In Progress');
+                      // Update the local state
+                      setSelectedForm({ ...selectedForm, status: 'In Progress' });
+                      // Force re-render
+                      setFormUpdateKey(prev => prev + 1);
+                    }
+                  }}
+                  className="ml-2 px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
+                  title="Reset form status to allow editing"
+                  aria-label="Reset form status to In Progress"
+                >
+                  Reset Status
+                </button>
+              )}
             </div>
             
             <div className="flex-1 overflow-y-auto">
@@ -541,55 +644,18 @@ export default function FormPage() {
                 <PiroshkiForm 
                   key={`${selectedForm.id}-${formUpdateKey}`}
                   formData={selectedForm}
-                  readOnly={selectedForm.status === 'Complete'}
-                  onFormUpdate={(formId, updates) => {
-                    console.log('Form updated in form modal:', formId, updates);
-                    // Handle status updates by calling the store's updateFormStatus function
-                    if (updates.status) {
-                      console.log('Status updated to:', updates.status, 'updating store');
-                      updateFormStatus(formId, updates.status);
-                      // Ensure the form is saved to persist the status change
-                      setTimeout(() => saveForm(), 100);
-                      
-                      // Force a re-render of the form list by updating the formUpdateKey
-                      setFormUpdateKey(prev => prev + 1);
-                    }
-                    
-                    // Update the selectedForm state to reflect changes
-                    if (selectedForm && selectedForm.id === formId) {
-                      const updatedForm = { ...selectedForm, ...updates };
-                      setSelectedForm(updatedForm);
-                      console.log('SelectedForm updated to:', updatedForm.status);
-                    }
-                  }}
+                  readOnly={selectedForm.status === 'Complete' && !DEBUG_ALLOW_EDIT}
+                  onFormUpdate={handleFormUpdate}
                 />
               ) : (
                 <PaperForm 
                   key={`${selectedForm.id}-${formUpdateKey}`}
                   formData={selectedForm}
-                  readOnly={selectedForm.status === 'Complete'}
-                  onFormUpdate={(formId, updates) => {
-                    console.log('Form updated in form modal:', formId, updates);
-                    // Handle status updates by calling the store's updateFormStatus function
-                    if (updates.status) {
-                      console.log('Status updated to:', updates.status, 'updating store');
-                      updateFormStatus(formId, updates.status);
-                      // Ensure the form is saved to persist the status change
-                      setTimeout(() => saveForm(), 100);
-                      
-                      // Force a re-render of the form list by updating the formUpdateKey
-                      setFormUpdateKey(prev => prev + 1);
-                    }
-                    
-                    // Update the selectedForm state to reflect changes
-                    if (selectedForm && selectedForm.id === formId) {
-                      const updatedForm = { ...selectedForm, ...updates };
-                      setSelectedForm(updatedForm);
-                      console.log('SelectedForm updated to:', updatedForm.status);
-                    }
-                  }}
+                  readOnly={selectedForm.status === 'Complete' && !DEBUG_ALLOW_EDIT}
+                  onFormUpdate={handleFormUpdate}
                 />
               )}
+              
             </div>
           </div>
         </div>
