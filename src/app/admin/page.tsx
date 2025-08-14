@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import Image from 'next/image';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import { usePinStore } from '@/stores/pinStore';
 import { MOCK_USERS } from '@/lib/types';
@@ -210,7 +211,7 @@ export default function AdminDashboard() {
     });
     
     return statusMap;
-  }, [pendingForms, shouldHighlightCell]);
+  }, [pendingForms]);
 
   // Close dropdown and modals when clicking outside
   useEffect(() => {
@@ -761,9 +762,11 @@ export default function AdminDashboard() {
           <div className="flex items-center space-x-3">
             {/* Logo */}
             <div className="flex items-center justify-center w-32 h-32 rounded-xl overflow-hidden">
-              <img 
+              <Image 
                 src="/logo.avif" 
                 alt="FoodChillingLog Logo" 
+                width={128}
+                height={128}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -1142,7 +1145,7 @@ export default function AdminDashboard() {
                       // Update the selectedForm state to reflect changes
                       if (selectedForm && selectedForm.id === formId) {
                         const updatedForm = { ...selectedForm, ...updates };
-                        setSelectedForm(updatedForm);
+                        setSelectedForm(updatedForm as PaperFormEntry);
                       }
                     }}
                   />
@@ -1167,7 +1170,7 @@ export default function AdminDashboard() {
                        // Update the selectedForm state to reflect changes
                        if (selectedForm && selectedForm.id === formId) {
                          const updatedForm = { ...selectedForm, ...updates };
-                         setSelectedForm(updatedForm);
+                         setSelectedForm(updatedForm as PaperFormEntry);
                        }
                      }}
                    />
@@ -1192,7 +1195,7 @@ export default function AdminDashboard() {
                       // Update the selectedForm state to reflect changes
                       if (selectedForm && selectedForm.id === formId) {
                         const updatedForm = { ...selectedForm, ...updates };
-                        setSelectedForm(updatedForm);
+                        setSelectedForm(updatedForm as PaperFormEntry);
                       }
                     }}
                   />

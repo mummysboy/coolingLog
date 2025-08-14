@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import Image from 'next/image';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import type { PaperFormEntry } from '@/lib/paperFormTypes';
 import { FormType, getFormTypeDisplayName, getFormTypeDescription, getFormTypeIcon, getFormTypeColors, ensureDate } from '@/lib/paperFormTypes';
@@ -172,7 +173,7 @@ export default function FormPage() {
     return () => {
       isMounted = false;
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, [loadForm, loadFormsFromStorage, store, currentForm]); // Include all dependencies
 
   // Automatically open newly created forms and manage the flag
   useEffect(() => {
@@ -223,9 +224,11 @@ export default function FormPage() {
           <div className="flex items-center space-x-3">
             {/* Logo */}
             <div className="flex items-center justify-center w-32 h-32 rounded-xl overflow-hidden">
-              <img 
+              <Image 
                 src="/logo.avif" 
                 alt="FoodChillingLog Logo" 
+                width={128}
+                height={128}
                 className="w-full h-full object-cover"
               />
             </div>

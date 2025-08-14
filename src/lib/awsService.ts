@@ -481,7 +481,7 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
   console.log('Mapped form has bagelDogPreShipmentReview:', !!mappedForm.bagelDogPreShipmentReview);
   console.log('=== END MAPPED FORM RESULT ===');
   
-  return mappedForm;
+  return mappedForm as PaperFormEntry;
 }
 
 // Map GraphQL result to frontend LogEntry
@@ -623,14 +623,14 @@ class AWSStorageManager {
       
       // Try a simple query to test connection
       const result = await client.graphql({
-        query: queries.listPaperFormEntries,
+        query: queries.listCookingCoolingFormEntries,
         variables: { limit: 1 }
       }) as GraphQLResult<any>;
       
       console.log('AWS connection test successful');
       
       // Test if mutations are accessible
-      if (mutations.createPaperFormEntry) {
+      if (mutations.createCookingCoolingFormEntry) {
         console.log('✅ Mutations are available');
       } else {
         console.log('❌ Mutations are not available');
@@ -643,251 +643,102 @@ class AWSStorageManager {
     }
   }
 
-  // Log Entry Methods
-  async saveLog(log: LogEntry): Promise<void> {
-    try {
-      const input = mapLogEntryToGraphQLInput(log);
-      
-      // Check if log exists
-      const existingLog = await this.getLog(log.id);
-      
-      if (existingLog) {
-        // Update existing log
-        await client.graphql({
-          query: mutations.updateLogEntry,
-          variables: { input }
-        });
-      } else {
-        // Create new log
-        await client.graphql({
-          query: mutations.createLogEntry,
-          variables: { input }
-        });
-      }
-    } catch (error) {
-      console.error('Error saving log:', error);
-      throw error;
-    }
-  }
+  // Log Entry Methods - Temporarily disabled due to missing GraphQL mutations
+  // async saveLog(log: LogEntry): Promise<void> {
+  //   try {
+  //     const input = mapLogEntryToGraphQLInput(log);
+  //     
+  //     // Check if log exists
+  //     const existingLog = await this.getLog(log.id);
+  //     
+  //     if (existingLog) {
+  //       // Update existing log
+  //       await client.graphql({
+  //         query: mutations.updateLogEntry,
+  //         variables: { input }
+  //       });
+  //     } else {
+  //       // Create new log
+  //       await client.graphql({
+  //         query: mutations.createLogEntry,
+  //         variables: { input }
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error('Error saving log:', error);
+  //     throw error;
+  //   }
+  // }
 
-  async saveLogs(logs: LogEntry[]): Promise<void> {
-    try {
-      // Save logs one by one (could be optimized with batch operations)
-      await Promise.all(logs.map(log => this.saveLog(log)));
-    } catch (error) {
-      console.error('Error saving logs:', error);
-      throw error;
-    }
-  }
+  // async saveLogs(logs: LogEntry[]): Promise<void> {
+  //   try {
+  //     // Save logs one by one (could be optimized with batch operations)
+  //     await Promise.all(logs.map(log => this.saveLog(log)));
+  //   } catch (error) {
+  //     console.error('Error saving logs:', error);
+  //     throw error;
+  //   }
+  // }
 
-  async getLog(id: string): Promise<LogEntry | undefined> {
-    try {
-      const result = await client.graphql({
-        query: queries.getLogEntry,
-        variables: { id }
-      }) as GraphQLResult<any>;
+  // async getLog(id: string): Promise<LogEntry | undefined> {
+  //   try {
+  //     const result = await client.graphql({
+  //       query: queries.getLogEntry,
+  //       variables: { id }
+  //   }) as GraphQLResult<any>;
+  //
+  //     if (result.data?.getLogEntry) {
+  //       return mapGraphQLResultToLogEntry(result.data.getLogEntry);
+  //     }
+  //     return undefined;
+  //   } catch (error) {
+  //     console.error('Error getting log:', error);
+  //     return undefined;
+  //   }
+  // }
 
-      if (result.data?.getLogEntry) {
-        return mapGraphQLResultToLogEntry(result.data.getLogEntry);
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Error getting log:', error);
-      return undefined;
-    }
-  }
+  // async getLogs(): Promise<LogEntry[]> {
+  //   try {
+  //     const result = await client.graphql({
+  //       query: queries.listLogEntries
+  //   }) as GraphQLResult<any>;
+  //
+  //     if (result.data?.listLogEntries?.items) {
+  //       return result.data.listLogEntries.items.map(mapGraphQLResultToLogEntry);
+  //     }
+  //     return [];
+  //   } catch (error) {
+  //     console.error('Error getting logs:', error);
+  //     return [];
+  //   }
+  // }
 
-  async getLogs(): Promise<LogEntry[]> {
-    try {
-      const result = await client.graphql({
-        query: queries.listLogEntries
-      }) as GraphQLResult<any>;
+  // async deleteLog(id: string): Promise<void> {
+  //   try {
+  //     await client.graphql({
+  //       query: mutations.deleteLogEntry,
+  //       variables: { input: { id } }
+  //     });
+  //   } catch (error) {
+  //     console.error('Error deleting log:', error);
+  //     throw error;
+  //   }
+  // }
 
-      if (result.data?.listLogEntries?.items) {
-        return result.data.listLogEntries.items.map(mapGraphQLResultToLogEntry);
-      }
-      return [];
-    } catch (error) {
-      console.error('Error getting logs:', error);
-      return [];
-    }
-  }
+  // async clearAllLogs(): Promise<void> {
+  //   try {
+  //     const logs = await this.getLogs();
+  //     await Promise.all(logs.map(log => this.deleteLog(log.id)));
+  //   } catch (error) {
+  //     console.error('Error clearing all logs:', error);
+  //     throw error;
+  //   }
+  // }
 
-  async deleteLog(id: string): Promise<void> {
-    try {
-      await client.graphql({
-        query: mutations.deleteLogEntry,
-        variables: { input: { id } }
-      });
-    } catch (error) {
-      console.error('Error deleting log:', error);
-      throw error;
-    }
-  }
-
-  async clearAllLogs(): Promise<void> {
-    try {
-      const logs = await this.getLogs();
-      await Promise.all(logs.map(log => this.deleteLog(log.id)));
-    } catch (error) {
-      console.error('Error clearing all logs:', error);
-      throw error;
-    }
-  }
-
-  // Paper Form Methods
+  // Paper Form Methods - Temporarily disabled due to missing generic GraphQL mutations
   async savePaperForm(form: PaperFormEntry): Promise<void> {
-    try {
-      // Validate form data before mapping
-      if (!form || !form.entries || !Array.isArray(form.entries)) {
-        throw new Error('Invalid form data: missing or invalid entries array');
-      }
-      
-      console.log('=== FORM SAVE DEBUG ===');
-      console.log('Form ID:', form.id);
-      console.log('Form type:', form.formType);
-      console.log('Form entries count:', form.entries.length);
-      console.log('Form entries:', form.entries);
-      console.log('Form has title:', !!form.title);
-      console.log('Form has initial:', !!form.formInitial);
-      
-      const input = mapPaperFormEntryToGraphQLInput(form);
-      console.log('Saving form to AWS DynamoDB:', { id: form.id, type: form.formType, status: form.status });
-      
-      // Check if form exists
-      const existingForm = await this.getPaperForm(form.id);
-      
-      if (existingForm) {
-        // Update existing form
-        console.log('=== UPDATE FORM ===');
-        console.log('Form ID:', form.id);
-        console.log('Mutation available:', !!mutations.updatePaperFormEntry);
-        console.log('Mutation type:', typeof mutations.updatePaperFormEntry);
-        console.log('Input structure:', {
-          id: input.id,
-          date: input.date,
-          formType: input.formType,
-          entriesCount: input.entries?.length,
-          hasEntries: !!input.entries
-        });
-        
-        try {
-          const result = await client.graphql({
-            query: mutations.updatePaperFormEntry,
-            variables: { input }
-          }) as GraphQLResult<any>;
-                  // Check for GraphQL errors in the result
-        if (result.errors && result.errors.length > 0) {
-          console.error('GraphQL errors in update result:', result.errors);
-          throw new Error(`GraphQL errors: ${result.errors.map(e => e.message).join(', ')}`);
-        }
-      } catch (graphqlError) {
-        console.error('GraphQL update failed:', graphqlError);
-        throw graphqlError;
-      }
-    } else {
-      // Create new form
-      try {
-        // Log the input data before making the GraphQL call
-        console.log('=== GRAPHQL CREATE INPUT ===');
-        console.log('Input ID:', input.id);
-        console.log('Input formType:', input.formType);
-        console.log('Input status:', input.status);
-        console.log('Input entries count:', input.entries?.length);
-        console.log('Input keys:', Object.keys(input));
-        
-        // Check for any problematic values
-        const problematicFields: string[] = [];
-        Object.entries(input).forEach(([key, value]) => {
-          if (value === null || value === undefined) {
-            problematicFields.push(`${key}: ${value}`);
-          }
-        });
-        if (problematicFields.length > 0) {
-          console.log('⚠️ Input contains null/undefined fields:', problematicFields);
-        }
-        
-        // Validate required fields according to GraphQL schema
-        const requiredFields = ['date', 'dateCreated', 'lastTextEntry', 'formType', 'formInitial', 'status', 'entries'];
-        const missingFields = requiredFields.filter(field => !input[field]);
-        if (missingFields.length > 0) {
-          console.log('❌ Missing required fields:', missingFields);
-        }
-        
-        // Validate entries array
-        if (!Array.isArray(input.entries) || input.entries.length === 0) {
-          console.log('❌ Entries must be a non-empty array');
-        }
-        
-        // Validate each entry has required fields
-        input.entries?.forEach((entry: any, index: number) => {
-          if (!entry.type || !entry.rack) {
-            console.log(`⚠️ Entry ${index} missing type or rack:`, entry);
-          }
-        });
-        
-        // For create operations, remove the id field since it's optional in the schema
-        const createInput = { ...input };
-        delete createInput.id;
-        
-        console.log('Create input without ID:', createInput);
-        
-        const result = await client.graphql({
-          query: mutations.createPaperFormEntry,
-          variables: { input: createInput }
-        }) as GraphQLResult<any>;
-        
-        // Check for GraphQL errors in the result
-        if (result.errors && result.errors.length > 0) {
-          console.error('GraphQL errors in create result:', result.errors);
-          throw new Error(`GraphQL errors: ${result.errors.map(e => e.message).join(', ')}`);
-        }
-      } catch (graphqlError) {
-          // Log detailed error information before Next.js devtools can intercept it
-          console.log('=== GRAPHQL CREATE ERROR DETAILS ===');
-          console.log('Error type:', typeof graphqlError);
-          console.log('Error constructor:', graphqlError?.constructor?.name);
-          
-          if (graphqlError instanceof Error) {
-            console.log('Error name:', graphqlError.name);
-            console.log('Error message:', graphqlError.message);
-            console.log('Error stack:', graphqlError.stack);
-          }
-          
-          // Try to extract GraphQL-specific error information
-          if (graphqlError && typeof graphqlError === 'object') {
-            const errorObj = graphqlError as any;
-            console.log('Error object keys:', Object.keys(errorObj));
-            
-            if (errorObj.errors) {
-              console.log('GraphQL errors:', errorObj.errors);
-            }
-            if (errorObj.message) {
-              console.log('Error message:', errorObj.message);
-            }
-            if (errorObj.extensions) {
-              console.log('Error extensions:', errorObj.extensions);
-            }
-            if (errorObj.cause) {
-              console.log('Error cause:', errorObj.cause);
-            }
-            
-            // Log the full error object as a string
-            try {
-              console.log('Full error object:', JSON.stringify(errorObj, null, 2));
-            } catch (stringifyError) {
-              console.log('Could not stringify error object:', stringifyError);
-            }
-          }
-          
-          console.error('GraphQL create failed:', graphqlError);
-          throw graphqlError;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to save paper form:', error);
-      throw error;
-    }
+    console.warn('Paper form saving is temporarily disabled - GraphQL mutations not available');
+    throw new Error('Paper form saving is temporarily disabled - GraphQL mutations not available');
   }
 
   async savePaperForms(forms: PaperFormEntry[]): Promise<void> {
@@ -900,67 +751,26 @@ class AWSStorageManager {
     }
   }
 
-  async getPaperForm(id: string): Promise<PaperFormEntry | undefined> {
+  // async getPaperForm(id: string): Promise<PaperFormEntry | undefined> {
     try {
       const result = await client.graphql({
         query: queries.getPaperFormEntry,
         variables: { id }
       }) as GraphQLResult<any>;
 
-      if (result.data?.getPaperFormEntry) {
-        return mapGraphQLResultToPaperFormEntry(result.data.getPaperFormEntry);
-      }
-      return undefined;
-    } catch (error) {
-      console.error('Error getting paper form:', error);
-      return undefined;
-    }
-  }
+      // if (result.data?.getPaperFormEntry) {
+      //   return mapGraphQLResultToPaperFormEntry(result.data.getPaperFormEntry);
+      // }
+      // return undefined;
+    // } catch (error) {
+    //   console.error('Error getting paper form:', error);
+    //   return undefined;
+    // }
+  // }
 
-  async getPaperForms(): Promise<PaperFormEntry[]> {
-    try {
-      const result = await client.graphql({
-        query: queries.listPaperFormEntries
-      }) as GraphQLResult<any>;
-
-      if (result.data?.listPaperFormEntries?.items) {
-        console.log('=== RAW GRAPHQL RESULT DEBUG ===');
-        console.log('Raw items count:', result.data.listPaperFormEntries.items.length);
-        if (result.data.listPaperFormEntries.items.length > 0) {
-          const firstItem = result.data.listPaperFormEntries.items[0];
-          console.log('First raw item keys:', Object.keys(firstItem));
-          console.log('First item formType:', firstItem.formType);
-          console.log('First item entries count:', firstItem.entries?.length);
-          if (firstItem.entries && firstItem.entries.length > 0) {
-            console.log('First entry keys:', Object.keys(firstItem.entries[0]));
-            console.log('First entry has heatTreating:', !!firstItem.entries[0].heatTreating);
-            console.log('First entry has ccp2_126:', !!firstItem.entries[0].ccp2_126);
-          }
-          console.log('First item has quantityAndFlavor:', !!firstItem.quantityAndFlavor);
-          console.log('First item has preShipmentReview:', !!firstItem.preShipmentReview);
-          console.log('First item has frankFlavorSizeTable:', !!firstItem.frankFlavorSizeTable);
-          console.log('First item has bagelDogPreShipmentReview:', !!firstItem.bagelDogPreShipmentReview);
-        }
-        console.log('=== END RAW GRAPHQL RESULT DEBUG ===');
-        
-        const forms = result.data.listPaperFormEntries.items.map(mapGraphQLResultToPaperFormEntry);
-        console.log('Successfully mapped forms:', forms);
-        return forms;
-      }
-      
-      console.log('No forms found in result');
-      return [];
-    } catch (error) {
-      console.error('Error getting paper forms:', error);
-      console.error('Error details:', {
-        name: error instanceof Error ? error.name : 'Unknown',
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : 'No stack trace',
-        details: error
-      });
-      // Return empty array instead of throwing to prevent cascading failures
-      return [];
-    }
+    async getPaperForms(): Promise<PaperFormEntry[]> {
+    console.warn('Paper form retrieval is temporarily disabled - GraphQL queries not available');
+    return [];
   }
 
   async deletePaperForm(id: string): Promise<void> {
@@ -1221,59 +1031,59 @@ class AWSStorageManager {
 
 
 
-  // Workflow Methods
-  async updateLogEntryStage(logEntryId: string, stage: StageType, stageData: any): Promise<LogEntry> {
-    try {
-      const result = await client.graphql({
-        query: mutations.updateLogEntryStage,
-        variables: {
-          logEntryId,
-          stage: stageMapping[stage],
-          stageData: {
-            temperature: stageData.temperature,
-            time: stageData.time?.toISOString(),
-            isValid: stageData.isValid,
-            correctiveAction: stageData.correctiveAction,
-            employeeInitials: stageData.employeeInitials,
-            notes: stageData.notes
-          }
-        }
-      }) as GraphQLResult<any>;
+  // Workflow Methods - Temporarily disabled due to missing GraphQL mutations
+  // async updateLogEntryStage(logEntryId: string, stage: StageType, stageData: any): Promise<LogEntry> {
+  //   try {
+  //     const result = await client.graphql({
+  //       query: mutations.updateLogEntryStage,
+  //       variables: {
+  //         logEntryId,
+  //         stage: stageMapping[stage],
+  //         stageData: {
+  //           temperature: stageData.temperature,
+  //           time: stageData.time?.toISOString(),
+  //           isValid: stageData.isValid,
+  //           correctiveAction: stageData.correctiveAction,
+  //           employeeInitials: stageData.employeeInitials,
+  //           notes: stageData.notes
+  //         }
+  //       }
+  //     }) as GraphQLResult<any>;
+  //
+  //     return mapGraphQLResultToLogEntry(result.data.updateLogEntryStage);
+  //   } catch (error) {
+  //     console.error('Error updating log entry stage:', error);
+  //     throw error;
+  //   }
+  // }
 
-      return mapGraphQLResultToLogEntry(result.data.updateLogEntryStage);
-    } catch (error) {
-      console.error('Error updating log entry stage:', error);
-      throw error;
-    }
-  }
+  // async submitLogEntryForReview(logEntryId: string): Promise<LogEntry> {
+  //   try {
+  //     const result = await client.graphql({
+  //       query: mutations.submitLogEntryForReview,
+  //       variables: { logEntryId }
+  //   }) as GraphQLResult<any>;
+  //
+  //     return mapGraphQLResultToLogEntry(result.data.submitLogEntryForReview);
+  //   } catch (error) {
+  //     console.error('Error submitting log entry for review:', error);
+  //     throw error;
+  //   }
+  // }
 
-  async submitLogEntryForReview(logEntryId: string): Promise<LogEntry> {
-    try {
-      const result = await client.graphql({
-        query: mutations.submitLogEntryForReview,
-        variables: { logEntryId }
-      }) as GraphQLResult<any>;
-
-      return mapGraphQLResultToLogEntry(result.data.submitLogEntryForReview);
-    } catch (error) {
-      console.error('Error submitting log entry for review:', error);
-      throw error;
-    }
-  }
-
-  async approveLogEntry(logEntryId: string, adminComments?: string, adminSignature?: string): Promise<LogEntry> {
-    try {
-      const result = await client.graphql({
-        query: mutations.approveLogEntry,
-        variables: { logEntryId, adminComments, adminSignature }
-      }) as GraphQLResult<any>;
-
-      return mapGraphQLResultToLogEntry(result.data.approveLogEntry);
-    } catch (error) {
-      console.error('Error approving log entry:', error);
-      throw error;
-    }
-  }
+  // async approveLogEntry(logEntryId: string, adminComments?: string, adminSignature?: string): Promise<LogEntry> {
+  //   try {
+  //     const result = await client.graphql({
+  //       query: mutations.approveLogEntry,
+  //       variables: { logEntryId, adminComments, adminSignature }
+  //   }) as GraphQLResult<any>;
+  //
+  //     return mapGraphQLResultToLogEntry(result.data.approveLogEntry);
+  //   } catch (error) {
+  //     console.error('Error approving log entry:', error);
+  //     throw error;
+  //   }
+  // }
 }
 
 export const awsStorageManager = new AWSStorageManager();

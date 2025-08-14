@@ -1,10 +1,11 @@
 import React from 'react';
 import { PaperForm } from './PaperForm';
+import { CookingCoolingFormEntry, FormType } from '../lib/paperFormTypes';
 
 // Simple test form data
-const testFormData = {
+const testFormData: CookingCoolingFormEntry = {
   id: 'test-form-1',
-  formType: 'COOKING_AND_COOLING' as const,
+  formType: FormType.COOKING_AND_COOLING,
   date: new Date(),
   formInitial: 'TEST',
   title: 'Test Form',
@@ -30,8 +31,10 @@ const testFormData = {
     }
   ],
   thermometerNumber: 'T001',
+  ingredients: { beef: 'Beef', chicken: 'Chicken', liquidEggs: 'Liquid Eggs' },
   lotNumbers: { beef: 'LOT001', chicken: 'LOT002', liquidEggs: 'LOT003' },
   correctiveActionsComments: '',
+  adminComments: [],
   resolvedErrors: [],
   dateCreated: new Date(),
   lastTextEntry: new Date(),

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { PaperFormEntry, BaseFormRow, FormType } from '../lib/paperFormTypes';
+import { PaperFormEntry, BaseFormRow, FormType, BagelDogFormEntry } from '../lib/paperFormTypes';
 import { shouldHighlightTemperature } from '../lib/validation';
 import { useLogStore } from '../stores/logStore';
 
@@ -28,7 +28,7 @@ interface BagelDogFormProps {
 export default function BagelDogForm({ formData, readOnly, onFormUpdate }: BagelDogFormProps) {
   const { deleteForm } = usePaperFormStore();
   const { isAuthenticated } = usePinStore();
-  const [localForm, setLocalForm] = useState<PaperFormEntry>(formData);
+  const [localForm, setLocalForm] = useState<BagelDogFormEntry>(formData as BagelDogFormEntry);
   const [errors, setErrors] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(!readOnly);
 
@@ -36,7 +36,7 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
   console.log('BagelDogForm render:', { formData, readOnly, isEditing, localForm: !!localForm });
 
   useEffect(() => {
-    setLocalForm(formData);
+    setLocalForm(formData as BagelDogFormEntry);
   }, [formData]);
 
   useEffect(() => {

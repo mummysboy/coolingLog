@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 interface TimePickerProps {
   value: string;
@@ -77,26 +77,7 @@ export function TimePicker({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Keyboard navigation for iPad keyboard
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isOpen) return;
-      
-      switch (event.key) {
-        case 'Escape':
-          setIsOpen(false);
-          break;
-        case 'Enter':
-          handleTimeConfirm();
-          break;
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, selectedHour, selectedMinute, selectedAMPM]);
-
-  const handleTimeConfirm = () => {
+  const handleTimeConfirm = useCallback(() => {
     // Convert 12-hour to 24-hour format for storage
     let hour24 = parseInt(selectedHour);
     
@@ -114,7 +95,26 @@ export function TimePicker({
     onChange(newTime);
     setInputValue(newTime);
     setIsOpen(false);
-  };
+  }, [selectedHour, selectedMinute, selectedAMPM, onChange]);
+
+  // Keyboard navigation for iPad keyboard
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isOpen) return;
+      
+      switch (event.key) {
+        case 'Escape':
+          setIsOpen(false);
+          break;
+        case 'Enter':
+          handleTimeConfirm();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, selectedHour, selectedMinute, selectedAMPM, handleTimeConfirm]);
 
   const scrollToTime = (hour: string, minute: string) => {
     if (hourScrollRef.current && minuteScrollRef.current) {

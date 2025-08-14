@@ -12,21 +12,6 @@ import { CorrectiveActionSheet } from './CorrectiveActionSheet';
 import { TextCell } from './TextCell';
 import { shallow } from 'zustand/shallow';
 
-// Field-level selector hook to prevent unnecessary re-renders
-function useField(formId: string, field: string) {
-  return usePaperFormStore(
-    useCallback(
-      (s) => {
-        const form = s.savedForms.find(f => f.id === formId);
-        if (!form) return undefined;
-        return (form as any)[field];
-      }, 
-      [formId, field]
-    ),
-    shallow
-  );
-}
-
 interface PaperFormProps {
   formData?: PaperFormEntry;
   readOnly?: boolean;
@@ -36,11 +21,6 @@ interface PaperFormProps {
 
 export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: PaperFormProps = {}) {
   const { currentForm, updateEntry, updateFormField, updateFormStatus, saveForm, updateAdminForm, savedForms } = usePaperFormStore();
-
-  // Debug logging - only in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('PaperForm render:', { formData, readOnly, currentForm: !!currentForm });
-  }
 
   // Check if we're working with a form from the admin dashboard
   // isAdminForm should only be true when explicitly editing as an admin
@@ -69,30 +49,8 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
   const memoizedEntries = React.useMemo(() => {
     if (!form) return [];
     return form.entries || [];
-  }, [form?.entries]);
-    
-  // Early return if no form data
-  if (!form) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('PaperForm: No form data available, returning null');
-    }
-    return null;
-  }
+  }, [form]);
 
-  // Debug form data structure
-  if (process.env.NODE_ENV === 'development') {
-    console.log('PaperForm: Form data structure:', {
-      id: form.id,
-      title: form.title,
-      formInitial: form.formInitial,
-      entriesCount: form.entries?.length,
-      firstEntry: form.entries?.[0],
-      hasDataLog: form.entries?.[0]?.ccp1?.dataLog !== undefined,
-      firstEntryDataLog: form.entries?.[0]?.ccp1?.dataLog,
-      firstEntryCCP1: form.entries?.[0]?.ccp1
-    });
-  }
-    
   // Track the resolved data snapshot to compare against new changes
   const [resolvedDataSnapshot, setResolvedDataSnapshot] = React.useState<any>(null);
   
@@ -143,8 +101,54 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
     stage?: string;
   }>>([]);
 
+  // Performance warning for excessive re-renders
+  const renderCount = React.useRef(0);
+  React.useEffect(() => {
+    renderCount.current += 1;
+    if (process.env.NODE_ENV === 'development' && renderCount.current > 10) {
+      console.warn(`PaperForm has rendered ${renderCount.current} times - check for unnecessary re-renders`);
+    }
+  });
+
+  // Check if there are unresolved validation errors
+  const hasUnresolvedErrors = React.useMemo(() => {
+    if (!form) return false;
+    const validation = validateForm(form);
+    return validation.errors.some(error => {
+      const errorId = `${error.rowIndex}-${error.field}-${error.message}`;
+      return !(form.resolvedErrors || []).includes(errorId);
+    });
+  }, [form]);
+
+  // Monitor form status changes
+  React.useEffect(() => {
+    if (form) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Form status changed to:', form.status, 'Form ID:', form.id);
+      }
+      
+      // If form ID changes, clear the snapshot (different form)
+      if (resolvedDataSnapshot && resolvedDataSnapshot.id !== form.id) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Form ID changed, clearing resolved snapshot');
+        }
+        setResolvedDataSnapshot(null);
+      }
+    }
+  }, [form, form?.status, form?.id, resolvedDataSnapshot]);
+
+  // Monitor resolvedDataSnapshot changes
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('resolvedDataSnapshot changed:', !!resolvedDataSnapshot);
+      if (resolvedDataSnapshot) {
+        console.log('Snapshot has entries:', resolvedDataSnapshot.entries?.length);
+      }
+    }
+  }, [resolvedDataSnapshot]);
+
   // Helper function to update corrective actions when dataLog is checked/unchecked
-  const updateCorrectiveActionsForDataLog = (rowIndex: number, stage: string, dataLog: boolean) => {
+  const updateCorrectiveActionsForDataLog = useCallback((rowIndex: number, stage: string, dataLog: boolean) => {
     if (!form) return;
     
     const entry = form.entries[rowIndex];
@@ -188,9 +192,8 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
       if (existingComments.includes(targetComment)) {
         const updatedComments = existingComments
           .split('\n')
-          .filter(comment => comment.trim() !== targetComment)
-          .join('\n')
-          .trim();
+          .filter(comment => comment !== targetComment)
+          .join('\n');
         
         // Update local state immediately
         if (form) {
@@ -209,20 +212,35 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
         }
       }
     }
-  };
-  
-  // Check if there are unresolved validation errors
-  const hasUnresolvedErrors = React.useMemo(() => {
-    if (!form) return false;
-    const validation = validateForm(form);
-    return validation.errors.some(error => {
-      const errorId = `${error.rowIndex}-${error.field}-${error.message}`;
-      return !(form.resolvedErrors || []).includes(errorId);
-    });
-  }, [form]);
-  
-  // Keep typing indicator visible once admin starts typing (until resolved)
+  }, [form, readOnly, isAdminForm, updateAdminForm, updateFormField, onFormUpdate]);
 
+  // Debug logging - only in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('PaperForm render:', { formData, readOnly, currentForm: !!currentForm });
+  }
+
+  // Early return if no form data
+  if (!form) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('PaperForm: No form data available, returning null');
+    }
+    return null;
+  }
+
+  // Debug form data structure
+  if (process.env.NODE_ENV === 'development') {
+    console.log('PaperForm: Form data structure:', {
+      id: form.id,
+      title: form.title,
+      formInitial: form.formInitial,
+      entriesCount: form.entries?.length,
+      firstEntry: form.entries?.[0],
+      hasDataLog: form.entries?.[0]?.ccp1?.dataLog !== undefined,
+      firstEntryDataLog: form.entries?.[0]?.ccp1?.dataLog,
+      firstEntryCCP1: form.entries?.[0]?.ccp1
+    });
+  }
+    
   // NEW: Function to show toast notifications
   const showToast = (type: 'error' | 'warning' | 'success' | 'info', message: string, rowIndex?: number, stage?: string) => {
     const toast = {
@@ -240,37 +258,6 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
       setToasts(prev => prev.filter(t => t.id !== toast.id));
     }, 5000);
   };
-
-  // Monitor form status changes
-  React.useEffect(() => {
-    if (form) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Form status changed to:', form.status, 'Form ID:', form.id);
-      }
-      
-      // If form ID changes, clear the snapshot (different form)
-      if (resolvedDataSnapshot && resolvedDataSnapshot.id !== form.id) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Form ID changed, clearing resolved snapshot');
-        }
-        setResolvedDataSnapshot(null);
-      }
-    }
-  }, [form?.status, form?.id, form?.id, resolvedDataSnapshot]);
-  
-
-
-  // Monitor resolvedDataSnapshot changes
-  React.useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('resolvedDataSnapshot changed:', !!resolvedDataSnapshot);
-      if (resolvedDataSnapshot) {
-        console.log('Snapshot has entries:', resolvedDataSnapshot.entries?.length);
-      }
-    }
-  }, [resolvedDataSnapshot]);
-
-
 
   // Function to check if there are new errors compared to the resolved snapshot
   const hasNewErrors = (currentForm: any, resolvedSnapshot: any) => {
@@ -396,15 +383,6 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
       console.warn(`Form render took ${actualDuration.toFixed(2)}ms (${phase})`);
     }
   };
-
-  // Performance warning for excessive re-renders
-  const renderCount = React.useRef(0);
-  React.useEffect(() => {
-    renderCount.current += 1;
-    if (process.env.NODE_ENV === 'development' && renderCount.current > 10) {
-      console.warn(`PaperForm has rendered ${renderCount.current} times - check for unnecessary re-renders`);
-    }
-  });
 
   const handleCellChange = (rowIndex: number, field: string, value: string | boolean) => {
     if (process.env.NODE_ENV === 'development') {

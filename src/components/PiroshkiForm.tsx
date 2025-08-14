@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { usePaperFormStore } from '@/stores/paperFormStore';
-import { PaperFormEntry, FormType, ensureDate } from '@/lib/paperFormTypes';
+import { PaperFormEntry, FormType, ensureDate, PiroshkiFormEntry } from '@/lib/paperFormTypes';
 import { TimePicker } from './TimePicker';
 
 interface PiroshkiFormProps {
@@ -29,7 +29,7 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
     }
     // Always prioritize currentForm from store for real-time updates
     return currentForm || formData;
-  }, [isAdminForm, formData, savedForms, currentForm]);
+  }, [isAdminForm, formData, savedForms, currentForm]) as PiroshkiFormEntry;
 
   if (!form) return null;
 
