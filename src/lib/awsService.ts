@@ -752,20 +752,20 @@ class AWSStorageManager {
   }
 
   // async getPaperForm(id: string): Promise<PaperFormEntry | undefined> {
-    try {
-      const result = await client.graphql({
-        query: queries.getPaperFormEntry,
-        variables: { id }
-      }) as GraphQLResult<any>;
-
-      // if (result.data?.getPaperFormEntry) {
-      //   return mapGraphQLResultToPaperFormEntry(result.data.getPaperFormEntry);
-      // }
-      // return undefined;
-    // } catch (error) {
-    //   console.error('Error getting paper form:', error);
-    //   return undefined;
-    // }
+  //   try {
+  //     const result = await client.graphql({
+  //       query: queries.getPaperFormEntry,
+  //       variables: { id }
+  //     }) as GraphQLResult<any>;
+  //
+  //     if (result.data?.getPaperFormEntry) {
+  //       return mapGraphQLResultToPaperFormEntry(result.data.getPaperFormEntry);
+  //     }
+  //     return undefined;
+  //   } catch (error) {
+  //     console.error('Error getting paper form:', error);
+  //     return undefined;
+  //   }
   // }
 
     async getPaperForms(): Promise<PaperFormEntry[]> {
