@@ -602,7 +602,6 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
             <div>
               <span className="font-semibold">Title: </span>
               <input
-                key={`title-${form?.id || 'new'}`}
                 type="text"
                 value={form?.title || ''}
                 onChange={(e) => {
