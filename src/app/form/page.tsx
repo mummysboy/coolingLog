@@ -17,7 +17,6 @@ export default function FormPage() {
   const { currentForm, createNewForm, updateFormStatus, approveForm, saveForm, savedForms, loadForm, deleteForm, loadFormsFromStorage } = usePaperFormStore();
   const store = usePaperFormStore; // Get store reference for getState()
   const [formUpdateKey, setFormUpdateKey] = useState(0); // Force re-render when form updates
-  const [isLoadingForm, setIsLoadingForm] = useState(false);
   const [isRefreshingForms, setIsRefreshingForms] = useState(false);
 
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
@@ -100,16 +99,17 @@ export default function FormPage() {
     }
   }, [createNewForm, store]);
 
-  // Function to open form in modal - ensure the authoritative form is loaded into the store
-  // so PaperForm (which reads from the store by formId) renders the correct data.
+  // Function to open form in modal - exactly like admin page
   const handleViewForm = (form: PaperFormEntry) => {
+    // Load the authoritative form data into the store first so the modal shows the same title
     (async () => {
       try {
         await loadForm(form.id);
-        const loaded = store.getState().currentForm as PaperFormEntry | null;
+        // Prefer the freshly loaded currentForm from the store (may include computed/filled title)
+        const loaded = (usePaperFormStore as any).getState().currentForm as PaperFormEntry | null;
         setSelectedForm(loaded || form);
       } catch (err) {
-        // Fallback to provided form object if loading fails
+        // Fallback to the provided form if loading fails
         setSelectedForm(form);
         console.error('Failed to load form for view, falling back to provided object', err);
       }
@@ -154,53 +154,29 @@ export default function FormPage() {
     }
   }, [loadForm, saveForm]);
 
-  // Load forms from AWS on page load with abort-safe pattern
+  // Load forms from AWS when form page loads - exactly like admin page
   useEffect(() => {
-    let isMounted = true;
-    
-    const loadFormsFromAWS = async () => {
-      console.log('Loading forms from AWS DynamoDB');
-      setIsLoadingForm(true);
-      
+    const loadData = async () => {
       try {
-        // Load existing forms from AWS
+        console.log('Form page: Loading data from AWS...');
+        
+        // Load forms
         await loadFormsFromStorage();
+        console.log('Form page: Forms loaded successfully');
         
-        // Check if component is still mounted before setting state
-        if (!isMounted) return;
+        // Debug: Check data count after loading
+        const { savedForms } = usePaperFormStore.getState();
+    
+        console.log(`Form page: After loading, savedForms count: ${savedForms.length}`);
         
-        // Get the current state after loading
-        const { savedForms: loadedForms } = store.getState();
-        
-        // If forms exist, load the most recent one as current (but don't auto-open modal)
-        if (loadedForms.length > 0) {
-          const mostRecentForm = loadedForms[0]; // Forms are sorted by date, newest first
-          if (!currentForm || currentForm.id !== mostRecentForm.id) {
-            console.log('Loading most recent form as currentForm (but not opening modal):', mostRecentForm.id);
-            loadForm(mostRecentForm.id);
-          }
-        } else {
-          console.log('No forms found in AWS - user must create forms manually');
-        }
       } catch (error) {
-        console.error('Error loading forms from AWS:', error);
-        // Only show error if component is still mounted
-        if (isMounted) {
-          alert('Failed to load forms from AWS DynamoDB. Please check your connection and try again.');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingForm(false);
-        }
+        console.error('Form page: Error loading data from AWS:', error);
+        // No fallback to local storage - AWS is required
       }
     };
-
-    loadFormsFromAWS();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [loadForm, loadFormsFromStorage, store, currentForm]); // Include all dependencies
+    
+    loadData();
+  }, [loadFormsFromStorage]);
 
   // Automatically open newly created forms and manage the flag
   useEffect(() => {
@@ -267,17 +243,10 @@ export default function FormPage() {
               onClick={async () => {
                 setIsRefreshingForms(true);
                 try {
-                  setIsLoadingForm(true);
                   await loadFormsFromStorage();
-                  // After reload, load the most recent form as current if available
-                  const { savedForms: loaded } = store.getState();
-                  if (loaded && loaded.length > 0) {
-                    await loadForm(loaded[0].id);
-                  }
                 } catch (err) {
                   console.error('Refresh failed', err);
                 } finally {
-                  setIsLoadingForm(false);
                   setIsRefreshingForms(false);
                   setFormUpdateKey(k => k + 1);
                 }
@@ -383,308 +352,298 @@ export default function FormPage() {
       </div>
 
       {/* Form Content */}
-        {isLoadingForm ? (
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200">
-              <div className="text-6xl mb-4">⏳</div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading Form...</h2>
-              <p className="text-gray-600">Please wait while we prepare your form for today.</p>
-            </div>
+      <div className="max-w-7xl mx-auto px-4">
+        {/* Display all forms */}
+        {savedForms.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200">
+            <div className="text-6xl mb-4">📝</div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">No Forms Yet</h2>
+            <p className="text-gray-600 mb-4">Click the &quot;Add Form&quot; button above to create your first form.</p>
+            <p className="text-sm text-gray-500">Forms are only created when you explicitly choose to create them.</p>
           </div>
         ) : (
-          <div className="max-w-7xl mx-auto px-4">
-            {/* Display all forms */}
-            {savedForms.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200">
-                <div className="text-6xl mb-4">📝</div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">No Forms Yet</h2>
-                <p className="text-gray-600 mb-4">Click the &quot;Add Form&quot; button above to create your first form.</p>
-                <p className="text-sm text-gray-500">Forms are only created when you explicitly choose to create them.</p>
-              </div>
-            ) : (
-              <>
-                {/* Active Forms Section */}
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Active Forms
-                  </h2>
-                  {activeForms.map((form: PaperFormEntry, index: number) => (
-                      <div 
-                        key={form.id} 
-                        className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
-                      >
-                        <div className={`p-6`}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                              {/* Status Indicator */}
-                              <div className={`w-4 h-4 rounded-full ${
-                                form.status === 'Complete' ? 'bg-green-500' :
-                                form.status === 'Error' ? 'bg-red-500' :
-                                'bg-yellow-500'
-                              }`}></div>
-                              
-                              {/* Form Info */}
-                              <div>
-                                <h3 className="text-lg font-semibold text-gray-900">
-                                  {form.title ? form.title : getFormTypeDisplayName(form.formType)}
-                                </h3>
-                                <div className="text-sm text-gray-600 mt-1">
-                                  {getFormTypeDisplayName(form.formType)}
-                                </div>
-                                <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                                  <span>Form #{form.id.slice(-6)}</span>
-                                </div>
-                              </div>
+          <>
+            {/* Active Forms Section */}
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Active Forms
+              </h2>
+              {activeForms.map((form: PaperFormEntry, index: number) => (
+                  <div 
+                    key={form.id} 
+                    className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
+                  >
+                    <div className={`p-6`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          {/* Status Indicator */}
+                          <div className={`w-4 h-4 rounded-full ${
+                            form.status === 'Complete' ? 'bg-green-500' :
+                            form.status === 'Error' ? 'bg-red-500' :
+                            'bg-yellow-500'
+                          }`}></div>
+                          
+                          {/* Form Info */}
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {form.title ? form.title : getFormTypeDisplayName(form.formType)}
+                            </h3>
+                            <div className="text-sm text-gray-600 mt-1">
+                              {getFormTypeDisplayName(form.formType)}
                             </div>
-                            
-                            <div className="flex items-center space-x-3">
-                              {/* Status Badge */}
-                              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                                form.status === 'Complete' ? 'bg-green-100 text-green-800' :
-                                form.status === 'Error' ? 'bg-red-100 text-red-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {form.status === 'Complete' ? '✓ Complete' :
-                                 form.status === 'Error' ? '⚠️ Has Errors' :
-                                 '⏳ In Progress'}
-                              </span>
-                              
-                              
-                              
-                              {/* View Form Button */}
-                              <button
-                                onClick={() => handleViewForm(form)}
-                                className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                                title="View and edit form details"
-                              >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                View Form
-                              </button>
-                              
-                              {/* Delete Form Button */}
-                              <button
-                                onClick={() => handleDeleteForm(form.id)}
-                                className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors"
-                                title="Delete form"
-                              >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                                Delete
-                              </button>
+                            <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                              <span>Form #{form.id.slice(-6)}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3">
+                          {/* Status Badge */}
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            form.status === 'Complete' ? 'bg-green-100 text-green-800' :
+                            form.status === 'Error' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {form.status === 'Complete' ? '✓ Complete' :
+                             form.status === 'Error' ? '⚠️ Has Errors' :
+                             '⏳ In Progress'}
+                          </span>
+                          
+                          
+                          
+                          {/* View Form Button */}
+                          <button
+                            onClick={() => handleViewForm(form)}
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                            title="View and edit form details"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            View Form
+                          </button>
+                          
+                          {/* Delete Form Button */}
+                          <button
+                            onClick={() => handleDeleteForm(form.id)}
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors"
+                            title="Delete form"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Additional Form Summary Info */}
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="font-medium text-gray-700">Date Created</div>
+                          <div className="text-lg font-semibold text-gray-900">
+                            {new Date(form.dateCreated || form.date).toLocaleDateString()}
+                          </div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            {new Date(form.dateCreated || form.date).toLocaleTimeString()}
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="font-medium text-gray-700">Last Updated</div>
+                          <div className="text-lg font-semibold text-gray-900">
+                            {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleDateString() : 'No text entered yet'}
+                          </div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : ''}
+                          </div>
+                        </div>
+                        
+                        {/* Corrective Actions and Comments - Always shown */}
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            <textarea
+                              readOnly
+                              className="w-full h-20 p-2 text-sm text-gray-700 bg-white border rounded-md resize-none"
+                              value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
+                                form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              
+              {/* No Active Forms Message */}
+              {activeForms.length === 0 && (
+                <div className="text-center py-8 bg-white rounded-xl border-2 border-gray-200">
+                  <div className="text-4xl mb-3">✅</div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">All Forms Completed!</h3>
+                  <p className="text-gray-600">Great job! All your forms have been marked as complete.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Completed Forms Section */}
+            {completedForms.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                  <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Completed Forms
+                </h2>
+                
+                {completedForms.map((form: PaperFormEntry, index: number) => (
+                    <div 
+                      key={form.id} 
+                      className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
+                    >
+                      <div className={`p-6`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            {/* Form Info */}
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                {form.title ? form.title : getFormTypeDisplayName(form.formType)}
+                              </h3>
+                              <div className="text-sm text-gray-600 mt-1">
+                                {getFormTypeDisplayName(form.formType)}
+                              </div>
+                              <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                                <span>Form #{form.id.slice(-6)}</span>
+                                <span className="text-gray-600 font-medium">✓ Finalized</span>
+                                {form.approvedBy && (
+                                  <span className="ml-2 text-indigo-600 text-sm">Approved by {form.approvedBy}</span>
+                                )}
+                              </div>
                             </div>
                           </div>
                           
-                          {/* Additional Form Summary Info */}
-                          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <div className="bg-gray-50 rounded-lg p-3">
-                              <div className="font-medium text-gray-700">Date Created</div>
-                              <div className="text-lg font-semibold text-gray-900">
-                                {new Date(form.dateCreated || form.date).toLocaleDateString()}
-                              </div>
-                              <div className="text-sm text-gray-600 mt-1">
-                                {new Date(form.dateCreated || form.date).toLocaleTimeString()}
-                              </div>
-                            </div>
+                          <div className="flex items-center space-x-3">
+                            {/* Status Badge */}
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                              ✓ Complete
+                            </span>
                             
-                            <div className="bg-gray-50 rounded-lg p-3">
-                              <div className="font-medium text-gray-700">Last Updated</div>
-                              <div className="text-lg font-semibold text-gray-900">
-                                {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleDateString() : 'No text entered yet'}
-                              </div>
-                              <div className="text-sm text-gray-600 mt-1">
-                                {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : ''}
-                              </div>
-                            </div>
+                            {/* View Form Button - Read Only */}
+                            <button
+                              onClick={() => handleViewForm(form)}
+                              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                              title="View completed form (read-only)"
+                            >
+                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              View Form
+                            </button>
                             
-                            {/* Corrective Actions and Comments - Always shown */}
-                            <div className="bg-gray-50 rounded-lg p-3">
-                              <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
-                              <div className="text-sm text-gray-600 mt-1">
-                                <textarea
-                                  readOnly
-                                  className="w-full h-20 p-2 text-sm text-gray-700 bg-white border rounded-md resize-none"
-                                  value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
-                                    form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
-                                />
-                              </div>
+                            {/* Approval is handled from Admin UI; remove approve button from /form page */}
+                          </div>
+                        </div>
+                        
+                        {/* Additional Form Summary Info */}
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="font-medium text-gray-700">Date Created</div>
+                            <div className="text-lg font-semibold text-gray-900">
+                              {new Date(form.date).toLocaleDateString()}
+                            </div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              {new Date(form.date).toLocaleTimeString()}
+                            </div>
+                          </div>
+                          
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="font-medium text-gray-700">Completion Date</div>
+                            <div className="text-lg font-semibold text-gray-900">
+                              {new Date(form.date).toLocaleDateString()}
+                            </div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              {new Date(form.date).toLocaleTimeString()}
+                            </div>
+                          </div>
+                          
+                          {/* Corrective Actions and Comments - Always shown */}
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              <textarea
+                                readOnly
+                                className="w-full h-20 p-2 text-sm text-gray-700 bg-white border rounded-md resize-none"
+                                value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
+                                  form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
+                              />
                             </div>
                           </div>
                         </div>
                       </div>
-                    ))}
-                  
-                  {/* No Active Forms Message */}
-                  {activeForms.length === 0 && (
-                    <div className="text-center py-8 bg-white rounded-xl border-2 border-gray-200">
-                      <div className="text-4xl mb-3">✅</div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">All Forms Completed!</h3>
-                      <p className="text-gray-600">Great job! All your forms have been marked as complete.</p>
                     </div>
-                  )}
-                </div>
+                  ))}
+              </div>
+            )}
+            {/* Approved Forms Section */}
+            {approvedForms.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                  <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Approved Forms
+                </h2>
 
-                {/* Completed Forms Section */}
-                {completedForms.length > 0 && (
-                  <div className="mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
-                      <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Completed Forms
-                    </h2>
-                    
-                    {completedForms.map((form: PaperFormEntry, index: number) => (
-                        <div 
-                          key={form.id} 
-                          className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
-                        >
-                          <div className={`p-6`}>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-4">
-                                {/* Form Info */}
-                                <div>
-                                  <h3 className="text-lg font-semibold text-gray-900">
-                                    {form.title ? form.title : getFormTypeDisplayName(form.formType)}
-                                  </h3>
-                                  <div className="text-sm text-gray-600 mt-1">
-                                    {getFormTypeDisplayName(form.formType)}
-                                  </div>
-                                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                                    <span>Form #{form.id.slice(-6)}</span>
-                                    <span className="text-gray-600 font-medium">✓ Finalized</span>
-                                    {form.approvedBy && (
-                                      <span className="ml-2 text-indigo-600 text-sm">Approved by {form.approvedBy}</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center space-x-3">
-                                {/* Status Badge */}
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                  ✓ Complete
-                                </span>
-                                
-                                {/* View Form Button - Read Only */}
-                                <button
-                                  onClick={() => handleViewForm(form)}
-                                  className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                                  title="View completed form (read-only)"
-                                >
-                                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                  View Form
-                                </button>
-                                
-                                {/* Approval is handled from Admin UI; remove approve button from /form page */}
-                              </div>
-                            </div>
-                            
-                            {/* Additional Form Summary Info */}
-                            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                              <div className="bg-gray-50 rounded-lg p-3">
-                                <div className="font-medium text-gray-700">Date Created</div>
-                                <div className="text-lg font-semibold text-gray-900">
-                                  {new Date(form.date).toLocaleDateString()}
-                                </div>
-                                <div className="text-sm text-gray-600 mt-1">
-                                  {new Date(form.date).toLocaleTimeString()}
-                                </div>
-                              </div>
-                              
-                              <div className="bg-gray-50 rounded-lg p-3">
-                                <div className="font-medium text-gray-700">Completion Date</div>
-                                <div className="text-lg font-semibold text-gray-900">
-                                  {new Date(form.date).toLocaleDateString()}
-                                </div>
-                                <div className="text-sm text-gray-600 mt-1">
-                                  {new Date(form.date).toLocaleTimeString()}
-                                </div>
-                              </div>
-                              
-                              {/* Corrective Actions and Comments - Always shown */}
-                              <div className="bg-gray-50 rounded-lg p-3">
-                                <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
-                                <div className="text-sm text-gray-600 mt-1">
-                                  <textarea
-                                    readOnly
-                                    className="w-full h-20 p-2 text-sm text-gray-700 bg-white border rounded-md resize-none"
-                                    value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
-                                      form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
-                                  />
-                                </div>
-                              </div>
+                {approvedForms.map((form: PaperFormEntry) => (
+                  <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
+                    <div className={`p-6`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
+                            <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
+                            <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                              <span>Form #{form.id.slice(-6)}</span>
+                              {form.approvedBy && (
+                                <span className="text-sm text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                              )}
                             </div>
                           </div>
                         </div>
-                      ))}
-                  </div>
-                )}
-                {/* Approved Forms Section */}
-                {approvedForms.length > 0 && (
-                  <div className="mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
-                      <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Approved Forms
-                    </h2>
 
-                    {approvedForms.map((form: PaperFormEntry) => (
-                      <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
-                        <div className={`p-6`}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                              <div>
-                                <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
-                                <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
-                                <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                                  <span>Form #{form.id.slice(-6)}</span>
-                                  {form.approvedBy && (
-                                    <span className="text-sm text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center space-x-3">
-                              <div className="flex flex-col items-end text-sm text-gray-600">
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">✓ Approved</span>
-                                {form.approvedBy && (
-                                  <span className="text-xs text-indigo-700 mt-1">By {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
-                                )}
-                              </div>
-                              <button
-                                onClick={() => handleViewForm(form)}
-                                className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                                title="View approved form (read-only)"
-                              >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                View Form
-                              </button>
-                            </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="flex flex-col items-end text-sm text-gray-600">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">✓ Approved</span>
+                            {form.approvedBy && (
+                              <span className="text-xs text-indigo-700 mt-1">By {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                            )}
                           </div>
+                          <button
+                            onClick={() => handleViewForm(form)}
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                            title="View approved form (read-only)"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            View Form
+                          </button>
                         </div>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                )}
-              </>
+                ))}
+              </div>
             )}
-          </div>
+          </>
         )}
+      </div>
 
       {/* Form Details Modal - Exactly like admin page */}
       {showFormModal && selectedForm && (

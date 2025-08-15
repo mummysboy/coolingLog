@@ -904,6 +904,8 @@ class MultiTableStorageManager {
     try {
       const allForms: PaperFormEntry[] = [];
       
+      console.log('🔍 Starting to fetch all paper forms from all tables...');
+      
       // Get forms from all tables
       const [cookingForms, piroshkiForms, bagelDogForms] = await Promise.all([
         this.getCookingCoolingForms(),
@@ -911,7 +913,28 @@ class MultiTableStorageManager {
         this.getBagelDogForms()
       ]);
       
+      console.log('🔍 Forms retrieved from tables:', {
+        cookingForms: cookingForms.length,
+        piroshkiForms: piroshkiForms.length,
+        bagelDogForms: bagelDogForms.length
+      });
+      
+      // Log the form types being returned from each table
+      if (cookingForms.length > 0) {
+        console.log('🔍 Cooking forms types:', cookingForms.map(f => ({ id: f.id, type: f.formType, title: f.title })));
+      }
+      if (piroshkiForms.length > 0) {
+        console.log('🔍 Piroshki forms types:', piroshkiForms.map(f => ({ id: f.id, type: f.formType, title: f.title })));
+      }
+      if (bagelDogForms.length > 0) {
+        console.log('🔍 Bagel dog forms types:', bagelDogForms.map(f => ({ id: f.id, type: f.formType, title: f.title })));
+      }
+      
       allForms.push(...cookingForms, ...piroshkiForms, ...bagelDogForms);
+      
+      console.log('🔍 Total forms returned:', allForms.length);
+      console.log('🔍 Final form types:', allForms.map(f => ({ id: f.id, type: f.formType, title: f.title })));
+      
       return allForms;
     } catch (error) {
       console.error('Error getting all paper forms:', error);
@@ -1046,20 +1069,30 @@ class MultiTableStorageManager {
         })
       );
 
-      const forms = formsWithDetails.map((item: any) => 
-        mapGraphQLResultToPaperFormEntry(item, FormType.COOKING_AND_COOLING)
-      );
-      console.log('Mapped cooking cooling forms:', forms);
+      // IMPORTANT: Only return forms that are actually of type COOKING_AND_COOLING
+      // The cooking cooling table should only contain forms of this type
+      const forms = formsWithDetails
+        .filter((item: any) => {
+          // Check if this form has the structure of a cooking cooling form
+          // and doesn't have piroshki-specific fields
+          const hasPiroshkiFields = item.quantityAndFlavor || item.preShipmentReview;
+          const hasBagelDogFields = item.frankFlavorSizeTable || item.bagelDogPreShipmentReview;
+          
+          if (hasPiroshkiFields || hasBagelDogFields) {
+            console.warn(`Form ${item.id} found in cooking cooling table but has fields from other form types. This suggests a data inconsistency.`);
+            return false; // Skip forms that don't belong in this table
+          }
+          
+          return true; // Include forms that belong in this table
+        })
+        .map((item: any) => 
+          mapGraphQLResultToPaperFormEntry(item, FormType.COOKING_AND_COOLING)
+        );
+
+      console.log(`Retrieved ${forms.length} cooking cooling forms from table`);
       return forms;
     } catch (error) {
       console.error('Error getting cooking cooling forms:', error);
-      if (error instanceof Error) {
-        console.error('Error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        });
-      }
       return [];
     }
   }
@@ -1235,10 +1268,27 @@ class MultiTableStorageManager {
         })
       );
 
-      const forms = formsWithDetails.map((item: any) => 
-        mapGraphQLResultToPaperFormEntry(item, FormType.PIROSHKI_CALZONE_EMPANADA)
-      );
-      console.log('Mapped piroshki forms:', forms);
+      // IMPORTANT: Only return forms that are actually of type PIROSHKI_CALZONE_EMPANADA
+      // The piroshki table should only contain forms of this type
+      const forms = formsWithDetails
+        .filter((item: any) => {
+          // Check if this form has the structure of a piroshki form
+          // and doesn't have fields from other form types
+          const hasPiroshkiFields = item.quantityAndFlavor || item.preShipmentReview;
+          const hasBagelDogFields = item.frankFlavorSizeTable || item.bagelDogPreShipmentReview;
+          
+          if (!hasPiroshkiFields || hasBagelDogFields) {
+            console.warn(`Form ${item.id} found in piroshki table but doesn't have piroshki-specific fields or has bagel dog fields. This suggests a data inconsistency.`);
+            return false; // Skip forms that don't belong in this table
+          }
+          
+          return true; // Include forms that belong in this table
+        })
+        .map((item: any) => 
+          mapGraphQLResultToPaperFormEntry(item, FormType.PIROSHKI_CALZONE_EMPANADA)
+        );
+
+      console.log(`Retrieved ${forms.length} piroshki forms from table`);
       return forms;
     } catch (error) {
       console.error('Error getting piroshki forms:', error);
@@ -1387,10 +1437,27 @@ class MultiTableStorageManager {
         })
       );
 
-      const forms = formsWithDetails.map((item: any) => 
-        mapGraphQLResultToPaperFormEntry(item, FormType.BAGEL_DOG_COOKING_COOLING)
-      );
-      console.log('Mapped bagel dog forms:', forms);
+      // IMPORTANT: Only return forms that are actually of type BAGEL_DOG_COOKING_COOLING
+      // The bagel dog table should only contain forms of this type
+      const forms = formsWithDetails
+        .filter((item: any) => {
+          // Check if this form has the structure of a bagel dog form
+          // and doesn't have fields from other form types
+          const hasBagelDogFields = item.frankFlavorSizeTable || item.bagelDogPreShipmentReview;
+          const hasPiroshkiFields = item.quantityAndFlavor || item.preShipmentReview;
+          
+          if (!hasBagelDogFields || hasPiroshkiFields) {
+            console.warn(`Form ${item.id} found in bagel dog table but doesn't have bagel dog-specific fields or has piroshki fields. This suggests a data inconsistency.`);
+            return false; // Skip forms that don't belong in this table
+          }
+          
+          return true; // Include forms that belong in this table
+        })
+        .map((item: any) => 
+          mapGraphQLResultToPaperFormEntry(item, FormType.BAGEL_DOG_COOKING_COOLING)
+        );
+
+      console.log(`Retrieved ${forms.length} bagel dog forms from table`);
       return forms;
     } catch (error) {
       console.error('Error getting bagel dog forms:', error);

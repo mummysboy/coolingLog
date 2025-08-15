@@ -228,7 +228,7 @@ export default function PaperForm({
               updateAdminForm(form.id, { correctiveActionsComments: cleaned });
               if (onFormUpdate) onFormUpdate(form.id, { correctiveActionsComments: cleaned });
             } else {
-              updateFormField(form.id, 'correctiveActionsComments', cleaned);
+              updateFormField(form.id, "correctiveActionsComments", cleaned);
             }
           }
         }
