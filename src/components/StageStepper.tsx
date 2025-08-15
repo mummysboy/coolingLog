@@ -141,6 +141,7 @@ export function StageStepper() {
                   startTime={getTimerStartTime(stageConfig.id)}
                   deadlineHours={stageConfig.deadlineHours!}
                   isActive={status === 'active' && getTimerStartTime(stageConfig.id) !== null}
+                  isError={status === 'failed'}
                 />
               )}
             </div>

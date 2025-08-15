@@ -6,9 +6,10 @@ interface TimerBadgeProps {
   startTime: Date | null;
   deadlineHours: number;
   isActive?: boolean;
+  isError?: boolean;
 }
 
-export function TimerBadge({ startTime, deadlineHours, isActive = false }: TimerBadgeProps) {
+export function TimerBadge({ startTime, deadlineHours, isActive = false, isError = false }: TimerBadgeProps) {
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [status, setStatus] = useState<'safe' | 'warning' | 'danger'>('safe');
 
@@ -58,8 +59,8 @@ export function TimerBadge({ startTime, deadlineHours, isActive = false }: Timer
     return null;
   }
 
-  const getBadgeStyles = () => {
-    switch (status) {
+  const getBadgeStyles = (currentStatus: 'safe' | 'warning' | 'danger') => {
+    switch (currentStatus) {
       case 'safe':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'warning':
@@ -71,11 +72,13 @@ export function TimerBadge({ startTime, deadlineHours, isActive = false }: Timer
     }
   };
 
+  // If an explicit error is passed, treat as danger regardless of timer
+  const actualStatus = isError ? 'danger' : status;
   return (
-    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border-2 ${getBadgeStyles()}`}>
+    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border-2 ${getBadgeStyles(actualStatus)}`}>
       <div className={`w-2 h-2 rounded-full mr-2 ${
-        status === 'safe' ? 'bg-green-500' :
-        status === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
+        actualStatus === 'safe' ? 'bg-green-500' :
+        actualStatus === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
       }`} />
       {timeLeft}
     </div>

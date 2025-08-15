@@ -9,6 +9,7 @@ type TextCellProps = {
   // pass in a stable commit function from the parent that writes only this field
   commitField: (next: string) => void;
   onBlurValidate?: (next: string) => void; // optional validation hook
+  shouldHighlightWhileTyping?: (next: string) => boolean;
   className?: string;
   placeholder?: string;
   type?: string;
@@ -34,6 +35,7 @@ export function TextCell({
   max,
   maxLength,
   inputMode,
+  shouldHighlightWhileTyping,
 }: TextCellProps) {
   const { local, setLocal, schedule, flush } = useDebouncedStoreSync<string>({
     initial: valueFromStore ?? '',
@@ -55,6 +57,10 @@ export function TextCell({
     if (onBlurValidate) onBlurValidate(local);
   }, [flush, onBlurValidate, local]);
 
+  const highlightWhileTyping = shouldHighlightWhileTyping ? shouldHighlightWhileTyping(local) : false;
+
+  const highlightStyle = highlightWhileTyping ? { backgroundColor: 'rgb(254,202,202)', borderColor: 'rgb(220,38,38)' } : undefined;
+
   return (
     <input
       key={`${formId}-${field}`} // stable key
@@ -63,7 +69,8 @@ export function TextCell({
       onChange={onChange}
       onBlur={onBlur}
       readOnly={!!readOnly}
-      className={className}
+      className={`${className} ${highlightWhileTyping ? 'bg-red-200 border-2 border-red-500 shadow-sm' : ''}`}
+      style={highlightStyle}
       placeholder={placeholder}
       step={step}
       min={min}
