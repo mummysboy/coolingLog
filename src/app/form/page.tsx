@@ -448,9 +448,12 @@ export default function FormPage() {
                             <div className="bg-gray-50 rounded-lg p-3">
                               <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
                               <div className="text-sm text-gray-600 mt-1">
-                                {form.correctiveActionsComments && form.correctiveActionsComments.trim() 
-                                  ? form.correctiveActionsComments 
-                                  : '(no comments)'}
+                                <textarea
+                                  readOnly
+                                  className="w-full h-20 p-2 text-sm text-gray-700 bg-white border rounded-md resize-none"
+                                  value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
+                                    form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
+                                />
                               </div>
                             </div>
                           </div>
@@ -550,9 +553,12 @@ export default function FormPage() {
                               <div className="bg-gray-50 rounded-lg p-3">
                                 <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
                                 <div className="text-sm text-gray-600 mt-1">
-                                  {form.correctiveActionsComments && form.correctiveActionsComments.trim() 
-                                    ? form.correctiveActionsComments 
-                                    : '(no comments)'}
+                                  <textarea
+                                    readOnly
+                                    className="w-full h-20 p-2 text-sm text-gray-700 bg-white border rounded-md resize-none"
+                                    value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
+                                      form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
+                                  />
                                 </div>
                               </div>
                             </div>
@@ -587,7 +593,7 @@ export default function FormPage() {
                     <span className="ml-2 text-green-600 font-medium">(Read-Only)</span>
                   )}
                   {selectedForm.status !== 'Complete' && (
-                    <span className="ml-2 text-blue-600 font-medium">💾 Auto-saves to AWS when closed</span>
+                    <span className="ml-2 text-blue-600 font-medium">Auto-saves to AWS when closed</span>
                   )}
                   {DEBUG_ALLOW_EDIT && (
                     <div className="mt-1 text-orange-600 font-medium">
@@ -618,7 +624,7 @@ export default function FormPage() {
                 title="Close and save form to AWS"
                 aria-label="Close modal and save form to AWS"
               >
-                💾✕
+                ✕
               </button>
               
               {/* Temporary button to reset form status */}
