@@ -357,6 +357,40 @@ export default function PaperForm({
         err
       );
     }
+
+    // After side-effects, ensure form status reflects validation state.
+    try {
+      const validation = validateForm(form);
+      const hasErrors = validation.errors.some((e: any) => e.severity === "error");
+
+      // Do not change a completed form
+      if (form.status !== "Complete") {
+        if (hasErrors && form.status !== "Error") {
+          // Move to Error state
+          if (isAdminForm) {
+            updateAdminForm(form.id, { status: "Error" });
+            if (onFormUpdate) onFormUpdate(form.id, { status: "Error" });
+          } else {
+            updateFormStatus(form.id, "Error");
+            updateFormField(form.id, "status", "Error");
+            // Persist immediate change
+            saveForm();
+          }
+        } else if (!hasErrors && form.status === "Error") {
+          // Clear Error state back to In Progress
+          if (isAdminForm) {
+            updateAdminForm(form.id, { status: "In Progress" });
+            if (onFormUpdate) onFormUpdate(form.id, { status: "In Progress" });
+          } else {
+            updateFormStatus(form.id, "In Progress");
+            updateFormField(form.id, "status", "In Progress");
+            saveForm();
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error updating form status based on validation", err);
+    }
   };
 
   // Validation-driven cell styles
