@@ -1,4 +1,5 @@
 import { multiDatabaseStorageManager } from './multiDatabaseStorageManager';
+import { awsStorageManager } from './awsService';
 import { type PaperFormEntry, FormType } from './paperFormTypes';
 
 // AWS-only storage manager - no local fallback
@@ -97,8 +98,15 @@ class AWSOnlyStorageManager {
   // Custom mutations for paper forms
   async updatePaperFormStatus(formId: string, status: string): Promise<PaperFormEntry> {
     await this.ensureAWS();
-    // This would need to be implemented in the multi-table manager
-    throw new Error('updatePaperFormStatus not yet implemented in multi-table manager');
+    try {
+      // Prefer using the AWS-specific implementation which knows how to
+      // route the status-only mutation across the different form tables.
+      const updated = await awsStorageManager.updatePaperFormStatus(formId, status);
+      return updated as PaperFormEntry;
+    } catch (err) {
+      console.error('Error updating paper form status via AWS storage manager:', err);
+      throw err;
+    }
   }
 
   async addAdminComment(formId: string, comment: any): Promise<PaperFormEntry> {

@@ -17,7 +17,7 @@ interface PaperFormStore {
   createNewForm: (formType: FormType, formInitial?: string) => void;
   updateFormStatus: (
     formId: string,
-    status: "Complete" | "In Progress" | "Error"
+    status: "Complete" | "In Progress" | "Error" | "Approved"
   ) => void;
   saveForm: () => Promise<void>;
   commitCurrentForm: () => void;
@@ -49,6 +49,7 @@ interface PaperFormStore {
     adminInitial: string,
     comment: string
   ) => void;
+  approveForm: (formId: string, adminInitial: string) => Promise<void>;
   resolveError: (formId: string, errorId: string) => void;
   unresolveError: (formId: string, errorId: string) => void;
 
@@ -116,7 +117,7 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
 
   updateFormStatus: (
     formId: string,
-    status: "Complete" | "In Progress" | "Error"
+    status: "Complete" | "In Progress" | "Error" | "Approved"
   ) => {
     // This is not on every keypress; we can safely update savedForms too.
     set((state) => ({
@@ -128,6 +129,24 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
           ? { ...state.currentForm, status }
           : state.currentForm,
     }));
+
+    // Fire-and-forget persistence to AWS to ensure the authoritative backend
+    // record contains the new status. If the backend returns an updated
+    // representation, reconcile the local savedForms/currentForm to match it.
+    (async () => {
+      try {
+        const updated = await (storageManager as any).updatePaperFormStatus(formId, status);
+        if (updated && updated.id) {
+          set((state) => ({
+            savedForms: state.savedForms.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)),
+            currentForm: state.currentForm?.id === updated.id ? { ...state.currentForm, ...updated } : state.currentForm,
+          } as Partial<typeof state>));
+        }
+      } catch (err) {
+        // Do not block UI on errors; log for diagnostics.
+        console.error('Failed to persist form status change to AWS:', err);
+      }
+    })();
   },
 
   // Commit currentForm into savedForms (O(1) map) without hitting AWS
@@ -505,6 +524,34 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
             }
           : state.currentForm,
     }));
+  },
+
+  approveForm: async (formId: string, adminInitial: string) => {
+    // set status, approvedBy and approvedAt and persist
+    set((state) => ({
+      savedForms: state.savedForms.map((form) =>
+        form.id === formId ? { ...form, status: 'Approved', approvedBy: adminInitial, approvedAt: new Date() } : form
+      ),
+      currentForm:
+        state.currentForm?.id === formId
+          ? { ...state.currentForm, status: 'Approved', approvedBy: adminInitial, approvedAt: new Date() }
+          : state.currentForm,
+    }));
+
+    // Attempt to persist
+    try {
+      const { currentForm } = get();
+      if (currentForm && currentForm.id === formId) {
+        await storageManager.savePaperForm(currentForm);
+      } else {
+        // If currentForm isn't the one, find it in savedForms and save that copy
+        const formToSave = get().savedForms.find((f) => f.id === formId);
+        if (formToSave) await storageManager.savePaperForm(formToSave);
+      }
+    } catch (error) {
+      console.error('Error saving approved form to AWS:', error);
+      throw error;
+    }
   },
 
   resolveError: (formId: string, errorId: string) => {
