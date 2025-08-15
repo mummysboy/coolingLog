@@ -613,8 +613,10 @@ export default function PaperForm({
                       readOnly={readOnly}
                       commitField={(value: string) => {
                         commitField(rowIndex, "ccp1.temp", value);
-                        handleCellChange(rowIndex, "ccp1.temp", value);
                       }}
+                      onBlurValidate={(value: string) =>
+                        handleCellChange(rowIndex, "ccp1.temp", value)
+                      }
                       className={getCellClasses(
                         rowIndex,
                         "ccp1.temp",
@@ -866,8 +868,10 @@ export default function PaperForm({
                       readOnly={readOnly}
                       commitField={(value: string) => {
                         commitField(rowIndex, "coolingTo54.temp", value);
-                        handleCellChange(rowIndex, "coolingTo54.temp", value);
                       }}
+                      onBlurValidate={(value: string) =>
+                        handleCellChange(rowIndex, "coolingTo54.temp", value)
+                      }
                       className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="°F"
                       type="number"
@@ -948,8 +952,10 @@ export default function PaperForm({
                       readOnly={readOnly}
                       commitField={(value: string) => {
                         commitField(rowIndex, "finalChill.temp", value);
-                        handleCellChange(rowIndex, "finalChill.temp", value);
                       }}
+                      onBlurValidate={(value: string) =>
+                        handleCellChange(rowIndex, "finalChill.temp", value)
+                      }
                       className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       placeholder="°F"
                       type="number"
