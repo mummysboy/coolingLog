@@ -1177,8 +1177,9 @@ export default function AdminDashboard() {
                 ) : (
                   <PaperForm 
                     key={`${selectedForm.id}-${dashboardRefreshKey}`}
-                    formData={selectedForm}
+                    formId={selectedForm.id}
                     readOnly={false}
+                    isAdminForm={true}
                     onFormUpdate={(formId, updates) => {
                       console.log('Admin form updated:', formId, updates);
                       

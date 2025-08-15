@@ -5,6 +5,8 @@ import { usePaperFormStore } from '../stores/paperFormStore';
 import { useLogStore } from '../stores/logStore';
 import { validateTemperatureCell, validateForm } from '../lib/validation';
 import { getTimeDifferenceMinutes } from '../lib/validation';
+import { TextCell } from './TextCell';
+import { TimePicker } from './TimePicker';
 
 interface PaperFormProps {
   formId: string;
@@ -13,7 +15,7 @@ interface PaperFormProps {
   onFormUpdate?: (formId: string, updates: any) => void;
 }
 
-export default function PaperForm({ formId, readOnly = false, isAdminForm = false, onFormUpdate }: PaperFormProps) {
+function PaperForm({ formId, readOnly = false, isAdminForm = false, onFormUpdate }: PaperFormProps) {
   const {
     currentForm: form,
     updateFormField,
@@ -67,13 +69,6 @@ export default function PaperForm({ formId, readOnly = false, isAdminForm = fals
   const updateCorrectiveActionsForDataLog = (rowIndex: number, stage: string, dataLog: boolean) => {
     // Placeholder implementation
     console.log('updateCorrectiveActionsForDataLog called:', { rowIndex, stage, dataLog });
-  };
-  
-  const onRenderCallback = (id: string, phase: string, actualDuration: number) => {
-    // Performance monitoring callback
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`PaperForm render: ${id} ${phase} ${actualDuration}ms`);
-    }
   };
   
   const ensureDate = (date: any) => {
@@ -252,7 +247,7 @@ export default function PaperForm({ formId, readOnly = false, isAdminForm = fals
 
   // Debug logging - only in development
   if (process.env.NODE_ENV === 'development') {
-    console.log('PaperForm render:', { formData, readOnly, currentForm: !!currentForm });
+    console.log('PaperForm render:', { formId, readOnly, currentForm: !!currentForm });
   }
 
   // Early return if no form data
@@ -402,219 +397,6 @@ export default function PaperForm({ formId, readOnly = false, isAdminForm = fals
   const onRenderCallback = (id: string, phase: string, actualDuration: number) => {
     if (process.env.NODE_ENV === 'development' && actualDuration > 16) {
       console.warn(`Form render took ${actualDuration.toFixed(2)}ms (${phase})`);
-    }
-  };
-
-  const handleCellChange = (rowIndex: number, field: string, value: string | boolean) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 handleCellChange called:', { rowIndex, field, value });
-    }
-
-    if (!readOnly) {
-      if (isAdminForm) {
-        // For admin forms, update the specific form directly
-        const updatedEntries = [...form.entries];
-        const [section, subField] = field.split('.');
-
-        if (subField) {
-          const entry = updatedEntries[rowIndex];
-          const sectionData = entry[section as keyof typeof entry] as any;
-          updatedEntries[rowIndex] = {
-            ...entry,
-            [section]: {
-              ...sectionData,
-              [subField]: value,
-            },
-          };
-        } else {
-          updatedEntries[rowIndex] = {
-            ...updatedEntries[rowIndex],
-            [field]: value,
-          };
-        }
-
-        updateAdminForm(form.id, { entries: updatedEntries });
-      } else {
-        // For regular forms, use the store's updateEntry
-        try {
-          updateEntry(rowIndex, field, value);
-        } catch (error) {
-          console.error('❌ Error calling updateEntry:', error);
-        }
-
-        // Special handling: temperature entries should create a recorded-temp corrective comment
-        try {
-          const stageMatch = typeof field === 'string' ? field.match(/^([^.]+)\.(temp|time|initial|dataLog)$/) : null;
-          if (stageMatch) {
-            const stage = stageMatch[1];
-            const fieldType = stageMatch[2];
-
-            // Handle temperature fields (recorded-temp comments)
-            if (fieldType === 'temp') {
-              const tempStr = typeof value === 'string' ? value : String(value ?? '');
-              const tempNum = tempStr.trim() === '' ? null : parseFloat(tempStr.replace(/[^\d.-]/g, ''));
-              const rowNumber = rowIndex + 1;
-              const entry = form?.entries?.[rowIndex];
-              const displayText = entry?.type ? `Row ${rowNumber} ${entry.type}` : `Row ${rowNumber}`;
-              const stageName =
-                stage === 'ccp1'
-                  ? 'CCP1'
-                  : stage === 'ccp2'
-                  ? 'CCP2'
-                  : stage === 'coolingTo80'
-                  ? '80°F Cooling'
-                  : stage === 'coolingTo54'
-                  ? '54°F Cooling'
-                  : stage === 'finalChill'
-                  ? 'Final Chill'
-                  : stage;
-
-              const existingComments = form?.correctiveActionsComments || '';
-
-              if (tempNum !== null && !isNaN(tempNum)) {
-                // Validate against stage rule; only add comment if validation fails
-                const validation = validateTemperatureCell(String(tempNum), stage as any);
-                if (!validation.isValid && validation.error) {
-                  const targetComment = `Row ${rowNumber} ${stageName} temperature ${tempNum}°F - ${validation.error}`;
-                  if (!existingComments.includes(targetComment)) {
-                    const updatedComments = existingComments ? `${existingComments}\n${targetComment}` : targetComment;
-                    setCorrectiveText(formatNumberedTextFromRaw(updatedComments));
-                    if (!readOnly && form) {
-                      if (isAdminForm) {
-                        updateAdminForm(form.id, { correctiveActionsComments: updatedComments });
-                        if (onFormUpdate) onFormUpdate(form.id, { correctiveActionsComments: updatedComments });
-                      } else {
-                        updateFormField(form.id, 'correctiveActionsComments', updatedComments);
-                      }
-                    }
-                    // Show explicit error toast for CCP1 and CCP2 failures
-                    if (stage === 'ccp1' || stage === 'ccp2') {
-                      showToast('error', validation.error, rowIndex, stage);
-                    }
-                  }
-                } else {
-                  // If temp now valid, remove any existing violation comment for this row/stage
-                  const failMarker = `Row ${rowNumber} ${stageName} temperature`;
-                  if (existingComments.includes(failMarker)) {
-                    const cleaned = existingComments
-                      .split('\n')
-                      .filter((c) => !c.startsWith(failMarker))
-                      .join('\n');
-                    setCorrectiveText(formatNumberedTextFromRaw(cleaned));
-                    if (!readOnly && form) {
-                      if (isAdminForm) {
-                        updateAdminForm(form.id, { correctiveActionsComments: cleaned });
-                        if (onFormUpdate) onFormUpdate(form.id, { correctiveActionsComments: cleaned });
-                      } else {
-                        updateFormField(form.id, 'correctiveActionsComments', cleaned);
-                      }
-                    }
-                  }
-                }
-              } else {
-                // cleared: remove any existing violation comment for this row/stage
-                const failMarker = `Row ${rowNumber} ${stageName} temperature`;
-                if (existingComments.includes(failMarker)) {
-                  const cleaned = existingComments
-                    .split('\n')
-                    .filter((c) => !c.startsWith(failMarker))
-                    .join('\n');
-                  setCorrectiveText(formatNumberedTextFromRaw(cleaned));
-                  if (!readOnly && form) {
-                    if (isAdminForm) {
-                      updateAdminForm(form.id, { correctiveActionsComments: cleaned });
-                      if (onFormUpdate) onFormUpdate(form.id, { correctiveActionsComments: cleaned });
-                    } else {
-                      updateFormField(form.id, 'correctiveActionsComments', cleaned);
-                    }
-                  }
-                }
-              }
-            } else if (fieldType === 'time') {
-              // Handle time-specific validation (e.g., coolingTo80 time limits)
-              if (stage === 'coolingTo80') {
-                const newTime = typeof value === 'string' ? value : String(value ?? '');
-                const rowNumber = rowIndex + 1;
-                const entry = form?.entries?.[rowIndex];
-                const existingComments = form?.correctiveActionsComments || '';
-                const failMarker = `Row ${rowNumber} 80°F Cooling time`;
-
-                if (newTime && entry?.ccp2?.time) {
-                  const timeDiff = getTimeDifferenceMinutes(entry.ccp2.time, newTime);
-                  if (timeDiff !== null && timeDiff > 105) {
-                    const targetComment = `Row ${rowNumber} 80°F Cooling time ${timeDiff} minutes - Time limit exceeded (105 minutes)`;
-                    if (!existingComments.includes(targetComment)) {
-                      const updatedComments = existingComments ? `${existingComments}\n${targetComment}` : targetComment;
-                      setCorrectiveText(formatNumberedTextFromRaw(updatedComments));
-                      if (!readOnly && form) {
-                        if (isAdminForm) {
-                          updateAdminForm(form.id, { correctiveActionsComments: updatedComments });
-                          if (onFormUpdate) onFormUpdate(form.id, { correctiveActionsComments: updatedComments });
-                        } else {
-                          updateFormField(form.id, 'correctiveActionsComments', updatedComments);
-                        }
-                      }
-                      showToast('error', 'Time limit exceeded for 80°F Cooling', rowIndex, 'coolingTo80');
-                    }
-                  } else {
-                    // remove existing failMarker if time now valid
-                    if (existingComments.includes(failMarker)) {
-                      const cleaned = existingComments
-                        .split('\n')
-                        .filter((c) => !c.startsWith(failMarker))
-                        .join('\n');
-                      setCorrectiveText(formatNumberedTextFromRaw(cleaned));
-                      if (!readOnly && form) {
-                        if (isAdminForm) {
-                          updateAdminForm(form.id, { correctiveActionsComments: cleaned });
-                          if (onFormUpdate) onFormUpdate(form.id, { correctiveActionsComments: cleaned });
-                        } else {
-                          updateFormField(form.id, 'correctiveActionsComments', cleaned);
-                        }
-                      }
-                    }
-                  }
-                } else if (newTime && !entry?.ccp2?.time) {
-                  const targetComment = `Row ${rowNumber} 80°F Cooling time set but missing CCP2 reference time`;
-                  if (!existingComments.includes(targetComment)) {
-                    const updatedComments = existingComments ? `${existingComments}\n${targetComment}` : targetComment;
-                    setCorrectiveText(formatNumberedTextFromRaw(updatedComments));
-                    if (!readOnly && form) {
-                      if (isAdminForm) {
-                        updateAdminForm(form.id, { correctiveActionsComments: updatedComments });
-                        if (onFormUpdate) onFormUpdate(form.id, { correctiveActionsComments: updatedComments });
-                      } else {
-                        updateFormField(form.id, 'correctiveActionsComments', updatedComments);
-                      }
-                    }
-                    showToast('error', 'Missing CCP2 reference time for 80°F Cooling', rowIndex, 'coolingTo80');
-                  }
-                } else {
-                  // cleared - remove any existing failMarker
-                    if (existingComments.includes(failMarker)) {
-                      const cleaned = existingComments
-                        .split('\n')
-                        .filter((c) => !c.startsWith(failMarker))
-                        .join('\n');
-                      setCorrectiveText(formatNumberedTextFromRaw(cleaned));
-                      if (!readOnly && form) {
-                        if (isAdminForm) {
-                          updateAdminForm(form.id, { correctiveActionsComments: cleaned });
-                          if (onFormUpdate) onFormUpdate(form.id, { correctiveActionsComments: cleaned });
-                        } else {
-                          updateFormField(form.id, 'correctiveActionsComments', cleaned);
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error processing temperature corrective action logic', err);
-      }
     }
   };
 
@@ -1601,8 +1383,11 @@ export default function PaperForm({ formId, readOnly = false, isAdminForm = fals
         return null;
       })()}
 
-  {/* Toast Notifications removed per UX request */}
+    {/* Toast Notifications removed per UX request */}
 
     </div>
   );
 }
+
+export { PaperForm };
+export default PaperForm;

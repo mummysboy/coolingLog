@@ -653,7 +653,7 @@ export default function FormPage() {
               ) : (
                 <PaperForm 
                   key={`${selectedForm.id}-${formUpdateKey}`}
-                  formData={selectedForm}
+                  formId={selectedForm.id}
                   readOnly={selectedForm.status === 'Complete' && !DEBUG_ALLOW_EDIT}
                   onFormUpdate={handleFormUpdate}
                 />

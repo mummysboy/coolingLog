@@ -52,7 +52,7 @@ export function PaperFormDebug() {
       </div>
       
       <PaperForm 
-        formData={testFormData} 
+        formId="debug-test-form-id" 
         readOnly={false}
         onFormUpdate={(formId, updates) => {
           console.log('Form updated:', { formId, updates });
