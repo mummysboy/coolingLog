@@ -190,7 +190,16 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
     }
 
     try {
+      const originalId = currentForm.id;
       await storageManager.savePaperForm(currentForm);
+      // storageManager may have updated currentForm.id to a server-assigned id.
+      if (currentForm.id !== originalId) {
+        console.log(`Form id was updated by server: ${originalId} -> ${currentForm.id}`);
+        // Replace any savedForms entry that used the old id with the updated form
+        set((state) => ({
+          savedForms: state.savedForms.map((f) => (f.id === originalId ? currentForm : f))
+        }));
+      }
       console.log("✅ Form saved successfully to AWS DynamoDB");
     } catch (error) {
       console.error("❌ Error saving form to AWS DynamoDB:", error);

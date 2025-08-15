@@ -216,9 +216,16 @@ export function validateFormRow(row: BaseFormRow, rowIndex: number): FormValidat
     if (row.coolingTo80.time && row.ccp2.time) {
       const timeDiff = getTimeDifferenceMinutes(row.ccp2.time, row.coolingTo80.time);
       if (timeDiff !== null && timeDiff > 105) {
+        // Mark both time and temp as error for visibility/highlighting
         errors.push({
           rowIndex,
           field: 'coolingTo80.time',
+          message: `Time limit exceeded`,
+          severity: 'error'
+        });
+        errors.push({
+          rowIndex,
+          field: 'coolingTo80.temp',
           message: `Time limit exceeded`,
           severity: 'error'
         });
@@ -226,6 +233,12 @@ export function validateFormRow(row: BaseFormRow, rowIndex: number): FormValidat
         errors.push({
           rowIndex,
           field: 'coolingTo80.time',
+          message: `Invalid time sequence`,
+          severity: 'error'
+        });
+        errors.push({
+          rowIndex,
+          field: 'coolingTo80.temp',
           message: `Invalid time sequence`,
           severity: 'error'
         });
@@ -237,6 +250,12 @@ export function validateFormRow(row: BaseFormRow, rowIndex: number): FormValidat
         message: `Missing reference time`,
         severity: 'error'
         });
+      errors.push({
+        rowIndex,
+        field: 'coolingTo80.temp',
+        message: `Missing reference time`,
+        severity: 'error'
+      });
     }
   }
   
@@ -261,9 +280,16 @@ export function validateFormRow(row: BaseFormRow, rowIndex: number): FormValidat
     if (row.coolingTo54.time && referenceTime) {
       const timeDiff = getTimeDifferenceMinutes(referenceTime, row.coolingTo54.time);
       if (timeDiff !== null && timeDiff > 4.75 * 60) { // Convert 4.75 hours to minutes
+        // Mark both the time field and the temp field as errors so the temp box highlights
         errors.push({
           rowIndex,
           field: 'coolingTo54.time',
+          message: `Time limit exceeded`,
+          severity: 'error'
+        });
+        errors.push({
+          rowIndex,
+          field: 'coolingTo54.temp',
           message: `Time limit exceeded`,
           severity: 'error'
         });
@@ -274,11 +300,23 @@ export function validateFormRow(row: BaseFormRow, rowIndex: number): FormValidat
           message: `Invalid time sequence`,
           severity: 'error'
         });
+        errors.push({
+          rowIndex,
+          field: 'coolingTo54.temp',
+          message: `Invalid time sequence`,
+          severity: 'error'
+        });
       }
     } else if (row.coolingTo54.time && !referenceTime) {
       errors.push({
         rowIndex,
         field: 'coolingTo54.time',
+        message: `Missing reference time`,
+        severity: 'error'
+      });
+      errors.push({
+        rowIndex,
+        field: 'coolingTo54.temp',
         message: `Missing reference time`,
         severity: 'error'
       });

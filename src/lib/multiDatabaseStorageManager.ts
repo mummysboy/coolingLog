@@ -12,6 +12,36 @@ import {
 // AWS API Client
 const client = generateClient();
 
+// Attempt to get a serialized, server-assigned form id. This expects a backend
+// mutation like `getNextFormId` that returns { nextId: String }. If the
+// mutation isn't available (common until backend is updated), this helper
+// gracefully falls back to a locally-generated unique id.
+async function requestNextFormIdFromServer(): Promise<string> {
+  try {
+    const result = await client.graphql({
+      query: `mutation GetNextFormId { getNextFormId { nextId } }`
+    });
+
+    // Best-effort extraction. Different backends may return slightly
+    // different shapes, so check common locations.
+    const nextId = (result as any)?.data?.getNextFormId?.nextId || (result as any)?.data?.getNextFormId || null;
+    if (nextId && typeof nextId === 'string') {
+      console.log('Received server-assigned form id:', nextId);
+      return nextId;
+    }
+    console.warn('Server did not return a nextId, falling back to local id generation');
+  } catch (err) {
+    // This is expected if the backend doesn't expose the mutation yet.
+    console.warn('Request for server-assigned form id failed:', err);
+  }
+
+  // Fallback: generate a reasonably-unique id client-side to avoid collisions
+  // in practice. This is not strictly serialized but prevents easy duplicates.
+  const fallback = `form-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  console.log('Using fallback generated form id:', fallback);
+  return fallback;
+}
+
 // Helper function to convert time string (HH:MM) to DateTime
 function convertTimeStringToDateTime(timeString: string, baseDate: Date): string | null {
   if (!timeString || !baseDate) return null;
@@ -568,7 +598,7 @@ class MultiTableStorageManager {
         const existingForm = await this.getPaperForm(form.id, form.formType);
         console.log('Existing form found:', existingForm ? 'Yes' : 'No');
         
-        if (existingForm) {
+  if (existingForm) {
           console.log('Updating existing cooking/cooling form...');
           try {
             const result = await client.graphql({
@@ -585,6 +615,13 @@ class MultiTableStorageManager {
         } else {
           console.log('Creating new cooking/cooling form...');
           try {
+            // Request a server-assigned serialized id, falling back if not available
+            const serverId = await requestNextFormIdFromServer();
+            // Update both the form input and the original form object id so
+            // callers can learn the final assigned id.
+            input.id = serverId;
+            form.id = serverId;
+
             const result = await client.graphql({
               query: `mutation CreateCookingCoolingFormEntry($input: CreateCookingCoolingFormEntryInput!) {
                 createCookingCoolingFormEntry(input: $input) { id }
@@ -592,6 +629,14 @@ class MultiTableStorageManager {
               variables: { input }
             });
             console.log('Create result:', result);
+
+            // If server returned a different id, prefer the server value and
+            // update the in-memory form as well.
+            const returnedId = (result as any)?.data?.createCookingCoolingFormEntry?.id;
+            if (returnedId && returnedId !== serverId) {
+              console.log('Server returned different id, updating form id to server value:', returnedId);
+              form.id = returnedId;
+            }
           } catch (graphqlError) {
             console.error('GraphQL create error:', graphqlError);
             throw new Error(`Failed to create cooking/cooling form: ${graphqlError instanceof Error ? graphqlError.message : 'Unknown error'}`);
@@ -602,7 +647,7 @@ class MultiTableStorageManager {
         const existingForm = await this.getPaperForm(form.id, form.formType);
         console.log('Existing form found:', existingForm ? 'Yes' : 'No');
         
-        if (existingForm) {
+  if (existingForm) {
           console.log('Updating existing piroshki form...');
           try {
             const result = await client.graphql({
@@ -619,6 +664,10 @@ class MultiTableStorageManager {
         } else {
           console.log('Creating new piroshki form...');
           try {
+            const serverId = await requestNextFormIdFromServer();
+            input.id = serverId;
+            form.id = serverId;
+
             const result = await client.graphql({
               query: `mutation CreatePiroshkiFormEntry($input: CreatePiroshkiFormEntryInput!) {
                 createPiroshkiFormEntry(input: $input) { id }
@@ -626,6 +675,12 @@ class MultiTableStorageManager {
               variables: { input }
             });
             console.log('Create result:', result);
+
+            const returnedId = (result as any)?.data?.createPiroshkiFormEntry?.id;
+            if (returnedId && returnedId !== serverId) {
+              console.log('Server returned different id, updating form id to server value:', returnedId);
+              form.id = returnedId;
+            }
           } catch (graphqlError) {
             console.error('GraphQL create error:', graphqlError);
             throw new Error(`Failed to create piroshki form: ${graphqlError instanceof Error ? graphqlError.message : 'Unknown error'}`);
@@ -636,7 +691,7 @@ class MultiTableStorageManager {
         const existingForm = await this.getPaperForm(form.id, form.formType);
         console.log('Existing form found:', existingForm ? 'Yes' : 'No');
         
-        if (existingForm) {
+  if (existingForm) {
           console.log('Updating existing bagel dog form...');
           try {
             const result = await client.graphql({
@@ -653,6 +708,10 @@ class MultiTableStorageManager {
         } else {
           console.log('Creating new bagel dog form...');
           try {
+            const serverId = await requestNextFormIdFromServer();
+            input.id = serverId;
+            form.id = serverId;
+
             const result = await client.graphql({
               query: `mutation CreateBagelDogFormEntry($input: CreateBagelDogFormEntryInput!) {
                 createBagelDogFormEntry(input: $input) { id }
@@ -660,6 +719,12 @@ class MultiTableStorageManager {
               variables: { input }
             });
             console.log('Create result:', result);
+
+            const returnedId = (result as any)?.data?.createBagelDogFormEntry?.id;
+            if (returnedId && returnedId !== serverId) {
+              console.log('Server returned different id, updating form id to server value:', returnedId);
+              form.id = returnedId;
+            }
           } catch (graphqlError) {
             console.error('GraphQL create error:', graphqlError);
             throw new Error(`Failed to create bagel dog form: ${graphqlError instanceof Error ? graphqlError.message : 'Unknown error'}`);

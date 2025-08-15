@@ -1,5 +1,6 @@
-import React from 'react';
-import { PaperForm } from './PaperForm';
+import React, { useEffect } from 'react';
+import PaperForm from './PaperForm';
+import { usePaperFormStore } from '../stores/paperFormStore';
 import { CookingCoolingFormEntry, FormType } from '../lib/paperFormTypes';
 
 // Simple test form data
@@ -41,6 +42,13 @@ const testFormData: CookingCoolingFormEntry = {
 };
 
 export function PaperFormDebug() {
+  useEffect(() => {
+    // Load test data into the store so PaperForm can read it
+    (usePaperFormStore as any).setState({ currentForm: testFormData });
+    // cleanup: clear form on unmount
+    return () => (usePaperFormStore as any).setState({ currentForm: null });
+  }, []);
+
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">PaperForm Debug Component</h1>
@@ -52,7 +60,7 @@ export function PaperFormDebug() {
       </div>
       
       <PaperForm 
-        formData={testFormData} 
+        formId={testFormData.id}
         readOnly={false}
         onFormUpdate={(formId, updates) => {
           console.log('Form updated:', { formId, updates });

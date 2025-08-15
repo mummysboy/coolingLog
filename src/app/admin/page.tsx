@@ -6,7 +6,7 @@ import { usePaperFormStore } from '@/stores/paperFormStore';
 import { usePinStore } from '@/stores/pinStore';
 import { MOCK_USERS } from '@/lib/types';
 import { PaperFormEntry, FormType } from '@/lib/paperFormTypes';
-import { PaperForm } from '@/components/PaperForm';
+import PaperForm from '@/components/PaperForm';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
 import BagelDogForm from '@/components/BagelDogForm';
 import { shouldHighlightCell } from '@/lib/validation';
@@ -41,6 +41,15 @@ export default function AdminDashboard() {
 
 
   const adminUser = MOCK_USERS.find(user => user.role === 'admin');
+
+  // When an admin selects a form, load it into the paperForm store as the currentForm
+  useEffect(() => {
+    if (selectedForm) {
+      (usePaperFormStore as any).setState({ currentForm: selectedForm });
+    } else {
+      (usePaperFormStore as any).setState({ currentForm: null });
+    }
+  }, [selectedForm]);
 
   // Load forms and initials from AWS when admin page loads
   useEffect(() => {
@@ -1176,8 +1185,9 @@ export default function AdminDashboard() {
                    />
                 ) : (
                   <PaperForm 
-                    key={`${selectedForm.id}-${dashboardRefreshKey}`}
-                    formData={selectedForm}
+                    key={`${selectedForm?.id || 'none'}-${dashboardRefreshKey}`}
+                    formId={selectedForm?.id || ''}
+                    isAdminForm={true}
                     readOnly={false}
                     onFormUpdate={(formId, updates) => {
                       console.log('Admin form updated:', formId, updates);

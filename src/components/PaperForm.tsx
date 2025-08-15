@@ -6,6 +6,7 @@ import {
   validateTemperatureCell,
   validateForm,
   getTimeDifferenceMinutes,
+  shouldHighlightCell as validateCellHighlight,
 } from "../lib/validation";
 import { TimePicker } from "./TimePicker";
 import { TextCell } from "./TextCell";
@@ -48,15 +49,13 @@ export default function PaperForm({
     return new Date();
   };
 
-  const shouldHighlightCell = (
-    _form: any,
-    _rowIndex: number,
-    _field: string
-  ) => {
-    // Placeholder: plug your real validation here
+  // Use the validation helper to decide cell highlighting
+  const shouldHighlightCell = (f: any, rowIndex: number, field: string) => {
+    const res = validateCellHighlight(f, rowIndex, field);
     return {
-      highlight: false,
-      severity: "none" as "none" | "warning" | "error",
+      highlight: res.highlight,
+      // normalize to expected string values for downstream checks
+      severity: (res.severity as "error" | "warning" | null) ?? null,
     };
   };
 
@@ -199,7 +198,8 @@ export default function PaperForm({
             stage as any
           );
           if (!validation.isValid && validation.error) {
-            const targetComment = `Row ${rowNumber} ${stageLabel[stage]} temperature ${tempNum}°F - ${validation.error}`;
+            // concise single-line comment
+            const targetComment = `Row ${rowNumber} ${stageLabel[stage]} ${tempNum}°F — ${validation.error.replace(/Temperature \d+°F is below minimum required (\d+)°F/, 'below $1°F')}`;
             if (!existingComments.includes(targetComment)) {
               const updatedComments = existingComments
                 ? `${existingComments}\n${targetComment}`
@@ -275,7 +275,8 @@ export default function PaperForm({
         if (newTime && entry?.ccp2?.time) {
           const diff = getTimeDifferenceMinutes(entry.ccp2.time, newTime);
           if (diff !== null && diff > 105) {
-            const targetComment = `${failMarkerPrefix} ${diff} minutes - Time limit exceeded (105 minutes)`;
+            // concise single-line time comment
+            const targetComment = `Row ${rowNumber} 80°F ${diff}min — >105min`;
             if (!existingComments.includes(targetComment)) {
               const updatedComments = existingComments
                 ? `${existingComments}\n${targetComment}`
@@ -313,7 +314,8 @@ export default function PaperForm({
             }
           }
         } else if (newTime && !entry?.ccp2?.time) {
-          const targetComment = `Row ${rowNumber} 80°F Cooling time set but missing CCP2 reference time`;
+          // concise missing reference comment
+          const targetComment = `Row ${rowNumber} 80°F time set — missing CCP2 time`;
           if (!existingComments.includes(targetComment)) {
             const updatedComments = existingComments
               ? `${existingComments}\n${targetComment}`
@@ -404,31 +406,7 @@ export default function PaperForm({
 
     const currentEntry = form.entries[rowIndex];
     const stageData = currentEntry[stageName] as any;
-
-    // Always validate CCP1/CCP2 temp immediately
-    if (
-      (stageName === "ccp1" || stageName === "ccp2") &&
-      fieldType === "temp"
-    ) {
-      const v = shouldHighlightCell(form, rowIndex, field);
-      if (v.highlight) {
-        if (v.severity === "error")
-          return `${base} bg-red-200 border-2 border-red-500 shadow-sm`;
-        if (v.severity === "warning")
-          return `${base} bg-yellow-200 border-2 border-yellow-500 shadow-sm`;
-      }
-      return base;
-    }
-
-    // Other stages: only highlight when stage complete
-    const hasTemp = stageData?.temp && String(stageData.temp).trim() !== "";
-    const hasTime = stageData?.time && String(stageData.time).trim() !== "";
-    const hasInitial =
-      stageData?.initial && String(stageData.initial).trim() !== "";
-    const isComplete = hasTemp && hasTime && hasInitial;
-
-    if (!isComplete) return base;
-
+    // Always apply highlight if validation flags this cell
     const v = shouldHighlightCell(form, rowIndex, field);
     if (v.highlight) {
       if (v.severity === "error")
@@ -436,6 +414,8 @@ export default function PaperForm({
       if (v.severity === "warning")
         return `${base} bg-yellow-200 border-2 border-yellow-500 shadow-sm`;
     }
+
+    // Otherwise, keep default
     return base;
   };
 
@@ -669,7 +649,7 @@ export default function PaperForm({
                         handleCellChange(rowIndex, "ccp1.time", time)
                       }
                       placeholder="Time"
-                      className="w-full"
+                      className={getCellClasses(rowIndex, "ccp1.time", "w-full")}
                       disabled={readOnly}
                       showQuickTimes={false}
                       compact
@@ -739,7 +719,11 @@ export default function PaperForm({
                         if (isNaN(parsed)) return false;
                         return parsed < 127;
                       }}
-                      className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className={getCellClasses(
+                        rowIndex,
+                        "ccp2.temp",
+                        "w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      )}
                       placeholder="°F"
                       type="number"
                       step="0.1"
@@ -753,7 +737,7 @@ export default function PaperForm({
                         handleCellChange(rowIndex, "ccp2.time", time)
                       }
                       placeholder="Time"
-                      className="w-full"
+                      className={getCellClasses(rowIndex, "ccp2.time", "w-full")}
                       disabled={readOnly}
                       showQuickTimes={false}
                       compact
@@ -822,7 +806,11 @@ export default function PaperForm({
                         );
                         return !isNaN(parsed) && parsed > 80;
                       }}
-                      className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className={getCellClasses(
+                        rowIndex,
+                        "coolingTo80.temp",
+                        "w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      )}
                       placeholder="°F"
                       type="number"
                       step="0.1"
@@ -836,7 +824,7 @@ export default function PaperForm({
                         handleCellChange(rowIndex, "coolingTo80.time", time)
                       }
                       placeholder="Time"
-                      className="w-full"
+                      className={getCellClasses(rowIndex, "coolingTo80.time", "w-full")}
                       disabled={readOnly}
                       showQuickTimes={false}
                       compact
@@ -906,7 +894,11 @@ export default function PaperForm({
                       onBlurValidate={(value: string) =>
                         handleCellChange(rowIndex, "coolingTo54.temp", value)
                       }
-                      className="w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className={getCellClasses(
+                        rowIndex,
+                        "coolingTo54.temp",
+                        "w-full text-xs text-center rounded-sm focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-150 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      )}
                       placeholder="°F"
                       type="number"
                       step="0.1"
@@ -920,7 +912,7 @@ export default function PaperForm({
                         handleCellChange(rowIndex, "coolingTo54.time", time)
                       }
                       placeholder="Time"
-                      className="w-full"
+                      className={getCellClasses(rowIndex, "coolingTo54.time", "w-full")}
                       disabled={readOnly}
                       showQuickTimes={false}
                       compact
@@ -1004,7 +996,7 @@ export default function PaperForm({
                         handleCellChange(rowIndex, "finalChill.time", time)
                       }
                       placeholder="Time"
-                      className="w-full"
+                      className={getCellClasses(rowIndex, "finalChill.time", "w-full")}
                       disabled={readOnly}
                       showQuickTimes={false}
                       compact
@@ -1360,72 +1352,7 @@ export default function PaperForm({
         </div>
       )}
 
-      {/* Validation Summary */}
-      {form &&
-        form.status !== "In Progress" &&
-        (() => {
-          const validation = validateForm(form);
-          const unresolved = validation.errors.filter((error: any) => {
-            const id = `${error.rowIndex}-${error.field}-${error.message}`;
-            return !form.resolvedErrors?.includes(id);
-          });
-          if (unresolved.length === 0) return null;
-
-          return (
-            <div className="mt-4 p-4 border-2 border-red-300 bg-red-50 rounded-lg">
-              <h3 className="text-lg font-semibold text-red-800 mb-2 flex items-center">
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                  />
-                </svg>
-                Validation Issues Found
-              </h3>
-              <div className="space-y-2">
-                {unresolved.map((error: any, index: number) => (
-                  <div
-                    key={index}
-                    className={`text-sm p-2 rounded ${
-                      error.severity === "error"
-                        ? "bg-red-100 text-red-800 border border-red-200"
-                        : "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                    }`}
-                  >
-                    <div>
-                      <span className="font-medium">
-                        Row {error.rowIndex + 1}:
-                      </span>{" "}
-                      {error.message}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 text-sm text-red-700">
-                <strong>Summary:</strong>{" "}
-                {unresolved.filter((e: any) => e.severity === "error").length}{" "}
-                errors,{" "}
-                {unresolved.filter((e: any) => e.severity === "warning").length}{" "}
-                warnings. Compliance rate:{" "}
-                {validation.summary.totalEntries > 0
-                  ? Math.round(
-                      (validation.summary.compliantEntries /
-                        validation.summary.totalEntries) *
-                        100
-                    )
-                  : 0}
-                %
-              </div>
-            </div>
-          );
-        })()}
+  {/* Validation summary removed per request */}
     </div>
   );
 }

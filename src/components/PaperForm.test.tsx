@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { PaperForm } from './PaperForm';
+import PaperForm from './PaperForm';
 
 // Mock the store
 jest.mock('@/stores/paperFormStore', () => ({
@@ -12,6 +12,7 @@ jest.mock('@/stores/paperFormStore', () => ({
     updateFormStatus: jest.fn(),
     saveForm: jest.fn(),
     updateAdminForm: jest.fn(),
+    setState: jest.fn(),
   }),
 }));
 
@@ -68,7 +69,9 @@ describe('PaperForm', () => {
   };
 
   it('renders without crashing when form data is provided', () => {
-    render(<PaperForm formData={mockFormData} />);
+  // load mock form into store
+  (require('@/stores/paperFormStore').usePaperFormStore as any).setState({ currentForm: mockFormData });
+  render(<PaperForm formId={mockFormData.id} />);
     
     // Should render the form table
     expect(screen.getByText('Rack')).toBeInTheDocument();
@@ -77,7 +80,8 @@ describe('PaperForm', () => {
   });
 
   it('renders form entries correctly', () => {
-    render(<PaperForm formData={mockFormData} />);
+  (require('@/stores/paperFormStore').usePaperFormStore as any).setState({ currentForm: mockFormData });
+  render(<PaperForm formId={mockFormData.id} />);
     
   // Should render the first entry with blank rack shown as the placeholder option
   expect(screen.getByDisplayValue('--')).toBeInTheDocument();
@@ -85,14 +89,15 @@ describe('PaperForm', () => {
   });
 
   it('handles read-only mode', () => {
-    render(<PaperForm formData={mockFormData} readOnly={true} />);
+  (require('@/stores/paperFormStore').usePaperFormStore as any).setState({ currentForm: mockFormData });
+  render(<PaperForm formId={mockFormData.id} readOnly={true} />);
     
   // Should render in read-only mode (blank/default option should be disabled)
   expect(screen.getByDisplayValue('--')).toHaveAttribute('disabled');
   });
 
   it('returns null when no form data is provided', () => {
-    const { container } = render(<PaperForm />);
+  const { container } = render(<PaperForm />);
     
     // Should return null (empty container)
     expect(container.firstChild).toBeNull();
