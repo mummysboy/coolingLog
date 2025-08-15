@@ -14,7 +14,7 @@ import BagelDogForm from '@/components/BagelDogForm';
 const DEBUG_ALLOW_EDIT = false;
 
 export default function FormPage() {
-  const { currentForm, createNewForm, updateFormStatus, saveForm, savedForms, loadForm, deleteForm, loadFormsFromStorage } = usePaperFormStore();
+  const { currentForm, createNewForm, updateFormStatus, approveForm, saveForm, savedForms, loadForm, deleteForm, loadFormsFromStorage } = usePaperFormStore();
   const store = usePaperFormStore; // Get store reference for getState()
   const [formUpdateKey, setFormUpdateKey] = useState(0); // Force re-render when form updates
   const [isLoadingForm, setIsLoadingForm] = useState(false);
@@ -31,7 +31,7 @@ export default function FormPage() {
   // Memoized form lists to avoid repeated filtering/sorting on every render
   const activeForms = useMemo(() => 
     savedForms
-      .filter((form: PaperFormEntry) => form.status !== 'Complete')
+      .filter((form: PaperFormEntry) => form.status !== 'Complete' && form.status !== 'Approved')
       .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [savedForms]
   );
@@ -39,6 +39,13 @@ export default function FormPage() {
   const completedForms = useMemo(() => 
     savedForms
       .filter((form: PaperFormEntry) => form.status === 'Complete')
+      .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [savedForms]
+  );
+
+  const approvedForms = useMemo(() => 
+    savedForms
+      .filter((form: PaperFormEntry) => form.status === 'Approved')
       .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [savedForms]
   );
@@ -552,6 +559,9 @@ export default function FormPage() {
                                   <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                                     <span>Form #{form.id.slice(-6)}</span>
                                     <span className="text-gray-600 font-medium">✓ Finalized</span>
+                                    {form.approvedBy && (
+                                      <span className="ml-2 text-indigo-600 text-sm">Approved by {form.approvedBy}</span>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -575,7 +585,7 @@ export default function FormPage() {
                                   View Form
                                 </button>
                                 
-                                {/* Delete Form Button - REMOVED for completed forms to protect finalized data */}
+                                {/* Approval is handled from Admin UI; remove approve button from /form page */}
                               </div>
                             </div>
                             
@@ -619,6 +629,58 @@ export default function FormPage() {
                       ))}
                   </div>
                 )}
+                {/* Approved Forms Section */}
+                {approvedForms.length > 0 && (
+                  <div className="mb-8">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                      <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Approved Forms
+                    </h2>
+
+                    {approvedForms.map((form: PaperFormEntry) => (
+                      <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
+                        <div className={`p-6`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                              <div>
+                                <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
+                                <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
+                                <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                                  <span>Form #{form.id.slice(-6)}</span>
+                                  {form.approvedBy && (
+                                    <span className="text-sm text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-3">
+                              <div className="flex flex-col items-end text-sm text-gray-600">
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">✓ Approved</span>
+                                {form.approvedBy && (
+                                  <span className="text-xs text-indigo-700 mt-1">By {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => handleViewForm(form)}
+                                className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                                title="View approved form (read-only)"
+                              >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                View Form
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -635,14 +697,15 @@ export default function FormPage() {
                 </h3>
                 <div className="text-sm text-gray-600 mt-1">
                   Status: <span className={`font-medium ${
+                    selectedForm.status === 'Approved' ? 'text-indigo-600' :
                     selectedForm.status === 'Complete' ? 'text-green-600' :
                     selectedForm.status === 'In Progress' ? 'text-yellow-600' :
                     'text-orange-600'
                   }`}>
                     {selectedForm.status}
                   </span>
-                  {selectedForm.status === 'Complete' && (
-                    <span className="ml-2 text-green-600 font-medium">(Read-Only)</span>
+                  {(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && (
+                    <span className={`ml-2 font-medium ${selectedForm.status === 'Approved' ? 'text-indigo-600' : 'text-green-600'}`}>(Read-Only)</span>
                   )}
                   {DEBUG_ALLOW_EDIT && (
                     <div className="mt-1 text-orange-600 font-medium">
@@ -702,14 +765,14 @@ export default function FormPage() {
                 <PiroshkiForm 
                   key={`${selectedForm.id}-${formUpdateKey}`}
                   formData={selectedForm}
-                  readOnly={selectedForm.status === 'Complete' && !DEBUG_ALLOW_EDIT}
+                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
                   onFormUpdate={handleFormUpdate}
                 />
               ) : (
                 <PaperForm 
                   key={`${selectedForm.id}-${formUpdateKey}`}
                   formId={selectedForm.id}
-                  readOnly={selectedForm.status === 'Complete' && !DEBUG_ALLOW_EDIT}
+                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
                   onFormUpdate={handleFormUpdate}
                 />
               )}

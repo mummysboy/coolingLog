@@ -78,7 +78,7 @@ export interface BaseFormEntry {
   lastTextEntry: Date;
   formType: FormType;
   formInitial: string;
-  status: 'Complete' | 'In Progress' | 'Error';
+  status: 'Complete' | 'In Progress' | 'Error' | 'Approved';
   title: string;
   entries: BaseFormRow[];
   thermometerNumber: string;
@@ -95,6 +95,9 @@ export interface BaseFormEntry {
   correctiveActionsComments: string;
   adminComments: AdminComment[];
   resolvedErrors: string[];
+  // Approval metadata (optional)
+  approvedBy?: string;
+  approvedAt?: Date;
 }
 
 // Base form row interface with common fields
