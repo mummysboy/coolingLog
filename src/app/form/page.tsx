@@ -9,6 +9,7 @@ import PaperForm from '@/components/PaperForm';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
 import { validateForm, shouldHighlightCell } from '@/lib/validation';
 import BagelDogForm from '@/components/BagelDogForm';
+import { generateFormPDF } from '@/lib/pdfGenerator';
 
 // Debug flag for development
 const DEBUG_ALLOW_EDIT = false;
@@ -98,6 +99,257 @@ export default function FormPage() {
       setNewlyCreatedFormId(currentForm.id);
     }
   }, [createNewForm, store]);
+
+  // Function to handle PDF download
+  const handleDownloadPDF = useCallback(async (form: PaperFormEntry) => {
+    try {
+      await generateFormPDF({
+        id: form.id,
+        title: form.title || getFormTypeDisplayName(form.formType),
+        formType: form.formType,
+        date: form.date.toISOString(),
+        status: form.status,
+        approvedBy: form.approvedBy,
+        approvedAt: form.approvedAt ? form.approvedAt.toISOString() : undefined,
+        correctiveActionsComments: form.correctiveActionsComments,
+        thermometerNumber: form.thermometerNumber,
+        lotNumbers: form.lotNumbers,
+        entries: form.entries,
+        quantityAndFlavor: (form as any).quantityAndFlavor,
+        preShipmentReview: (form as any).preShipmentReview,
+        frankFlavorSizeTable: (form as any).frankFlavorSizeTable,
+        bagelDogPreShipmentReview: (form as any).bagelDogPreShipmentReview
+      });
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    }
+  }, []);
+
+  // Function to handle form printing
+  const handlePrintForm = useCallback((form: PaperFormEntry) => {
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank', 'width=1200,height=800');
+    
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${form.title ? form.title : 'Food Chilling Log'} - Form #${form.id.slice(-6)}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: system-ui, -apple-system, sans-serif;
+              background: white;
+              padding: 24px;
+              color: black;
+            }
+            .form-container {
+              background: white;
+              max-width: 1200px;
+              margin: 0 auto;
+            }
+            .header-section {
+              border: 2px solid black;
+              margin-bottom: 16px;
+            }
+            .header-title {
+              background: #f3f4f6;
+              padding: 16px;
+              text-align: center;
+            }
+            .header-title h1 {
+              font-size: 20px;
+              font-weight: bold;
+            }
+            .header-content {
+              padding: 16px;
+            }
+            .main-table-container {
+              border: 2px solid black;
+            }
+            .main-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .main-table th,
+            .main-table td {
+              border: 1px solid black;
+              padding: 8px;
+              text-align: center;
+              vertical-align: top;
+            }
+            .main-table td:first-child {
+              text-align: left;
+            }
+            .main-table thead tr:first-child th {
+              background: #f3f4f6;
+              font-weight: bold;
+              font-size: 13px;
+            }
+            .main-table thead tr:nth-child(2) th {
+              background: #f9fafb;
+              font-size: 12px;
+              padding: 4px;
+            }
+            .row-number {
+              font-weight: bold;
+              font-size: 14px;
+            }
+            .cell-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr 1fr;
+              gap: 4px;
+              font-size: 12px;
+            }
+            .bottom-section {
+              border: 2px solid black;
+              border-top: 0;
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+            }
+            .left-section {
+              border-right: 1px solid black;
+            }
+            .thermometer-section {
+              border-bottom: 1px solid black;
+              padding: 8px;
+              text-align: center;
+              font-weight: bold;
+            }
+            .ingredients-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .ingredients-table th,
+            .ingredients-table td {
+              border: 1px solid black;
+              padding: 4px;
+              text-align: center;
+              font-size: 12px;
+            }
+            .right-section {
+              padding: 8px;
+            }
+            .comments-title {
+              font-weight: bold;
+              margin-bottom: 4px;
+            }
+            .comments-content {
+              min-height: 60px;
+              border: 1px solid #d1d5db;
+              padding: 4px;
+              font-size: 12px;
+            }
+            @media print {
+              body { padding: 0; }
+              .form-container { max-width: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="form-container">
+            <div class="header-section">
+              <div class="header-title">
+                <h1>${form.title ? form.title : getFormTypeDisplayName(form.formType)}</h1>
+              </div>
+              <div class="header-content">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 14px;">
+                  <div>
+                    <strong>Form ID:</strong> ${form.id}<br>
+                    <strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}<br>
+                    <strong>Initial:</strong> ${form.formInitial || 'N/A'}
+                  </div>
+                  <div>
+                    <strong>Status:</strong> ${form.status}<br>
+                    <strong>Thermometer:</strong> ${form.thermometerNumber || 'N/A'}<br>
+                    ${form.approvedBy ? `<strong>Approved by:</strong> ${form.approvedBy}` : ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="main-table-container">
+              <table class="main-table">
+                <thead>
+                  <tr>
+                    <th rowspan="2">Row</th>
+                    <th rowspan="2">Time</th>
+                    <th colspan="3">Temperature (°F)</th>
+                    <th rowspan="2">Initials</th>
+                  </tr>
+                  <tr>
+                    <th>Beef</th>
+                    <th>Chicken</th>
+                    <th>Liquid Eggs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${form.entries ? form.entries.map((entry, index) => `
+                    <tr>
+                      <td class="row-number">${index + 1}</td>
+                      <td>${entry.time || ''}</td>
+                      <td>${entry.beefTemp || ''}</td>
+                      <td>${entry.chickenTemp || ''}</td>
+                      <td>${entry.liquidEggsTemp || ''}</td>
+                      <td>${entry.initials || ''}</td>
+                    </tr>
+                  `).join('') : ''}
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="bottom-section">
+              <div class="left-section">
+                <div class="thermometer-section">
+                  Thermometer Number: ${form.thermometerNumber || 'N/A'}
+                </div>
+                <div style="padding: 8px;">
+                  <table class="ingredients-table">
+                    <tr>
+                      <th>Ingredient</th>
+                      <th>Lot Number</th>
+                    </tr>
+                    <tr>
+                      <td>Beef</td>
+                      <td>${form.ingredients?.beef || 'N/A'}</td>
+                    </tr>
+                    <tr>
+                      <td>Chicken</td>
+                      <td>${form.ingredients?.chicken || 'N/A'}</td>
+                    </tr>
+                    <tr>
+                      <td>Liquid Eggs</td>
+                      <td>${form.ingredients?.liquidEggs || 'N/A'}</td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+              <div class="right-section">
+                <div class="comments-title">Corrective Actions & comments:</div>
+                <div class="comments-content">
+                  ${form.correctiveActionsComments || ''}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <script>
+            window.onload = function() {
+              window.print();
+              window.onafterprint = function() {
+                window.close();
+              };
+            };
+          </script>
+        </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+    }
+  }, []);
 
   // Function to open form in modal - exactly like admin page
   const handleViewForm = (form: PaperFormEntry) => {
@@ -532,6 +784,42 @@ export default function FormPage() {
                               ✓ Complete
                             </span>
                             
+                                                                                  {/* Download PDF Button */}
+                            <button
+                              onClick={() => handleDownloadPDF(form)}
+                              className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-700 transition-colors"
+                              title="Download form as PDF"
+                            >
+                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              Download PDF
+                            </button>
+
+                            {/* Print Button */}
+                            <button
+                              onClick={() => handlePrintForm(form)}
+                              className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                              title="Print form"
+                            >
+                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                              </svg>
+                              Print
+                            </button>
+
+                          {/* Print Button */}
+                          <button
+                            onClick={() => handlePrintForm(form)}
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                            title="Print form"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            Print
+                          </button>
+                            
                             {/* View Form Button - Read Only */}
                             <button
                               onClick={() => handleViewForm(form)}
@@ -623,6 +911,19 @@ export default function FormPage() {
                               <span className="text-xs text-indigo-700 mt-1">By {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
                             )}
                           </div>
+                          
+                          {/* Download PDF Button */}
+                          <button
+                            onClick={() => handleDownloadPDF(form)}
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-700 transition-colors"
+                            title="Download form as PDF"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Download PDF
+                          </button>
+                          
                           <button
                             onClick={() => handleViewForm(form)}
                             className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"

@@ -10,6 +10,7 @@ import PaperForm from '@/components/PaperForm';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
 import BagelDogForm from '@/components/BagelDogForm';
 import { shouldHighlightCell } from '@/lib/validation';
+import { generateFormPDF } from '@/lib/pdfGenerator';
 
 
 export default function AdminDashboard() {
@@ -621,6 +622,31 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDownloadPDF = async (form: PaperFormEntry) => {
+    try {
+      await generateFormPDF({
+        id: form.id,
+        title: form.title || getFormTypeDisplayName(form.formType),
+        formType: form.formType,
+        date: form.date.toISOString(),
+        status: form.status,
+        approvedBy: form.approvedBy,
+        approvedAt: form.approvedAt ? form.approvedAt.toISOString() : undefined,
+        correctiveActionsComments: form.correctiveActionsComments,
+        thermometerNumber: form.thermometerNumber,
+        lotNumbers: form.lotNumbers,
+        entries: form.entries,
+        quantityAndFlavor: (form as any).quantityAndFlavor,
+        preShipmentReview: (form as any).preShipmentReview,
+        frankFlavorSizeTable: (form as any).frankFlavorSizeTable,
+        bagelDogPreShipmentReview: (form as any).bagelDogPreShipmentReview
+      });
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    }
+  };
+
   const handleDeleteForm = (formId: string) => {
     const formToDelete = savedForms.find(form => form.id === formId);
     if (!formToDelete) return;
@@ -1073,6 +1099,18 @@ export default function AdminDashboard() {
                           View Form
                         </button>
 
+                        {/* Download PDF Button */}
+                        <button
+                          onClick={() => handleDownloadPDF(form)}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-700 transition-colors"
+                          title="Download form as PDF"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download PDF
+                        </button>
+
                         <button
                           onClick={() => handleDeleteForm(form.id)}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors"
@@ -1098,8 +1136,8 @@ export default function AdminDashboard() {
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
                         >
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.07 7.93A10 10 0 1112 2v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v4" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.07 7.93A10 10 0 1112 2v2" />
                           </svg>
                           Reopen
                         </button>
@@ -1193,6 +1231,18 @@ export default function AdminDashboard() {
                           Print
                         </button>
 
+                        {/* Download PDF Button */}
+                        <button
+                          onClick={() => handleDownloadPDF(form)}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-700 transition-colors"
+                          title="Download form as PDF"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download PDF
+                        </button>
+
                         <button
                           onClick={async () => {
                             try {
@@ -1208,8 +1258,8 @@ export default function AdminDashboard() {
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
                         >
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.07 7.93A10 10 0 1112 2v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v4" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.07 7.93A10 10 0 1112 2v2" />
                           </svg>
                           Reopen
                         </button>
