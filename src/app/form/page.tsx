@@ -93,10 +93,21 @@ export default function FormPage() {
     }
   }, [createNewForm, store]);
 
-  // Function to open form in modal
+  // Function to open form in modal - ensure the authoritative form is loaded into the store
+  // so PaperForm (which reads from the store by formId) renders the correct data.
   const handleViewForm = (form: PaperFormEntry) => {
-    setSelectedForm(form);
-    setShowFormModal(true);
+    (async () => {
+      try {
+        await loadForm(form.id);
+        const loaded = store.getState().currentForm as PaperFormEntry | null;
+        setSelectedForm(loaded || form);
+      } catch (err) {
+        // Fallback to provided form object if loading fails
+        setSelectedForm(form);
+        console.error('Failed to load form for view, falling back to provided object', err);
+      }
+      setShowFormModal(true);
+    })();
   };
 
   // Function to delete form
