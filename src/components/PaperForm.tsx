@@ -526,47 +526,7 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                   readOnly={readOnly}
                 />
               </div>
-              <div>
-                <span className="font-semibold">Initial: </span>
-                <input
-                  key={`formInitial-${form?.id || 'new'}`}
-                  type="text"
-                  value={form?.formInitial || ''}
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    if (process.env.NODE_ENV === 'development') {
-                      console.log('FormInitial input onChange:', newValue);
-                    }
-                    // Update local state immediately for smooth typing
-                    if (form) {
-                      form.formInitial = newValue;
-                    }
-                  }}
-                  onBlur={(e) => {
-                    // Only update the store when user finishes typing
-                    const newValue = e.target.value;
-                    if (form && !readOnly) {
-                      if (isAdminForm) {
-                        updateAdminForm(form.id, { formInitial: newValue });
-                        if (onFormUpdate) {
-                          onFormUpdate(form.id, { formInitial: newValue });
-                        }
-                      } else {
-                        updateFormField(form.id, 'formInitial', newValue);
-                      }
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    // Also update on Enter key
-                    if (e.key === 'Enter') {
-                      e.currentTarget.blur();
-                    }
-                  }}
-                  placeholder="Enter your initials"
-                  className="border-b-2 border-gray-300 bg-transparent w-full px-2 py-1 transition-all duration-200 ease-in-out focus:border-blue-500 focus:outline-none hover:border-gray-400"
-                  readOnly={readOnly}
-                />
-              </div>
+              {/* Initial input removed per request */}
               <div>
                 <span className="font-semibold">Date: </span>
                 <input
