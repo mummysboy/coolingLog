@@ -134,7 +134,7 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
   commitCurrentForm: () => {
     set((state) => {
       const cf = state.currentForm;
-      if (!cf) return state;
+      if (!cf) return {};
 
       const exists = state.savedForms.some((f) => f.id === cf.id);
       return {
@@ -386,7 +386,7 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
   updateFormField: (formId: string, field: string, value: any) => {
     set((state) => {
       const cf = state.currentForm;
-      if (!cf || cf.id !== formId) return state;
+      if (!cf || cf.id !== formId) return {};
 
       if (process.env.NODE_ENV === "development") {
         const hasTextEntry = value !== null && value !== undefined;
@@ -430,7 +430,7 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
   ) => {
     set((state) => {
       const cf = state.currentForm;
-      if (!cf || cf.id !== formId || !cf.entries?.[rowIndex]) return state;
+      if (!cf || cf.id !== formId || !cf.entries?.[rowIndex]) return {};
 
       if (process.env.NODE_ENV === "development") {
         console.log(
@@ -456,14 +456,14 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
         [stage]: { ...currentStage, ...stageData },
       };
 
-      return {
+      return ({
         currentForm: {
           ...cf,
           entries,
           lastTextEntry: nextLast ?? cf.lastTextEntry,
         },
         currentFormDirty: true,
-      };
+      } as Partial<PaperFormStore>);
     });
   },
 
@@ -604,7 +604,7 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
   updateEntry: (rowIndex: number, field: string, value: any) => {
     set((state) => {
       const cf = state.currentForm;
-      if (!cf || !cf.entries?.[rowIndex]) return state;
+      if (!cf || !cf.entries?.[rowIndex]) return {};
 
       if (process.env.NODE_ENV === "development") {
         console.log(
@@ -636,14 +636,14 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
         } as any;
       }
 
-      return {
+      return ({
         currentForm: {
           ...cf,
           entries,
           lastTextEntry: nextLast ?? cf.lastTextEntry,
         },
         currentFormDirty: true,
-      };
+      } as Partial<PaperFormStore>);
     });
   },
 
@@ -657,7 +657,7 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
         state.currentForm?.id === formId
           ? { ...state.currentForm, ...updates }
           : state.currentForm,
-    }));
+    } as Partial<PaperFormStore>));
   },
 
   getFormByDateAndInitial: (date: Date, initial: string) => {
