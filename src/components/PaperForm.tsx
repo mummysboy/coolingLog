@@ -43,6 +43,11 @@ export default function PaperForm({
   const [correctiveText, setCorrectiveText] = useState("");
   const [titleInput, setTitleInput] = useState(form?.title || "");
 
+  // Keep the title input in sync when the parent passes a new form object
+  useEffect(() => {
+    setTitleInput(form?.title || "");
+  }, [form?.id, form?.title]);
+
   // Initialize correctiveText from the form's stored correctiveActionsComments so
   // the expanded form shows the same comments that the admin list displays.
   useEffect(() => {

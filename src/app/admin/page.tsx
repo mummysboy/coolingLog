@@ -13,17 +13,18 @@ import { shouldHighlightCell } from '@/lib/validation';
 
 
 export default function AdminDashboard() {
-  const { savedForms, currentForm, loadForm, loadFormsFromStorage, updateFormStatus, deleteForm, isFormBlank, exportState, syncFormsToAWS } = usePaperFormStore();
+  const { savedForms, currentForm, loadForm, loadFormsFromStorage, updateFormStatus, approveForm, deleteForm, isFormBlank, exportState, syncFormsToAWS } = usePaperFormStore();
 
   const { createPin, updatePin, deletePin, getAllPins, getPinForInitials } = usePinStore();
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
 
-  // Compute a reliable header title for the modal: prefer currentForm title, then selectedForm title,
+  // Compute a reliable header title for the modal: prefer the explicitly-selected form's title
+  // (admin is explicitly viewing this form), then fall back to the store's currentForm title,
   // then the human-friendly form type name, finally a placeholder.
   const headerTitle = (() => {
-    if (currentForm?.title && currentForm.title.trim()) return currentForm.title;
     if (selectedForm?.title && selectedForm.title.trim()) return selectedForm.title;
+    if (currentForm?.title && currentForm.title.trim()) return currentForm.title;
     if (selectedForm?.formType) return getFormTypeDisplayName(selectedForm.formType);
     return '(untitled form)';
   })();
@@ -52,14 +53,10 @@ export default function AdminDashboard() {
 
   const adminUser = MOCK_USERS.find(user => user.role === 'admin');
 
-  // When an admin selects a form, load it into the paperForm store as the currentForm
-  useEffect(() => {
-    if (selectedForm) {
-      (usePaperFormStore as any).setState({ currentForm: selectedForm });
-    } else {
-      (usePaperFormStore as any).setState({ currentForm: null });
-    }
-  }, [selectedForm]);
+  // NOTE: intentionally do NOT mirror `selectedForm` into the global paperForm store here.
+  // Mirroring caused race conditions where components reading `currentForm` would show
+  // stale or unrelated forms when an admin was explicitly viewing a different `selectedForm`.
+  // The authoritative syncing between the store and UI should happen via loadForm() / saveForm().
 
   // Load forms and initials from AWS when admin page loads
   useEffect(() => {
@@ -149,9 +146,12 @@ export default function AdminDashboard() {
     return filteredForms.filter(form => form.status === 'Error');
   }, [filteredForms]);
 
-  const pendingForms = useMemo(() => {
-    return filteredForms.filter(form => form.status !== 'Complete');
-  }, [filteredForms]);
+  const activeForms = useMemo(() =>
+    filteredForms
+      .filter((form) => form.status !== 'Complete' && form.status !== 'Approved')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [filteredForms]
+  );
 
   const completedForms = useMemo(() =>
     filteredForms
@@ -160,20 +160,27 @@ export default function AdminDashboard() {
     [filteredForms]
   );
 
+  const approvedForms = useMemo(() =>
+    filteredForms
+      .filter(form => form.status === 'Approved')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [filteredForms]
+  );
+
   const formCounts = useMemo(() => {
     return {
       total: filteredForms.length,
-      pending: pendingForms.length,
+  pending: activeForms.length,
       complete: filteredForms.filter(f => f.status === 'Complete').length,
       error: errorForms.length
     };
-  }, [filteredForms, pendingForms, errorForms]);
+  }, [filteredForms, activeForms, errorForms]);
 
   // OPTIMIZATION: Memoize form status calculations to avoid expensive validation on every render
   const formStatuses = useMemo(() => {
     const statusMap = new Map<string, { newStatus: 'Complete' | 'In Progress' | 'Error', shouldUpdate: boolean }>();
     
-    pendingForms.forEach(form => {
+  activeForms.forEach(form => {
       const completeEntries = form.entries.filter(entry => 
         entry.type && entry.ccp1.temp && entry.ccp2.temp && 
         entry.coolingTo80.temp && entry.coolingTo54.temp && entry.finalChill.temp
@@ -237,7 +244,7 @@ export default function AdminDashboard() {
     });
     
     return statusMap;
-  }, [pendingForms]);
+  }, [activeForms]);
 
   // Close dropdown and modals when clicking outside
   useEffect(() => {
@@ -899,6 +906,59 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* Approved Forms Section */}
+          {approvedForms.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Approved Forms
+              </h2>
+
+              {approvedForms.map((form) => (
+                <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
+                  <div className={`p-6`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
+                          <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                            <span>Form #{form.id.slice(-6)}</span>
+                            {form.approvedBy && (
+                              <span className="text-sm text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        <div className="flex flex-col items-end text-sm text-gray-600">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">✓ Approved</span>
+                          {form.approvedBy && (
+                            <span className="text-xs text-indigo-700 mt-1">By {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleViewForm(form)}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                          title="View approved form (read-only)"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          View Form
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Active Forms Section (card layout identical to /form page) */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
@@ -907,7 +967,7 @@ export default function AdminDashboard() {
               </svg>
               Active Forms
             </h2>
-            {pendingForms
+            {activeForms
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
               .map((form) => {
                 const formStatus = formStatuses.get(form.id);
@@ -1026,6 +1086,9 @@ export default function AdminDashboard() {
                           <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                             <span>Form #{form.id.slice(-6)}</span>
                             <span className="text-gray-600 font-medium">✓ Finalized</span>
+                            {form.approvedBy && (
+                              <span className="ml-2 text-indigo-600 text-sm">Approved by {form.approvedBy}</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1042,33 +1105,20 @@ export default function AdminDashboard() {
                           </svg>
                           View Form
                         </button>
-
-                        <button
-                          onClick={() => {
-                            updateFormStatus(form.id, 'In Progress');
-                            setDashboardRefreshKey(prev => prev + 1);
-                          }}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-yellow-600 bg-yellow-50 border border-yellow-200 rounded-md hover:bg-yellow-100 hover:text-yellow-700 transition-colors"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                          Reopen
-                        </button>
                       </div>
                     </div>
 
                     <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       <div className="bg-gray-50 rounded-lg p-3">
                         <div className="font-medium text-gray-700">Date Created</div>
-                        <div className="text-lg font-semibold text-gray-900">{new Date(form.dateCreated || form.date).toLocaleDateString()}</div>
-                        <div className="text-sm text-gray-600 mt-1">{new Date(form.dateCreated || form.date).toLocaleTimeString()}</div>
+                        <div className="text-lg font-semibold text-gray-900">{new Date(form.date).toLocaleDateString()}</div>
+                        <div className="text-sm text-gray-600 mt-1">{new Date(form.date).toLocaleTimeString()}</div>
                       </div>
 
                       <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="font-medium text-gray-700">Last Updated</div>
-                        <div className="text-lg font-semibold text-gray-900">{form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleDateString() : 'No text entered yet'}</div>
-                        <div className="text-sm text-gray-600 mt-1">{form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : ''}</div>
+                        <div className="font-medium text-gray-700">Completion Date</div>
+                        <div className="text-lg font-semibold text-gray-900">{new Date(form.date).toLocaleDateString()}</div>
+                        <div className="text-sm text-gray-600 mt-1">{new Date(form.date).toLocaleTimeString()}</div>
                       </div>
 
                       <div className="bg-gray-50 rounded-lg p-3">
