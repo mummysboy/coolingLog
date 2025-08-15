@@ -234,25 +234,6 @@ export const EMPTY_PIROSHKI_ROW: PiroshkiFormRow = {
 
 export const createEmptyForm = (formType: FormType = FormType.COOKING_AND_COOLING, formInitial: string = ''): PaperFormEntry => {
   const now = new Date();
-  const timeString = now.toLocaleTimeString('en-US', { 
-    hour: '2-digit', 
-    minute: '2-digit',
-    hour12: true 
-  });
-  const dateString = now.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric' 
-  });
-  
-  // Generate default title based on form type and time
-  let defaultTitle = '';
-  if (formType === FormType.COOKING_AND_COOLING) {
-    defaultTitle = `Cooking & Cooling - ${dateString} ${timeString}`;
-  } else if (formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
-    defaultTitle = `Piroshki - ${dateString} ${timeString}`;
-  } else if (formType === FormType.BAGEL_DOG_COOKING_COOLING) {
-    defaultTitle = `Bagel Dog - ${dateString} ${timeString}`;
-  }
   
   const baseForm: Omit<BaseFormEntry, 'formType' | 'entries'> = {
     id: `form-${Date.now()}`,
@@ -260,8 +241,8 @@ export const createEmptyForm = (formType: FormType = FormType.COOKING_AND_COOLIN
     dateCreated: now,
     lastTextEntry: now,
     formInitial,
-    status: 'In Progress' as const,
-    title: defaultTitle,
+  status: 'In Progress' as const,
+  title: '',
     thermometerNumber: '',
     ingredients: {
       beef: '',
