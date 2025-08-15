@@ -350,13 +350,14 @@ export const useLogStore = create<LogStore>()(
 
         set({ logs: updatedLogs });
 
+        // TODO: Implement AWS log saving when storage manager supports it
         // Save to AWS DynamoDB
-        try {
-          await storageManager.saveLog(currentLog);
-        } catch (error) {
-          console.error('Failed to save log to AWS DynamoDB:', error);
-          throw error; // Re-throw to let UI handle the error
-        }
+        // try {
+        //   await storageManager.saveLog(currentLog);
+        // } catch (error) {
+        //   console.error('Failed to save log to AWS DynamoDB:', error);
+        //   throw error; // Re-throw to let UI handle the error
+        // }
       },
 
       loadLog: (id) => {
@@ -368,14 +369,16 @@ export const useLogStore = create<LogStore>()(
       },
 
       loadLogsFromStorage: async () => {
-        try {
-          const logsFromStorage = await storageManager.getLogs();
-          set({ logs: logsFromStorage });
-        } catch (error) {
-          console.error('Failed to load logs from AWS DynamoDB:', error);
-          // No fallback - AWS is required
-          throw error;
-        }
+        // TODO: Implement AWS log loading when storage manager supports it
+        // try {
+        //   const logsFromStorage = await storageManager.getLogs();
+        //   set({ logs: logsFromStorage });
+        // } catch (error) {
+        //   console.error('Failed to load logs from AWS DynamoDB:', error);
+        //   // No fallback - AWS is required
+        //   throw error;
+        // }
+        console.log('Log loading from AWS not yet implemented');
       },
     })
   );

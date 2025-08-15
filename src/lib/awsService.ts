@@ -775,10 +775,49 @@ class AWSStorageManager {
 
   async deletePaperForm(id: string): Promise<void> {
     try {
-      await client.graphql({
-        query: mutations.deletePaperFormEntry,
-        variables: { input: { id } }
-      });
+      // First, we need to determine the form type to use the correct delete mutation
+      // Since we don't have the form type, we'll try to delete from all three tables
+      // This is not ideal but necessary given the current architecture
+      
+      // Try to delete from cooking cooling forms first
+      try {
+        await client.graphql({
+          query: mutations.deleteCookingCoolingFormEntry,
+          variables: { input: { id } }
+        });
+        console.log(`Successfully deleted cooking cooling form: ${id}`);
+        return;
+      } catch (error) {
+        console.log(`Form ${id} not found in cooking cooling forms, trying piroshki forms...`);
+      }
+      
+      // Try to delete from piroshki forms
+      try {
+        await client.graphql({
+          query: mutations.deletePiroshkiFormEntry,
+          variables: { input: { id } }
+        });
+        console.log(`Successfully deleted piroshki form: ${id}`);
+        return;
+      } catch (error) {
+        console.log(`Form ${id} not found in piroshki forms, trying bagel dog forms...`);
+      }
+      
+      // Try to delete from bagel dog forms
+      try {
+        await client.graphql({
+          query: mutations.deleteBagelDogFormEntry,
+          variables: { input: { id } }
+        });
+        console.log(`Successfully deleted bagel dog form: ${id}`);
+        return;
+      } catch (error) {
+        console.log(`Form ${id} not found in bagel dog forms`);
+      }
+      
+      // If we get here, the form wasn't found in any table
+      throw new Error(`Form with ID ${id} not found in any form table`);
+      
     } catch (error) {
       console.error('Error deleting paper form:', error);
       throw error;
@@ -835,18 +874,63 @@ class AWSStorageManager {
   // Date-based queries for paper forms
   async getPaperFormsByDateRange(startDate: Date, endDate: Date): Promise<PaperFormEntry[]> {
     try {
-      const result = await client.graphql({
-        query: queries.getPaperFormsByDateRange,
-        variables: { 
-          startDate: startDate.toISOString(), 
-          endDate: endDate.toISOString() 
-        }
-      }) as GraphQLResult<any>;
+      const allForms: PaperFormEntry[] = [];
+      
+      // Get cooking cooling forms by date range
+      try {
+        const cookingCoolingResult = await client.graphql({
+          query: queries.getCookingCoolingFormsByDateRange,
+          variables: { 
+            startDate: startDate.toISOString(), 
+            endDate: endDate.toISOString() 
+          }
+        }) as GraphQLResult<any>;
 
-      if (result.data?.getPaperFormsByDateRange) {
-        return result.data.getPaperFormsByDateRange.map(mapGraphQLResultToPaperFormEntry);
+        if (cookingCoolingResult.data?.getCookingCoolingFormsByDateRange) {
+          const cookingCoolingForms = cookingCoolingResult.data.getCookingCoolingFormsByDateRange.map(mapGraphQLResultToPaperFormEntry);
+          allForms.push(...cookingCoolingForms);
+        }
+      } catch (error) {
+        console.error('Error getting cooking cooling forms by date range:', error);
       }
-      return [];
+      
+      // Get piroshki forms by date range
+      try {
+        const piroshkiResult = await client.graphql({
+          query: queries.getPiroshkiFormsByDateRange,
+          variables: { 
+            startDate: startDate.toISOString(), 
+            endDate: endDate.toISOString() 
+          }
+        }) as GraphQLResult<any>;
+
+        if (piroshkiResult.data?.getPiroshkiFormsByDateRange) {
+          const piroshkiForms = piroshkiResult.data.getPiroshkiFormsByDateRange.map(mapGraphQLResultToPaperFormEntry);
+          allForms.push(...piroshkiForms);
+        }
+      } catch (error) {
+        console.error('Error getting piroshki forms by date range:', error);
+      }
+      
+      // Get bagel dog forms by date range
+      try {
+        const bagelDogResult = await client.graphql({
+          query: queries.getBagelDogFormsByDateRange,
+          variables: { 
+            startDate: startDate.toISOString(), 
+            endDate: endDate.toISOString() 
+          }
+        }) as GraphQLResult<any>;
+
+        if (bagelDogResult.data?.getBagelDogFormsByDateRange) {
+          const bagelDogForms = bagelDogResult.data.getBagelDogFormsByDateRange.map(mapGraphQLResultToPaperFormEntry);
+          allForms.push(...bagelDogForms);
+        }
+      } catch (error) {
+        console.error('Error getting bagel dog forms by date range:', error);
+      }
+      
+      return allForms;
     } catch (error) {
       console.error('Error getting paper forms by date range:', error);
       return [];
@@ -855,31 +939,108 @@ class AWSStorageManager {
 
   async getTodaysPaperForms(): Promise<PaperFormEntry[]> {
     try {
-      const result = await client.graphql({
-        query: queries.getTodaysPaperForms
-      }) as GraphQLResult<any>;
+      const allForms: PaperFormEntry[] = [];
+      
+      // Get today's cooking cooling forms
+      try {
+        const cookingCoolingResult = await client.graphql({
+          query: queries.getTodaysCookingCoolingForms
+        }) as GraphQLResult<any>;
 
-      if (result.data?.getTodaysPaperForms) {
-        return result.data.getTodaysPaperForms.map(mapGraphQLResultToPaperFormEntry);
+        if (cookingCoolingResult.data?.getTodaysCookingCoolingForms) {
+          const cookingCoolingForms = cookingCoolingResult.data.getTodaysCookingCoolingForms.map(mapGraphQLResultToPaperFormEntry);
+          allForms.push(...cookingCoolingForms);
+        }
+      } catch (error) {
+        console.error('Error getting today\'s cooking cooling forms:', error);
       }
-      return [];
+      
+      // Get today's piroshki forms
+      try {
+        const piroshkiResult = await client.graphql({
+          query: queries.getTodaysPiroshkiForms
+        }) as GraphQLResult<any>;
+
+        if (piroshkiResult.data?.getTodaysPiroshkiForms) {
+          const piroshkiForms = piroshkiResult.data.getTodaysPiroshkiForms.map(mapGraphQLResultToPaperFormEntry);
+          allForms.push(...piroshkiForms);
+        }
+      } catch (error) {
+        console.error('Error getting today\'s piroshki forms:', error);
+      }
+      
+      // Get today's bagel dog forms
+      try {
+        const bagelDogResult = await client.graphql({
+          query: queries.getTodaysBagelDogForms
+        }) as GraphQLResult<any>;
+
+        if (bagelDogResult.data?.getTodaysBagelDogForms) {
+          const bagelDogForms = bagelDogResult.data.getTodaysBagelDogForms.map(mapGraphQLResultToPaperFormEntry);
+          allForms.push(...bagelDogForms);
+        }
+      } catch (error) {
+        console.error('Error getting today\'s bagel dog forms:', error);
+      }
+      
+      return allForms;
     } catch (error) {
-      console.error('Error getting todays paper forms:', error);
+      console.error('Error getting today\'s paper forms:', error);
       return [];
     }
   }
 
   async getPaperFormsByStatus(status: string): Promise<PaperFormEntry[]> {
     try {
-      const result = await client.graphql({
-        query: queries.getPaperFormsByStatus,
-        variables: { status: status.toUpperCase().replace(' ', '_') }
-      }) as GraphQLResult<any>;
+      const allForms: PaperFormEntry[] = [];
+      const formattedStatus = status.toUpperCase().replace(' ', '_');
+      
+      // Get cooking cooling forms by status
+      try {
+        const cookingCoolingResult = await client.graphql({
+          query: queries.getCookingCoolingFormsByStatus,
+          variables: { status: formattedStatus }
+        }) as GraphQLResult<any>;
 
-      if (result.data?.getPaperFormsByStatus) {
-        return result.data.getPaperFormsByStatus.map(mapGraphQLResultToPaperFormEntry);
+        if (cookingCoolingResult.data?.getCookingCoolingFormsByStatus) {
+          const cookingCoolingForms = cookingCoolingResult.data.getCookingCoolingFormsByStatus.map(mapGraphQLResultToPaperFormEntry);
+          allForms.push(...cookingCoolingForms);
+        }
+      } catch (error) {
+        console.error('Error getting cooking cooling forms by status:', error);
       }
-      return [];
+      
+      // Get piroshki forms by status
+      try {
+        const piroshkiResult = await client.graphql({
+          query: queries.getPiroshkiFormsByStatus,
+          variables: { status: formattedStatus }
+        }) as GraphQLResult<any>;
+
+        if (piroshkiResult.data?.getPiroshkiFormsByStatus) {
+          const piroshkiForms = piroshkiResult.data.getPiroshkiFormsByStatus.map(mapGraphQLResultToPaperFormEntry);
+          allForms.push(...piroshkiForms);
+        }
+      } catch (error) {
+        console.error('Error getting piroshki forms by status:', error);
+      }
+      
+      // Get bagel dog forms by status
+      try {
+        const bagelDogResult = await client.graphql({
+          query: queries.getBagelDogFormsByStatus,
+          variables: { status: formattedStatus }
+        }) as GraphQLResult<any>;
+
+        if (bagelDogResult.data?.getBagelDogFormsByStatus) {
+          const bagelDogForms = bagelDogResult.data.getBagelDogFormsByStatus.map(mapGraphQLResultToPaperFormEntry);
+          allForms.push(...bagelDogForms);
+        }
+      } catch (error) {
+        console.error('Error getting bagel dog forms by status:', error);
+      }
+      
+      return allForms;
     } catch (error) {
       console.error('Error getting paper forms by status:', error);
       return [];
@@ -888,15 +1049,54 @@ class AWSStorageManager {
 
   async getPaperFormsByInitial(initial: string): Promise<PaperFormEntry[]> {
     try {
-      const result = await client.graphql({
-        query: queries.getPaperFormsByInitial,
-        variables: { initial }
-      }) as GraphQLResult<any>;
+      const allForms: PaperFormEntry[] = [];
+      
+      // Get cooking cooling forms by initial
+      try {
+        const cookingCoolingResult = await client.graphql({
+          query: queries.getCookingCoolingFormsByInitial,
+          variables: { initial }
+        }) as GraphQLResult<any>;
 
-      if (result.data?.getPaperFormsByInitial) {
-        return result.data.getPaperFormsByInitial.map(mapGraphQLResultToPaperFormEntry);
+        if (cookingCoolingResult.data?.getCookingCoolingFormsByInitial) {
+          const cookingCoolingForms = cookingCoolingResult.data.getCookingCoolingFormsByInitial.map(mapGraphQLResultToPaperFormEntry);
+          allForms.push(...cookingCoolingForms);
+        }
+      } catch (error) {
+        console.error('Error getting cooking cooling forms by initial:', error);
       }
-      return [];
+      
+      // Get piroshki forms by initial
+      try {
+        const piroshkiResult = await client.graphql({
+          query: queries.getPiroshkiFormsByInitial,
+          variables: { initial }
+        }) as GraphQLResult<any>;
+
+        if (piroshkiResult.data?.getPiroshkiFormsByInitial) {
+          const piroshkiForms = piroshkiResult.data.getPiroshkiFormsByInitial.map(mapGraphQLResultToPaperFormEntry);
+          allForms.push(...piroshkiForms);
+        }
+      } catch (error) {
+        console.error('Error getting piroshki forms by initial:', error);
+      }
+      
+      // Get bagel dog forms by initial
+      try {
+        const bagelDogResult = await client.graphql({
+          query: queries.getBagelDogFormsByInitial,
+          variables: { initial }
+        }) as GraphQLResult<any>;
+
+        if (bagelDogResult.data?.getBagelDogFormsByInitial) {
+          const bagelDogForms = bagelDogResult.data.getBagelDogFormsByInitial.map(mapGraphQLResultToPaperFormEntry);
+          allForms.push(...bagelDogForms);
+        }
+      } catch (error) {
+        console.error('Error getting bagel dog forms by initial:', error);
+      }
+      
+      return allForms;
     } catch (error) {
       console.error('Error getting paper forms by initial:', error);
       return [];
@@ -906,15 +1106,62 @@ class AWSStorageManager {
   // Custom mutations for paper forms
   async updatePaperFormStatus(formId: string, status: string): Promise<PaperFormEntry> {
     try {
-      const result = await client.graphql({
-        query: mutations.updatePaperFormStatus,
-        variables: { 
-          formId, 
-          status: status.toUpperCase().replace(' ', '_') 
-        }
-      }) as GraphQLResult<any>;
+      const formattedStatus = status.toUpperCase().replace(' ', '_');
+      
+      // Try to update cooking cooling form status first
+      try {
+        const result = await client.graphql({
+          query: mutations.updateCookingCoolingFormStatus,
+          variables: { 
+            formId, 
+            status: formattedStatus 
+          }
+        }) as GraphQLResult<any>;
 
-      return mapGraphQLResultToPaperFormEntry(result.data.updatePaperFormStatus);
+        if (result.data?.updateCookingCoolingFormStatus) {
+          return mapGraphQLResultToPaperFormEntry(result.data.updateCookingCoolingFormStatus);
+        }
+      } catch (error) {
+        console.log(`Form ${formId} not found in cooking cooling forms, trying piroshki forms...`);
+      }
+      
+      // Try to update piroshki form status
+      try {
+        const result = await client.graphql({
+          query: mutations.updatePiroshkiFormStatus,
+          variables: { 
+            formId, 
+            status: formattedStatus 
+          }
+        }) as GraphQLResult<any>;
+
+        if (result.data?.updatePiroshkiFormStatus) {
+          return mapGraphQLResultToPaperFormEntry(result.data.updatePiroshkiFormStatus);
+        }
+      } catch (error) {
+        console.log(`Form ${formId} not found in piroshki forms, trying bagel dog forms...`);
+      }
+      
+      // Try to update bagel dog form status
+      try {
+        const result = await client.graphql({
+          query: mutations.updateBagelDogFormStatus,
+          variables: { 
+            formId, 
+            status: formattedStatus 
+          }
+        }) as GraphQLResult<any>;
+
+        if (result.data?.updateBagelDogFormStatus) {
+          return mapGraphQLResultToPaperFormEntry(result.data.updateBagelDogFormStatus);
+        }
+      } catch (error) {
+        console.log(`Form ${formId} not found in bagel dog forms`);
+      }
+      
+      // If we get here, the form wasn't found in any table
+      throw new Error(`Form with ID ${formId} not found in any form table`);
+      
     } catch (error) {
       console.error('Error updating paper form status:', error);
       throw error;
@@ -950,84 +1197,86 @@ class AWSStorageManager {
   }
 
   // Date-based queries
-  async getLogsByDateRange(startDate: Date, endDate: Date): Promise<LogEntry[]> {
-    try {
-      const result = await client.graphql({
-        query: queries.getLogsByDateRange,
-        variables: { 
-          startDate: startDate.toISOString(), 
-          endDate: endDate.toISOString() 
-        }
-      }) as GraphQLResult<any>;
+  // TODO: Implement log queries when GraphQL schema supports them
+  // async getLogsByDateRange(startDate: Date, endDate: Date): Promise<LogEntry[]> {
+  //   try {
+  //     const result = await client.graphql({
+  //       query: queries.getLogsByDateRange,
+  //       variables: { 
+  //         startDate: startDate.toISOString(), 
+  //         endDate: endDate.toISOString() 
+  //       }
+  //     }) as GraphQLResult<any>;
 
-      if (result.data?.getLogsByDateRange) {
-        return result.data.getLogsByDateRange.map(mapGraphQLResultToLogEntry);
-      }
-      return [];
-    } catch (error) {
-      console.error('Error getting logs by date range:', error);
-      return [];
-    }
-  }
+  //     if (result.data?.getLogsByDateRange) {
+  //       return result.data.getLogsByDateRange.map(mapGraphQLResultToLogEntry);
+  //     }
+  //     return [];
+  //   } catch (error) {
+  //     console.error('Error getting logs by date range:', error);
+  //     return [];
+  //   }
+  // }
 
-  async getTodaysLogs(): Promise<LogEntry[]> {
-    try {
-      const result = await client.graphql({
-        query: queries.getTodaysLogs
-      }) as GraphQLResult<any>;
+  // async getTodaysLogs(): Promise<LogEntry[]> {
+  //   try {
+  //     const result = await client.graphql({
+  //       query: queries.getTodaysLogs
+  //     }) as GraphQLResult<any>;
 
-      if (result.data?.getTodaysLogs) {
-        return result.data.getTodaysLogs.map(mapGraphQLResultToLogEntry);
-      }
-      return [];
-    } catch (error) {
-      console.error('Error getting todays logs:', error);
-      return [];
-    }
-  }
+  //     if (result.data?.getTodaysLogs) {
+  //       return result.data.getTodaysLogs.map(mapGraphQLResultToLogEntry);
+  //       return [];
+  //     }
+  //   } catch (error) {
+  //     console.error('Error getting todays logs:', error);
+  //     return [];
+  //   }
+  // }
 
   // User Methods
-  async createUser(user: Omit<User, 'id'>): Promise<User> {
-    try {
-      const result = await client.graphql({
-        query: mutations.createUser,
-        variables: {
-          input: {
-            initials: user.initials,
-            name: user.name,
-            role: user.role.toUpperCase(),
-            certificationNumber: user.certificationNumber,
-            email: user.email,
-            isActive: true
-          }
-        }
-      }) as GraphQLResult<any>;
+  // TODO: Implement user creation when GraphQL schema supports it
+  // async createUser(user: Omit<User, 'id'>): Promise<User> {
+  //   try {
+  //     const result = await client.graphql({
+  //       query: mutations.createUser,
+  //       variables: {
+  //         input: {
+  //           initials: user.initials,
+  //           name: user.name,
+  //           role: user.role.toUpperCase(),
+  //           certificationNumber: user.certificationNumber,
+  //           email: user.email,
+  //           isActive: true
+  //       }
+  //     }) as GraphQLResult<any>;
 
-      return result.data.createUser;
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
-    }
-  }
+  //     return result.data.createUser;
+  //   } catch (error) {
+  //     console.error('Error creating user:', error);
+  //     throw error;
+  //   }
+  // }
 
-  async getUsers(): Promise<User[]> {
-    try {
-      const result = await client.graphql({
-        query: queries.listUsers
-      }) as GraphQLResult<any>;
+  // TODO: Implement user retrieval when GraphQL schema supports it
+  // async getUsers(): Promise<User[]> {
+  //   try {
+  //     const result = await client.graphql({
+  //       query: queries.listUsers
+  //     }) as GraphQLResult<any>;
 
-      if (result.data?.listUsers?.items) {
-        return result.data.listUsers.items.map((user: any) => ({
-          ...user,
-          role: user.role.toLowerCase()
-        }));
-      }
-      return [];
-    } catch (error) {
-      console.error('Error getting users:', error);
-      return [];
-    }
-  }
+  //     if (result.data?.listUsers?.items) {
+  //       return result.data.listUsers.items.map((user: any) => ({
+  //         ...user,
+  //           role: user.role.toLowerCase()
+  //         }));
+  //       }
+  //       return [];
+  //     } catch (error) {
+  //       console.error('Error getting users:', error);
+  //       return [];
+  //     }
+  //   }
 
 
 

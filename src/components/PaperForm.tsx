@@ -53,6 +53,13 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
 
   // Track the resolved data snapshot to compare against new changes
   const [resolvedDataSnapshot, setResolvedDataSnapshot] = React.useState<any>(null);
+  // Local controlled state for the title input to allow smooth typing
+  const [titleInput, setTitleInput] = React.useState<string>(form?.title || '');
+
+  // Keep titleInput in sync when the form changes (for example when loading a different form)
+  React.useEffect(() => {
+    setTitleInput(form?.title || '');
+  }, [form?.id, form?.title]);
   
   // Remove debounced save mechanism - only save on window close
   const saveFormRef = useRef(saveForm);
@@ -486,19 +493,13 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
                 <input
                   key={`title-${form?.id || 'new'}`}
                   type="text"
-                  value={form?.title || ''}
+                  value={titleInput}
                   onChange={(e) => {
                     const newValue = e.target.value;
                     if (process.env.NODE_ENV === 'development') {
-                      console.log('Title input onChange:', newValue, 'Form object:', form);
-                      console.log('Form title before update:', form?.title);
+                      console.log('Title input onChange:', newValue);
                     }
-                    // Update local state immediately for smooth typing
-                    if (form) {
-                      form.title = newValue;
-                      console.log('Title updated in form object:', form.title);
-                      console.log('Form object after title update:', form);
-                    }
+                    setTitleInput(newValue);
                   }}
                   onBlur={(e) => {
                     // Only update the store when user finishes typing

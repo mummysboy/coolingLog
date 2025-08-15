@@ -1,4 +1,4 @@
-import { PaperFormEntry, PaperFormRow } from './paperFormTypes';
+import { PaperFormEntry, BaseFormRow } from './paperFormTypes';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -148,7 +148,7 @@ export function validateTemperatureCell(
 }
 
 // Validate a complete form row
-export function validateFormRow(row: PaperFormRow, rowIndex: number): FormValidationResult['errors'] {
+export function validateFormRow(row: BaseFormRow, rowIndex: number): FormValidationResult['errors'] {
   const errors: FormValidationResult['errors'] = [];
   
   // Skip validation if row has no data

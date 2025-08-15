@@ -206,6 +206,11 @@ export interface BagelDogFormRow extends BaseFormRow {
   // No additional fields beyond base
 }
 
+// Note: Each form type has its own specific row type
+// CookingCoolingFormEntry uses CookingCoolingFormRow
+// PiroshkiFormEntry uses PiroshkiFormRow  
+// BagelDogFormEntry uses BagelDogFormRow
+
 // Union type for all form types
 export type PaperFormEntry = CookingCoolingFormEntry | PiroshkiFormEntry | BagelDogFormEntry;
 
