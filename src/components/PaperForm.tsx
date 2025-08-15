@@ -7,9 +7,8 @@ import {
   validateForm,
   getTimeDifferenceMinutes,
 } from "../lib/validation";
-// If TimePicker/TextCell come from your codebase, keep these imports as in your project:
-// import TimePicker from './TimePicker';
-// import TextCell from './TextCell';
+import { TimePicker } from "./TimePicker";
+import { TextCell } from "./TextCell";
 
 interface PaperFormProps {
   formId: string;
