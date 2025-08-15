@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import type { PaperFormEntry } from '@/lib/paperFormTypes';
 import { FormType, getFormTypeDisplayName, getFormTypeDescription, getFormTypeIcon, getFormTypeColors, ensureDate } from '@/lib/paperFormTypes';
-import { PaperForm } from '@/components/PaperForm';
+import PaperForm from '@/components/PaperForm';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
 import { validateForm, shouldHighlightCell } from '@/lib/validation';
 import BagelDogForm from '@/components/BagelDogForm';
@@ -653,7 +653,7 @@ export default function FormPage() {
               ) : (
                 <PaperForm 
                   key={`${selectedForm.id}-${formUpdateKey}`}
-                  formData={selectedForm}
+                  formId={selectedForm.id}
                   readOnly={selectedForm.status === 'Complete' && !DEBUG_ALLOW_EDIT}
                   onFormUpdate={handleFormUpdate}
                 />
