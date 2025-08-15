@@ -226,8 +226,7 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
             correctiveAction: '',
             employeeInitials: piroshkiEntry.heatTreating.initial || '',
             notes: '',
-            dataLog: false,
-            type: piroshkiEntry.heatTreating.type || ''
+            dataLog: false
           } : null,
           ccp2_126: piroshkiEntry.ccp2_126 ? {
             temperature: piroshkiEntry.ccp2_126.temp ? parseFloat(piroshkiEntry.ccp2_126.temp) : null,
@@ -440,6 +439,7 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
       finalChill: {
         temp: entry.finalChill?.temperature?.toString() || '',
         time: entry.finalChill?.time || '',
+  date: (entry.finalChill as any)?.date ? new Date((entry.finalChill as any).date) : undefined,
         initial: entry.finalChill?.employeeInitials || '',
         dataLog: entry.finalChill?.dataLog || false
       }

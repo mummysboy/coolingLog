@@ -15,6 +15,7 @@ interface PaperFormProps {
   formId: string;
   readOnly?: boolean;
   isAdminForm?: boolean;
+  formData?: any;
   onFormUpdate?: (formId: string, updates: any) => void;
 }
 
@@ -24,16 +25,20 @@ export default function PaperForm({
   formId,
   readOnly = false,
   isAdminForm = false,
+  formData,
   onFormUpdate,
 }: PaperFormProps) {
   const {
-    currentForm: form,
+    currentForm: storeForm,
     updateFormField,
     updateFormStatus,
     saveForm,
     updateEntry,
     updateAdminForm,
   } = usePaperFormStore();
+
+  // allow parent to pass form data (admin modal) — prefer explicit prop over store
+  const form = formData ?? storeForm;
 
   const [correctiveText, setCorrectiveText] = useState("");
   const [titleInput, setTitleInput] = useState(form?.title || "");
@@ -58,6 +63,15 @@ export default function PaperForm({
     if (date instanceof Date) return date;
     if (typeof date === "string") return new Date(date);
     return new Date();
+  };
+
+  const formatToMMDDYYYY = (d: any) => {
+    if (!d) return "";
+    const dateObj = ensureDate(d);
+    const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const dd = String(dateObj.getDate()).padStart(2, "0");
+    const yyyy = String(dateObj.getFullYear());
+    return `${mm}/${dd}/${yyyy}`;
   };
 
   // Use the validation helper to decide cell highlighting
@@ -180,6 +194,44 @@ export default function PaperForm({
           ? field.match(/^([^.]+)\.(temp|time|initial|dataLog)$/)
           : null;
       if (!stageMatch) return;
+
+      // Support only finalChill.date changes — create a simple comment
+      const dateMatch = typeof field === 'string' ? field.match(/^finalChill\.date$/) : null;
+      if (dateMatch) {
+        const stage = 'finalChill' as StageKey;
+        const rowNumber = rowIndex + 1;
+        const existingComments = form?.correctiveActionsComments || "";
+        const dateStr = typeof value === 'string' ? value : String(value ?? '');
+        if (dateStr) {
+          const comment = `Row ${rowNumber} ${stage} date set — ${dateStr}`;
+          if (!existingComments.includes(comment)) {
+            const updatedComments = existingComments ? `${existingComments}\n${comment}` : comment;
+            setCorrectiveText(formatNumberedTextFromRaw(updatedComments));
+            if (isAdminForm) {
+              updateAdminForm(form.id, { correctiveActionsComments: updatedComments });
+              if (onFormUpdate) onFormUpdate(form.id, { correctiveActionsComments: updatedComments });
+            } else {
+              updateFormField(form.id, 'correctiveActionsComments', updatedComments);
+            }
+          }
+        } else {
+          const prefix = `Row ${rowNumber} ${stage} date set`;
+          if (existingComments.includes(prefix)) {
+            const cleaned = existingComments.split('\n').filter(c => !c.startsWith(prefix)).join('\n');
+            setCorrectiveText(formatNumberedTextFromRaw(cleaned));
+            if (isAdminForm) {
+              updateAdminForm(form.id, { correctiveActionsComments: cleaned });
+              if (onFormUpdate) onFormUpdate(form.id, { correctiveActionsComments: cleaned });
+            } else {
+              updateFormField(form.id, 'correctiveActionsComments', cleaned);
+            }
+          }
+        }
+
+        // commit the date field to the store
+        commitField(rowIndex, `finalChill.date`, value);
+        return;
+      }
 
       const stage = stageMatch[1] as StageKey;
       const fieldType = stageMatch[2];
@@ -325,7 +377,82 @@ export default function PaperForm({
               updateFormField(form.id, "correctiveActionsComments", cleaned);
             }
           }
-        } else if (newTime && !entry?.ccp2?.time) {
+
+            // Time-specific: 54°F Cooling window (from CCP2 time)
+            if (fieldType === "time" && String(stage) === "coolingTo54") {
+              const newTime = typeof value === "string" ? value : String(value ?? "");
+              const rowNumber = rowIndex + 1;
+              const entry = form?.entries?.[rowIndex];
+              const existingComments = form?.correctiveActionsComments || "";
+              const commentPrefix = `Row ${rowNumber} 54°F`;
+
+              if (newTime && entry?.ccp2?.time) {
+                const diff = getTimeDifferenceMinutes(entry.ccp2.time, newTime);
+                if (diff !== null && diff > 4.75 * 60) {
+                  const targetComment = `${commentPrefix} ${diff}min — >4.75hr`;
+                  if (!existingComments.includes(targetComment)) {
+                    const updatedComments = existingComments
+                      ? `${existingComments}\n${targetComment}`
+                      : targetComment;
+                    setCorrectiveText(formatNumberedTextFromRaw(updatedComments));
+                    if (isAdminForm) {
+                      updateAdminForm(form.id, {
+                        correctiveActionsComments: updatedComments,
+                      });
+                      if (onFormUpdate)
+                        onFormUpdate(form.id, {
+                          correctiveActionsComments: updatedComments,
+                        });
+                    } else {
+                      updateFormField(
+                        form.id,
+                        "correctiveActionsComments",
+                        updatedComments
+                      );
+                    }
+                    showToast("error", "Time limit exceeded for 54°F Cooling");
+                  }
+                } else if (existingComments.includes(commentPrefix)) {
+                  const cleaned = existingComments
+                    .split("\n")
+                    .filter((c) => !c.startsWith(commentPrefix))
+                    .join("\n");
+                  setCorrectiveText(formatNumberedTextFromRaw(cleaned));
+                  if (isAdminForm) {
+                    updateAdminForm(form.id, { correctiveActionsComments: cleaned });
+                    if (onFormUpdate)
+                      onFormUpdate(form.id, { correctiveActionsComments: cleaned });
+                  } else {
+                    updateFormField(form.id, "correctiveActionsComments", cleaned);
+                  }
+                }
+              } else if (newTime && !entry?.ccp2?.time) {
+                const targetComment = `Row ${rowNumber} 54°F time set — missing CCP2 time`;
+                if (!existingComments.includes(targetComment)) {
+                  const updatedComments = existingComments
+                    ? `${existingComments}\n${targetComment}`
+                    : targetComment;
+                  setCorrectiveText(formatNumberedTextFromRaw(updatedComments));
+                  if (isAdminForm) {
+                    updateAdminForm(form.id, {
+                      correctiveActionsComments: updatedComments,
+                    });
+                    if (onFormUpdate)
+                      onFormUpdate(form.id, {
+                        correctiveActionsComments: updatedComments,
+                      });
+                  } else {
+                    updateFormField(
+                      form.id,
+                      "correctiveActionsComments",
+                      updatedComments
+                    );
+                  }
+                  showToast("error", "Missing CCP2 reference time for 54°F Cooling");
+                }
+              }
+            }
+  } else if (newTime && !entry?.ccp2?.time) {
           // concise missing reference comment
           const targetComment = `Row ${rowNumber} 80°F time set — missing CCP2 time`;
           if (!existingComments.includes(targetComment)) {
@@ -468,35 +595,35 @@ export default function PaperForm({
                   onKeyDown={(e) => {
                     if (e.key === "Enter") e.currentTarget.blur();
                   }}
-                  placeholder="Enter form title (e.g., 'Morning Batch', 'Chicken Prep')"
+                  placeholder="Enter form title (e.g., 'Piroshki')"
                   className="border-b-2 border-gray-300 bg-transparent w-full px-2 py-1 transition-all duration-200 ease-in-out focus:border-blue-500 focus:outline-none hover:border-gray-400"
                   readOnly={readOnly}
                 />
               </div>
 
               <div>
-                <span className="font-semibold">Date: </span>
-                <input
-                  type="date"
-                  value={ensureDate(form.date).toISOString().split("T")[0]}
-                  onChange={(e) => {
-                    if (form) form.date = new Date(e.target.value);
-                  }}
-                  onBlur={(e) => {
-                    const newDate = new Date(e.target.value);
-                    if (!readOnly) {
+                <div className="flex items-center space-x-2">
+                  <span className="font-semibold">Date: </span>
+                  <input
+                    key={`date-${form?.id || "new"}`}
+                    type="date"
+                    value={form?.date ? ensureDate(form.date).toISOString().split('T')[0] : ''}
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      if (readOnly) return;
+                      const dateVal = newValue ? new Date(newValue) : null;
                       if (isAdminForm) {
-                        updateAdminForm(form.id, { date: newDate });
-                        if (onFormUpdate)
-                          onFormUpdate(form.id, { date: newDate });
+                        updateAdminForm(form.id, { date: dateVal });
+                        if (onFormUpdate) onFormUpdate(form.id, { date: dateVal });
                       } else {
-                        updateFormField(form.id, "date", newDate);
+                        updateFormField(form.id, 'date', dateVal as any);
                       }
-                    }
-                  }}
-                  className="border-b border-black bg-transparent"
-                  readOnly={readOnly}
-                />
+                    }}
+                    className="border-b-2 border-gray-300 bg-transparent px-2 py-1 w-full"
+                    readOnly={readOnly}
+                    onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -504,8 +631,8 @@ export default function PaperForm({
       </div>
 
       {/* Table */}
-      <div className="border-2 border-black">
-        <table className="w-full border-collapse">
+      <div className="border-2 border-black overflow-x-auto">
+        <table className="w-full mx-auto min-w-[760px] md:min-w-[900px] max-w-[1200px] border-collapse text-sm md:text-base">
           {/* Header Row 1 */}
           <thead>
             <tr className="bg-gray-100">
@@ -544,18 +671,7 @@ export default function PaperForm({
                 <br />
                 39°F or below
                 <br />
-                <div className="flex items-center justify-center mt-1 space-x-1">
-                  <span className="text-xs font-medium">Date:</span>
-                  <input
-                    type="date"
-                    className="w-20 text-xs border-0 bg-transparent text-center focus:outline-none focus:ring-1 focus:ring-blue-300 cursor-pointer"
-                    placeholder="Date"
-                    readOnly={readOnly}
-                    onClick={(e) =>
-                      (e.currentTarget as HTMLInputElement).showPicker?.()
-                    }
-                  />
-                </div>
+                {/* header-level date removed - using per-row finalChill date only */}
               </th>
             </tr>
 
@@ -568,10 +684,13 @@ export default function PaperForm({
               ))}
               {Array.from({ length: 5 }).map((_, i) => (
                 <th key={`h2-${i}`} className="border border-black p-1">
-                  <div className="grid grid-cols-3 gap-1 text-xs">
-                    <div>Temp</div>
-                    <div>Time</div>
-                    <div>Initial</div>
+                  <div
+                    className="text-xs"
+                    style={{ display: 'grid', gridTemplateColumns: '1fr 1.618fr 0.618fr', gap: '0.25rem' }}
+                  >
+                    <div className="text-center">Temp</div>
+                    <div className="text-center">Time</div>
+                    <div className="text-center">Initial</div>
                   </div>
                 </th>
               ))}
@@ -631,7 +750,7 @@ export default function PaperForm({
                     entry.ccp1?.dataLog ? "bg-blue-100" : ""
                   }`}
                 >
-                  <div className="grid grid-cols-3 gap-1">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.618fr 0.618fr', gap: '0.25rem' }} className="items-center">
                     <TextCell
                       formId={form.id}
                       field={`${rowIndex}-ccp1.temp`}
@@ -712,7 +831,7 @@ export default function PaperForm({
                     entry.ccp2?.dataLog ? "bg-blue-100" : ""
                   }`}
                 >
-                  <div className="grid grid-cols-3 gap-1">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.618fr 0.618fr', gap: '0.25rem' }} className="items-center">
                     <TextCell
                       formId={form.id}
                       field={`${rowIndex}-ccp2.temp`}
@@ -800,7 +919,7 @@ export default function PaperForm({
                     entry.coolingTo80?.dataLog ? "bg-blue-100" : ""
                   }`}
                 >
-                  <div className="grid grid-cols-3 gap-1">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.618fr 0.618fr', gap: '0.25rem' }} className="items-center">
                     <TextCell
                       formId={form.id}
                       field={`${rowIndex}-coolingTo80.temp`}
@@ -1002,45 +1121,61 @@ export default function PaperForm({
                       max="300"
                       inputMode="decimal"
                     />
-                    <TimePicker
-                      value={entry.finalChill?.time}
-                      onChange={(time: string) =>
-                        handleCellChange(rowIndex, "finalChill.time", time)
-                      }
-                      placeholder="Time"
-                      className={getCellClasses(rowIndex, "finalChill.time", "w-full")}
-                      disabled={readOnly}
-                      showQuickTimes={false}
-                      compact
-                      dataLog={entry.finalChill?.dataLog || false}
-                      onDataLogChange={(dataLog: boolean) => {
-                        if (!form) return;
-                        const updatedEntries = [...form.entries];
-                        updatedEntries[rowIndex] = {
-                          ...updatedEntries[rowIndex],
-                          finalChill: {
-                            ...updatedEntries[rowIndex].finalChill,
-                            dataLog,
-                          },
-                        };
-                        if (isAdminForm) {
-                          updateAdminForm(form.id, { entries: updatedEntries });
-                        } else {
-                          updateFormField(form.id, "entries", updatedEntries);
-                        }
-                        updateCorrectiveActionsForDataLog(
-                          rowIndex,
-                          "finalChill",
-                          dataLog
-                        );
-                        handleCellChange(
-                          rowIndex,
-                          "finalChill.dataLog",
-                          dataLog
-                        );
-                        if (!readOnly) saveForm();
-                      }}
-                    />
+                    <div className="flex flex-col items-center">
+                      <div className="flex flex-col items-center w-full">
+                        <div className="flex flex-col items-center">
+                          <input
+                            type="date"
+                            value={entry.finalChill?.date ? ensureDate(entry.finalChill?.date).toISOString().split('T')[0] : ''}
+                            onChange={(e) => handleCellChange(rowIndex, 'finalChill.date', e.target.value)}
+                            className="w-24 md:w-28 text-xs md:text-sm border-0 bg-transparent text-center mb-1"
+                            readOnly={readOnly}
+                            onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
+                            aria-label="Final chill date picker"
+                          />
+
+                        <TimePicker
+                          value={entry.finalChill?.time}
+                          onChange={(time: string) =>
+                            handleCellChange(rowIndex, "finalChill.time", time)
+                          }
+                          placeholder="Time"
+                          className={getCellClasses(rowIndex, "finalChill.time", "w-20 md:w-24 mx-auto")}
+                          disabled={readOnly}
+                          showQuickTimes={false}
+                          compact
+                          dataLog={entry.finalChill?.dataLog || false}
+                          onDataLogChange={(dataLog: boolean) => {
+                            if (!form) return;
+                            const updatedEntries = [...form.entries];
+                            updatedEntries[rowIndex] = {
+                              ...updatedEntries[rowIndex],
+                              finalChill: {
+                                ...updatedEntries[rowIndex].finalChill,
+                                dataLog,
+                              },
+                            };
+                            if (isAdminForm) {
+                              updateAdminForm(form.id, { entries: updatedEntries });
+                            } else {
+                              updateFormField(form.id, "entries", updatedEntries);
+                            }
+                            updateCorrectiveActionsForDataLog(
+                              rowIndex,
+                              "finalChill",
+                              dataLog
+                            );
+                            handleCellChange(
+                              rowIndex,
+                              "finalChill.dataLog",
+                              dataLog
+                            );
+                            if (!readOnly) saveForm();
+                          }}
+                        />
+                        </div>
+                      </div>
+                    </div>
                     <TextCell
                       formId={form.id}
                       field={`${rowIndex}-finalChill.initial`}

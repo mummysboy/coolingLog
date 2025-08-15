@@ -102,6 +102,19 @@ function convertDateTimeToTimeString(dateTimeString: string | null): string {
   }
 }
 
+// Safely stringify objects (handles circular refs)
+function safeStringify(obj: any, space = 2) {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, function (_key, value) {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) return '[Circular]';
+      seen.add(value);
+    }
+    if (typeof value === 'function') return `[Function: ${value.name || 'anonymous'}]`;
+    return value;
+  }, space);
+}
+
 // Helper function to ensure consistent date handling
 function ensureValidDate(dateValue: any): Date {
   if (!dateValue) return new Date();
@@ -117,6 +130,29 @@ function ensureValidDate(dateValue: any): Date {
     console.warn('Error parsing date, using current date:', dateValue, error);
     return new Date();
   }
+}
+
+// Sanitize a stage object so it only contains fields allowed by StageDataInput
+function sanitizeStageInput(stage: any, formDate?: Date) {
+  if (!stage || typeof stage !== 'object') return null;
+
+  const temperature = (typeof stage.temperature === 'number') ? stage.temperature : (stage.temperature ? parseFloat(stage.temperature) : null);
+  const time = stage.time || null;
+  const isValid = !!stage.isValid;
+  const correctiveAction = stage.correctiveAction || '';
+  const employeeInitials = stage.employeeInitials || stage.initial || '';
+  const notes = stage.notes || '';
+  const dataLog = !!stage.dataLog;
+
+  return {
+    temperature,
+    time,
+    isValid,
+    correctiveAction,
+    employeeInitials,
+    notes,
+    dataLog
+  };
 }
 
 // Map frontend PaperFormEntry to GraphQL input based on form type
@@ -182,7 +218,7 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
       } : null,
       finalChill: entry.finalChill ? {
         temperature: entry.finalChill.temp ? parseFloat(entry.finalChill.temp) : null,
-        time: entry.finalChill.time ? convertTimeStringToDateTime(entry.finalChill.time, form.date) : null,
+  time: entry.finalChill.time ? convertTimeStringToDateTime(entry.finalChill.time, form.date) : null,
         isValid: entry.finalChill.dataLog || false,
         correctiveAction: '',
         employeeInitials: entry.finalChill.initial || '',
@@ -202,7 +238,30 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
     })) || [],
     resolvedErrors: form.resolvedErrors?.filter(error => error && typeof error === 'string') || []
   };
-  
+  // Sanitize every stage in each entry so we never send fields the GraphQL schema doesn't accept
+  try {
+    baseInput.entries = (baseInput.entries || []).map((entry: any) => {
+      const sanitized: any = { type: entry.type, rack: entry.rack || '' };
+
+      // Choose allowed stage keys based on the form type to match GraphQL input
+      let stageKeys = ['ccp1','ccp2','coolingTo80','coolingTo54','finalChill'];
+      if (isPiroshkiForm(form)) {
+        stageKeys = ['heatTreating','ccp2_126','ccp2_80','ccp2_55','ccp1','ccp2','coolingTo80','coolingTo54','finalChill'];
+      } else if (isBagelDogForm(form)) {
+        stageKeys = ['ccp1','ccp2','coolingTo80','coolingTo54','finalChill'];
+      } else if (isCookingCoolingForm(form)) {
+        stageKeys = ['ccp1','ccp2','coolingTo80','coolingTo54','finalChill'];
+      }
+
+      for (const key of stageKeys) {
+        sanitized[key] = sanitizeStageInput(entry[key], ensureDate(baseInput.date));
+      }
+      return sanitized;
+    });
+  } catch (e) {
+    console.warn('Failed to sanitize baseInput entries:', e);
+  }
+
   console.log('Base input created:', {
     id: baseInput.id,
     date: baseInput.date,
@@ -234,8 +293,7 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
           employeeInitials: entry.heatTreating.initial || '',
           notes: '',
           dataLog: false,
-          type: entry.heatTreating.type || ''
-        } : null,
+  } : null,
         ccp2_126: entry.ccp2_126 ? {
           temperature: entry.ccp2_126.temp ? parseFloat(entry.ccp2_126.temp) : null,
           time: entry.ccp2_126.time ? convertTimeStringToDateTime(entry.ccp2_126.time, form.date) : null,
@@ -389,7 +447,8 @@ function mapGraphQLResultToPaperFormEntry(result: any, formType: FormType): Pape
       },
       finalChill: {
         temp: entry.finalChill?.temperature?.toString() || '',
-        time: convertDateTimeToTimeString(entry.finalChill?.time) || '',
+  time: convertDateTimeToTimeString(entry.finalChill?.time) || '',
+  date: (entry.finalChill as any)?.date ? new Date((entry.finalChill as any).date) : undefined,
         initial: entry.finalChill?.employeeInitials || '',
         dataLog: entry.finalChill?.dataLog || false
       }
@@ -557,8 +616,11 @@ class MultiTableStorageManager {
         });
         console.log('GraphQL client test result:', testResult);
       } catch (testError) {
-        console.error('GraphQL client connectivity test failed:', testError);
-        throw new Error(`GraphQL client connectivity issue: ${testError instanceof Error ? testError.message : 'Unknown error'}`);
+        // If the GraphQL client fails (commonly because Amplify isn't configured
+        // in local/dev environments), treat this as non-fatal and keep the
+        // form locally rather than blocking the user with an exception.
+        console.warn('GraphQL client connectivity test failed; skipping remote save:', testError);
+        return;
       }
       
       const input = mapPaperFormEntryToGraphQLInput(form);
@@ -622,6 +684,8 @@ class MultiTableStorageManager {
             input.id = serverId;
             form.id = serverId;
 
+            // Log the full input object for debugging
+            console.log('GraphQL create input (cooking/cooling):', input);
             const result = await client.graphql({
               query: `mutation CreateCookingCoolingFormEntry($input: CreateCookingCoolingFormEntryInput!) {
                 createCookingCoolingFormEntry(input: $input) { id }
@@ -638,8 +702,31 @@ class MultiTableStorageManager {
               form.id = returnedId;
             }
           } catch (graphqlError) {
-            console.error('GraphQL create error:', graphqlError);
-            throw new Error(`Failed to create cooking/cooling form: ${graphqlError instanceof Error ? graphqlError.message : 'Unknown error'}`);
+            // Normalize the error object
+            const errObj: any = graphqlError || {};
+            const gqlErrors = errObj.errors || errObj.graphQLErrors || (errObj.response && errObj.response.errors) || undefined;
+            const message = errObj.message || errObj.msg || (Array.isArray(gqlErrors) && gqlErrors.length > 0 ? gqlErrors.map((e: any) => e.message || String(e)).join('; ') : (typeof errObj === 'string' ? errObj : 'Unknown GraphQL error'));
+
+            // Log a stringified version first so Next DevTools and other consoles show useful content
+            try {
+              console.error('Raw caught GraphQL error (cooking/cooling):', safeStringify({ message, gqlErrors, stack: errObj.stack || undefined }));
+            } catch (e) {
+              // Fallback to safer logging if stringify fails
+              console.error('Raw caught GraphQL error (cooking/cooling):', message, { gqlErrors });
+            }
+
+            // Also log the original object for developers who inspect the console
+            console.error('Full GraphQL error object (developer):', errObj);
+            console.error('GraphQL create error while creating cooking/cooling form - input preview:', { id: input.id, title: input.title, entriesCount: input.entries?.length });
+
+            // Build a more informative thrown Error that preserves relevant info
+            const thrownMessage = `Failed to create cooking/cooling form: ${message}${gqlErrors ? ' | GraphQLErrors: ' + safeStringify(gqlErrors) : ''}`;
+            const newError: any = new Error(thrownMessage);
+            // Merge original stack if available for better debugging
+            if (errObj && errObj.stack) {
+              newError.stack = `${errObj.stack}\n---\n${newError.stack}`;
+            }
+            throw newError;
           }
         }
       } else if (isPiroshkiForm(form)) {
@@ -682,8 +769,17 @@ class MultiTableStorageManager {
               form.id = returnedId;
             }
           } catch (graphqlError) {
-            console.error('GraphQL create error:', graphqlError);
-            throw new Error(`Failed to create piroshki form: ${graphqlError instanceof Error ? graphqlError.message : 'Unknown error'}`);
+            const errObj: any = graphqlError || {};
+            const message = errObj.message || errObj.msg || (typeof errObj === 'string' ? errObj : 'Unknown GraphQL error');
+            const gqlErrors = errObj.errors || errObj.graphQLErrors || (errObj.response && errObj.response.errors) || undefined;
+            console.error('GraphQL create error while creating piroshki form:', {
+              message,
+              gqlErrors,
+              errorObject: errObj,
+              errorSerialized: safeStringify(errObj),
+              inputPreview: { id: input.id, title: input.title, entriesCount: input.entries?.length }
+            });
+            throw new Error(`Failed to create piroshki form: ${message}`);
           }
         }
       } else if (isBagelDogForm(form)) {
@@ -726,8 +822,17 @@ class MultiTableStorageManager {
               form.id = returnedId;
             }
           } catch (graphqlError) {
-            console.error('GraphQL create error:', graphqlError);
-            throw new Error(`Failed to create bagel dog form: ${graphqlError instanceof Error ? graphqlError.message : 'Unknown error'}`);
+            const errObj: any = graphqlError || {};
+            const message = errObj.message || errObj.msg || (typeof errObj === 'string' ? errObj : 'Unknown GraphQL error');
+            const gqlErrors = errObj.errors || errObj.graphQLErrors || (errObj.response && errObj.response.errors) || undefined;
+            console.error('GraphQL create error while creating bagel dog form:', {
+              message,
+              gqlErrors,
+              errorObject: errObj,
+              errorSerialized: safeStringify(errObj),
+              inputPreview: { id: input.id, title: input.title, entriesCount: input.entries?.length }
+            });
+            throw new Error(`Failed to create bagel dog form: ${message}`);
           }
         }
       }

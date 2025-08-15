@@ -74,13 +74,21 @@ export default function FormPage() {
     const defaultInitial = 'USER';
     store.getState().setSelectedInitial(defaultInitial);
     
+    // Create the form locally
     createNewForm(formType, defaultInitial);
     setIsAddFormDropdownOpen(false);
-    
-    // Get the newly created form from the store
+
+    // Try to persist immediately; on failure still open the local form
+    try {
+      await saveForm();
+    } catch (err) {
+      console.error('Error saving newly created form to AWS (continuing with local form):', err);
+    }
+
+    // Get the newly created form from the store (may have been updated by save)
     const { currentForm } = store.getState();
     if (currentForm) {
-      // Store the new form ID to track it
+      // Store the new form ID to track it (used to auto-open the modal)
       setNewlyCreatedFormId(currentForm.id);
     }
   }, [createNewForm, store]);
@@ -624,9 +632,6 @@ export default function FormPage() {
                   </span>
                   {selectedForm.status === 'Complete' && (
                     <span className="ml-2 text-green-600 font-medium">(Read-Only)</span>
-                  )}
-                  {selectedForm.status !== 'Complete' && (
-                    <span className="ml-2 text-blue-600 font-medium">Auto-saves to AWS when closed</span>
                   )}
                   {DEBUG_ALLOW_EDIT && (
                     <div className="mt-1 text-orange-600 font-medium">

@@ -85,17 +85,47 @@ export function parseTime(timeStr: string): number | null {
 
 // Calculate time difference in minutes
 export function getTimeDifferenceMinutes(startTime: string, endTime: string): number | null {
-  const start = parseTime(startTime);
-  const end = parseTime(endTime);
-  
-  if (start === null || end === null) return null;
-  
-  let diff = end - start;
-  // Handle times crossing midnight
-  if (diff < 0) {
-    diff += 24 * 60; // Add 24 hours in minutes
+  // Helper to detect whether string contains a date component
+  const hasDateComponent = (s: string) => /\d{4}-\d{2}-\d{2}|T|\//.test(s);
+
+  // Parse to Date object. If only HH:MM is provided, use today's date.
+  const parseToDate = (s: string): { date: Date | null; hadDate: boolean } => {
+    if (!s || s.trim() === '') return { date: null, hadDate: false };
+
+    if (hasDateComponent(s) || s.includes(' ')) {
+      // Accept ISO-ish datetime or full date strings
+      const d = new Date(s);
+      return { date: isNaN(d.getTime()) ? null : d, hadDate: true };
+    }
+
+    // Only a time string like HH:MM -> use today's date
+    const minutes = parseTime(s);
+    if (minutes === null) return { date: null, hadDate: false };
+    const now = new Date();
+    const d = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      Math.floor(minutes / 60),
+      minutes % 60,
+      0
+    );
+    return { date: d, hadDate: false };
+  };
+
+  const a = parseToDate(startTime);
+  const b = parseToDate(endTime);
+
+  if (a.date === null || b.date === null) return null;
+
+  let diff = Math.round((b.date.getTime() - a.date.getTime()) / (60 * 1000));
+
+  // If both inputs were only times (no date component) preserve old behavior
+  // and allow for crossing midnight by adding 24h when negative.
+  if (!a.hadDate && !b.hadDate && diff < 0) {
+    diff += 24 * 60;
   }
-  
+
   return diff;
 }
 
