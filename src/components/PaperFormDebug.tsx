@@ -12,7 +12,7 @@ const testFormData: CookingCoolingFormEntry = {
   status: 'In Progress' as const,
   entries: [
     {
-      rack: '1st Rack',
+      rack: '',
       type: 'Beef',
       ccp1: { temp: '170', time: '10:00', initial: 'AB', dataLog: false },
       ccp2: { temp: '130', time: '10:15', initial: 'CD', dataLog: true },

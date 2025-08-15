@@ -111,9 +111,9 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
     formInitial: form.formInitial,
     status: form.status.toUpperCase().replace(' ', '_'),
     title: form.title,
-    entries: form.entries.filter(entry => entry && typeof entry === 'object' && entry.type !== undefined).map(entry => ({
-      type: entry.type,
-      rack: entry.rack || '1st Rack',
+  entries: form.entries.filter(entry => entry && typeof entry === 'object' && entry.type !== undefined).map(entry => ({
+  type: entry.type,
+  rack: entry.rack || '',
       ccp1: entry.ccp1 ? {
         temperature: entry.ccp1.temp ? parseFloat(entry.ccp1.temp) : null,
         time: entry.ccp1.time ? convertTimeStringToDateTime(entry.ccp1.time, form.date) : null,
@@ -330,9 +330,9 @@ function mapGraphQLResultToPaperFormEntry(result: any, formType: FormType): Pape
     formInitial: result.formInitial || '',
     status: mappedStatus,
     title: result.title || '',
-    entries: (result.entries || []).map((entry: any) => ({
-      type: entry.type || '',
-      rack: entry.rack || '1st Rack',
+  entries: (result.entries || []).map((entry: any) => ({
+  type: entry.type || '',
+  rack: entry.rack || '',
       ccp1: {
         temp: entry.ccp1?.temperature?.toString() || '',
         time: convertDateTimeToTimeString(entry.ccp1?.time) || '',

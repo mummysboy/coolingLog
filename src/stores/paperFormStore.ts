@@ -284,7 +284,7 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
             let updatedEntry: any = { ...entry };
 
             if (!entry.rack) {
-              updatedEntry = { ...updatedEntry, rack: "1st Rack" as const };
+              updatedEntry = { ...updatedEntry, rack: "" as const };
             }
 
             const stages = [

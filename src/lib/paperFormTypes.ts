@@ -99,7 +99,7 @@ export interface BaseFormEntry {
 
 // Base form row interface with common fields
 export interface BaseFormRow {
-  rack: '1st Rack' | 'Last Rack';
+  rack: '' | '1st Rack' | 'Last Rack';
   type: string;
   ccp1: {
     temp: string;
@@ -215,7 +215,7 @@ export interface BagelDogFormRow extends BaseFormRow {
 export type PaperFormEntry = CookingCoolingFormEntry | PiroshkiFormEntry | BagelDogFormEntry;
 
 export const EMPTY_BASE_ROW: BaseFormRow = {
-  rack: '1st Rack',
+  rack: '',
   type: '',
   ccp1: { temp: '', time: '', initial: '', dataLog: false },
   ccp2: { temp: '', time: '', initial: '', dataLog: false },

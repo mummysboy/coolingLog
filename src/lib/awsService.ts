@@ -163,11 +163,11 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
     status: form.status.toUpperCase().replace(' ', '_'),
     title: form.title,
     entries: form.entries.filter(entry => entry && typeof entry === 'object').map(entry => {
-      // Base entry with common fields
+        // Base entry with common fields
       const baseEntry = {
         type: entry.type || '',
-        rack: entry.rack || '1st Rack',
-        ccp1: entry.ccp1 ? {
+        rack: entry.rack || '',
+  ccp1: entry.ccp1 ? {
           temperature: entry.ccp1.temp ? parseFloat(entry.ccp1.temp) : null,
           time: entry.ccp1.time ? convertTimeStringToDateTime(entry.ccp1.time, form.date) : null,
           isValid: entry.ccp1.dataLog || false,
@@ -387,9 +387,9 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
     formInitial: result.formInitial,
     status: mappedStatus,
     title: result.title || '',
-    entries: (result.entries || []).map((entry: any) => ({
-      type: entry.type || '',
-      rack: entry.rack || '1st Rack',
+  entries: (result.entries || []).map((entry: any) => ({
+  type: entry.type || '',
+  rack: entry.rack || '',
       // Piroshki-specific fields
       heatTreating: entry.heatTreating ? {
         temp: entry.heatTreating.temperature?.toString() || '',

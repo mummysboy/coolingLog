@@ -468,7 +468,7 @@ export default function AdminDashboard() {
                     <tr${index === 5 ? ' class="row-separator"' : ''}>
                       <td>
                         <div style="text-align: center; font-size: 12px;">
-                          ${entry.rack || '1st Rack'}
+                          ${entry.rack || ''}
                         </div>
                       </td>
                       <td>

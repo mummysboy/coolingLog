@@ -35,9 +35,14 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
     }
     // Prioritize formData over currentForm to ensure complete form data is displayed
     // formData contains the complete form passed from the parent, while currentForm might be incomplete after refresh
-    const resolvedForm = formData || currentForm;
-    
-    return resolvedForm;
+    // If parent passed a form (formData) but the store's currentForm has the same id,
+    // prefer the store's currentForm so updates applied via the store (updateEntry/updateFormField)
+    // show up immediately without requiring a page refresh.
+    if (formData && currentForm && formData.id === currentForm.id) {
+      return currentForm;
+    }
+
+    return formData || currentForm;
   }, [isAdminForm, formData, savedForms, currentForm]);
 
   // Stable commit function that only updates the specific field without cloning the whole form
@@ -654,13 +659,14 @@ export function PaperForm({ formData, readOnly = false, onSave, onFormUpdate }: 
               {memoizedEntries.map((entry: any, rowIndex: number) => (
                 <tr key={rowIndex} className={rowIndex === 5 ? 'border-t-4 border-black' : ''}>
                   {/* Rack selection */}
-                  <td className="border border-black p-1 text-center">
+                    <td className="border border-black p-1 text-center">
                     <select
-                      value={entry.rack || '1st Rack'}
+                      value={entry.rack ?? ''}
                       onChange={(e) => handleCellChange(rowIndex, 'rack', e.target.value)}
                       className="w-full text-xs border-0 bg-transparent text-center cursor-pointer"
                       disabled={readOnly}
                     >
+                      <option value="">--</option>
                       <option value="1st Rack">1st Rack</option>
                       <option value="Last Rack">Last Rack</option>
                     </select>

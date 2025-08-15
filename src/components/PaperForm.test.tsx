@@ -52,7 +52,7 @@ describe('PaperForm', () => {
     status: 'In Progress',
     entries: [
       {
-        rack: '1st Rack',
+        rack: '',
         type: 'Beef',
         ccp1: { temp: '', time: '', initial: '', dataLog: false },
         ccp2: { temp: '', time: '', initial: '', dataLog: false },
@@ -79,16 +79,16 @@ describe('PaperForm', () => {
   it('renders form entries correctly', () => {
     render(<PaperForm formData={mockFormData} />);
     
-    // Should render the first entry
-    expect(screen.getByDisplayValue('1st Rack')).toBeInTheDocument();
+  // Should render the first entry with blank rack shown as the placeholder option
+  expect(screen.getByDisplayValue('--')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Beef')).toBeInTheDocument();
   });
 
   it('handles read-only mode', () => {
     render(<PaperForm formData={mockFormData} readOnly={true} />);
     
-    // Should render in read-only mode
-    expect(screen.getByDisplayValue('1st Rack')).toHaveAttribute('disabled');
+  // Should render in read-only mode (blank/default option should be disabled)
+  expect(screen.getByDisplayValue('--')).toHaveAttribute('disabled');
   });
 
   it('returns null when no form data is provided', () => {
