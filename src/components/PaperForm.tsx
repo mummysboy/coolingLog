@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { usePaperFormStore } from "../stores/paperFormStore";
 import {
   validateTemperatureCell,
@@ -37,6 +37,17 @@ export default function PaperForm({
 
   const [correctiveText, setCorrectiveText] = useState("");
   const [titleInput, setTitleInput] = useState(form?.title || "");
+
+  // Initialize correctiveText from the form's stored correctiveActionsComments so
+  // the expanded form shows the same comments that the admin list displays.
+  useEffect(() => {
+    if (!form) {
+      setCorrectiveText("");
+      return;
+    }
+
+    setCorrectiveText(formatNumberedTextFromRaw(form.correctiveActionsComments));
+  }, [form?.correctiveActionsComments, form?.id]);
 
   // Memoize entries cheaply; Zustand will re-render when 'entries' changes
   const memoizedEntries = form?.entries || [];
@@ -199,7 +210,8 @@ export default function PaperForm({
           );
           if (!validation.isValid && validation.error) {
             // concise single-line comment
-            const targetComment = `Row ${rowNumber} ${stageLabel[stage]} ${tempNum}°F — ${validation.error.replace(/Temperature \d+°F is below minimum required (\d+)°F/, 'below $1°F')}`;
+            const commentPrefix = `Row ${rowNumber} ${stageLabel[stage]}`;
+            const targetComment = `${commentPrefix} ${tempNum}°F — ${validation.error.replace(/Temperature \d+°F is below minimum required (\d+)°F/, 'below $1°F')}`;
             if (!existingComments.includes(targetComment)) {
               const updatedComments = existingComments
                 ? `${existingComments}\n${targetComment}`
@@ -225,12 +237,12 @@ export default function PaperForm({
               }
             }
           } else {
-            // Remove any existing violation comment for this row/stage
-            const failMarker = `Row ${rowNumber} ${stageLabel[stage]} temperature`;
-            if (existingComments.includes(failMarker)) {
+            // Remove any existing violation comment for this row/stage using a consistent prefix
+            const commentPrefix = `Row ${rowNumber} ${stageLabel[stage]}`;
+            if (existingComments.includes(commentPrefix)) {
               const cleaned = existingComments
                 .split("\n")
-                .filter((c) => !c.startsWith(failMarker))
+                .filter((c) => !c.startsWith(commentPrefix))
                 .join("\n");
               setCorrectiveText(formatNumberedTextFromRaw(cleaned));
               if (isAdminForm) {
@@ -245,12 +257,12 @@ export default function PaperForm({
             }
           }
         } else {
-          // Cleared -> remove comment
-          const failMarker = `Row ${rowNumber} ${stageLabel[stage]} temperature`;
-          if (existingComments.includes(failMarker)) {
+          // Cleared -> remove any comment with the same prefix
+          const commentPrefix = `Row ${rowNumber} ${stageLabel[stage]}`;
+          if (existingComments.includes(commentPrefix)) {
             const cleaned = existingComments
               .split("\n")
-              .filter((c) => !c.startsWith(failMarker))
+              .filter((c) => !c.startsWith(commentPrefix))
               .join("\n");
             setCorrectiveText(formatNumberedTextFromRaw(cleaned));
             if (isAdminForm) {
@@ -269,14 +281,14 @@ export default function PaperForm({
         const newTime = typeof value === "string" ? value : String(value ?? "");
         const rowNumber = rowIndex + 1;
         const entry = form?.entries?.[rowIndex];
-        const existingComments = form?.correctiveActionsComments || "";
-        const failMarkerPrefix = `Row ${rowNumber} 80°F Cooling time`;
+  const existingComments = form?.correctiveActionsComments || "";
+  const commentPrefix = `Row ${rowNumber} 80°F`;
 
         if (newTime && entry?.ccp2?.time) {
           const diff = getTimeDifferenceMinutes(entry.ccp2.time, newTime);
           if (diff !== null && diff > 105) {
             // concise single-line time comment
-            const targetComment = `Row ${rowNumber} 80°F ${diff}min — >105min`;
+            const targetComment = `${commentPrefix} ${diff}min — >105min`;
             if (!existingComments.includes(targetComment)) {
               const updatedComments = existingComments
                 ? `${existingComments}\n${targetComment}`
@@ -299,10 +311,10 @@ export default function PaperForm({
               }
               showToast("error", "Time limit exceeded for 80°F Cooling");
             }
-          } else if (existingComments.includes(failMarkerPrefix)) {
+          } else if (existingComments.includes(commentPrefix)) {
             const cleaned = existingComments
               .split("\n")
-              .filter((c) => !c.startsWith(failMarkerPrefix))
+              .filter((c) => !c.startsWith(commentPrefix))
               .join("\n");
             setCorrectiveText(formatNumberedTextFromRaw(cleaned));
             if (isAdminForm) {
@@ -338,11 +350,11 @@ export default function PaperForm({
             }
             showToast("error", "Missing CCP2 reference time for 80°F Cooling");
           }
-        } else if (existingComments.includes(failMarkerPrefix)) {
-          const cleaned = existingComments
-            .split("\n")
-            .filter((c) => !c.startsWith(failMarkerPrefix))
-            .join("\n");
+          } else if (existingComments.includes(commentPrefix)) {
+            const cleaned = existingComments
+              .split("\n")
+              .filter((c) => !c.startsWith(commentPrefix))
+              .join("\n");
           setCorrectiveText(formatNumberedTextFromRaw(cleaned));
           if (isAdminForm) {
             updateAdminForm(form.id, { correctiveActionsComments: cleaned });
@@ -1115,7 +1127,29 @@ export default function PaperForm({
                       type="text"
                       value={form.lotNumbers?.beef || ""}
                       onChange={(e) => {
-                        if (form) form.lotNumbers.beef = e.target.value;
+                        const newValue = e.target.value;
+                        if (!form) return;
+                        // Update immediately so the input remains controlled and editable
+                        if (isAdminForm) {
+                          updateAdminForm(form.id, {
+                            lotNumbers: {
+                              ...form.lotNumbers,
+                              beef: newValue,
+                            },
+                          });
+                          if (onFormUpdate)
+                            onFormUpdate(form.id, {
+                              lotNumbers: {
+                                ...form.lotNumbers,
+                                beef: newValue,
+                              },
+                            });
+                        } else {
+                          updateFormField(form.id, "lotNumbers", {
+                            ...form.lotNumbers,
+                            beef: newValue,
+                          });
+                        }
                       }}
                       onBlur={(e) => {
                         const newValue = e.target.value;
@@ -1155,7 +1189,28 @@ export default function PaperForm({
                       type="text"
                       value={form.lotNumbers?.chicken || ""}
                       onChange={(e) => {
-                        if (form) form.lotNumbers.chicken = e.target.value;
+                        const newValue = e.target.value;
+                        if (!form) return;
+                        if (isAdminForm) {
+                          updateAdminForm(form.id, {
+                            lotNumbers: {
+                              ...form.lotNumbers,
+                              chicken: newValue,
+                            },
+                          });
+                          if (onFormUpdate)
+                            onFormUpdate(form.id, {
+                              lotNumbers: {
+                                ...form.lotNumbers,
+                                chicken: newValue,
+                              },
+                            });
+                        } else {
+                          updateFormField(form.id, "lotNumbers", {
+                            ...form.lotNumbers,
+                            chicken: newValue,
+                          });
+                        }
                       }}
                       onBlur={(e) => {
                         const newValue = e.target.value;
@@ -1195,7 +1250,28 @@ export default function PaperForm({
                       type="text"
                       value={form.lotNumbers?.liquidEggs || ""}
                       onChange={(e) => {
-                        if (form) form.lotNumbers.liquidEggs = e.target.value;
+                        const newValue = e.target.value;
+                        if (!form) return;
+                        if (isAdminForm) {
+                          updateAdminForm(form.id, {
+                            lotNumbers: {
+                              ...form.lotNumbers,
+                              liquidEggs: newValue,
+                            },
+                          });
+                          if (onFormUpdate)
+                            onFormUpdate(form.id, {
+                              lotNumbers: {
+                                ...form.lotNumbers,
+                                liquidEggs: newValue,
+                              },
+                            });
+                        } else {
+                          updateFormField(form.id, "lotNumbers", {
+                            ...form.lotNumbers,
+                            liquidEggs: newValue,
+                          });
+                        }
                       }}
                       onBlur={(e) => {
                         const newValue = e.target.value;
@@ -1302,21 +1378,8 @@ export default function PaperForm({
               }
               showToast("success", "Form completed successfully!");
             }}
-            className="inline-flex items-center px-8 py-4 text-lg font-semibold text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105"
+            className="inline-flex items-center px-8 py-4 text-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-105"
           >
-            <svg
-              className="w-6 h-6 mr-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
             Mark Form as Complete
           </button>
           <p className="text-sm text-gray-600 mt-2">
