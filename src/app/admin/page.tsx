@@ -952,34 +952,31 @@ export default function AdminDashboard() {
                           View Form
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to reopen Form #${form.id.slice(-6)} for editing? This will change the status from "${form.status}" to "In Progress".`)) {
-                              try {
-                                console.log('Reopening form:', {
-                                  id: form.id,
-                                  formType: form.formType,
-                                  status: form.status,
-                                  title: form.title
-                                });
-                                
-                                // First update the local state immediately for better UX
-                                updateFormStatus(form.id, 'In Progress');
-                                showToast('success', `Form #${form.id.slice(-6)} reopened for editing`, form.id);
-                                // Force dashboard refresh to show updated status
-                                setDashboardRefreshKey(prev => prev + 1);
-                              } catch (error) {
-                                console.error('Error reopening form:', error);
-                                showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
-                              }
+                          onClick={async () => {
+                            if (!adminUser) {
+                              showToast('error', 'No admin user configured; cannot approve form', form.id);
+                              return;
+                            }
+
+                            if (!confirm(`Approve Form #${form.id.slice(-6)}? This will move the form to the Approved section.`)) return;
+
+                            try {
+                              await approveForm(form.id, adminUser.initials);
+                              showToast('success', `Form #${form.id.slice(-6)} approved`, form.id);
+                              // Force dashboard refresh to move the form into the Approved section
+                              setDashboardRefreshKey(prev => prev + 1);
+                            } catch (error) {
+                              console.error('Error approving form:', error);
+                              showToast('error', `Failed to approve form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
                             }
                           }}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
-                          title="Reopen form for editing"
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-indigo-600 border border-indigo-600 rounded-md hover:bg-indigo-700 hover:text-white transition-colors"
+                          title="Approve form"
                         >
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
-                          Reopen
+                          Approve
                         </button>
                       </div>
                     </div>
@@ -1159,34 +1156,30 @@ export default function AdminDashboard() {
                           Reopen
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to reopen Form #${form.id.slice(-6)} for editing? This will change the status from "${form.status}" to "In Progress".`)) {
-                              try {
-                                console.log('Reopening form:', {
-                                  id: form.id,
-                                  formType: form.formType,
-                                  status: form.status,
-                                  title: form.title
-                                });
-                                
-                                // First update the local state immediately for better UX
-                                updateFormStatus(form.id, 'In Progress');
-                                showToast('success', `Form #${form.id.slice(-6)} reopened for editing`, form.id);
-                                // Force dashboard refresh to show updated status
-                                setDashboardRefreshKey(prev => prev + 1);
-                              } catch (error) {
-                                console.error('Error reopening form:', error);
-                                showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
-                              }
+                          onClick={async () => {
+                            if (!adminUser) {
+                              showToast('error', 'No admin user configured; cannot approve form', form.id);
+                              return;
+                            }
+
+                            if (!confirm(`Approve Form #${form.id.slice(-6)}? This will move the form to the Approved section.`)) return;
+
+                            try {
+                              await approveForm(form.id, adminUser.initials);
+                              showToast('success', `Form #${form.id.slice(-6)} approved`, form.id);
+                              setDashboardRefreshKey(prev => prev + 1);
+                            } catch (error) {
+                              console.error('Error approving form:', error);
+                              showToast('error', `Failed to approve form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
                             }
                           }}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
-                          title="Reopen form for editing"
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-indigo-600 border border-indigo-600 rounded-md hover:bg-indigo-700 hover:text-white transition-colors"
+                          title="Approve form"
                         >
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
-                          Reopen
+                          Approve
                         </button>
                       </div>
                     </div>
