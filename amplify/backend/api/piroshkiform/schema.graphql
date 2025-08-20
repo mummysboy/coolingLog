@@ -1,0 +1,256 @@
+# Piroshki Form GraphQL Schema
+# This database handles only the Piroshki, Calzone, Empanada form type
+
+# Global auth rule for testing - in production you'll want more specific auth rules
+input AMPLIFY { globalAuthRule: AuthRule = { allow: public } } # FOR TESTING ONLY!
+
+# User model for employees, supervisors, and admins
+type User @model {
+  id: ID!
+  initials: String!
+  name: String!
+  role: UserRole!
+  certificationNumber: String
+  email: String
+  isActive: Boolean!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+# Piroshki Form Entry model
+type PiroshkiFormEntry @model @auth(rules: [{ allow: public }]) {
+  id: ID!
+  date: AWSDateTime!
+  dateCreated: AWSDateTime!
+  lastTextEntry: AWSDateTime!
+  formInitial: String!
+  status: String!
+  title: String
+  
+  # Row entries (1-9)
+  entries: [PiroshkiFormRow!]!
+  
+  # Bottom section
+  thermometerNumber: String
+  ingredients: AWSJSON
+  lotNumbers: AWSJSON
+  correctiveActionsComments: String
+  
+  # Piroshki-specific fields
+  quantityAndFlavor: AWSJSON
+  preShipmentReview: PreShipmentReview
+  
+  # Admin comments and resolution
+  adminComments: [AdminComment!]
+  resolvedErrors: [String!]
+  
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+# Piroshki Form Row for individual entries
+type PiroshkiFormRow {
+  type: String
+  rack: String
+  
+  # Piroshki-specific stages
+  heatTreating: StageData
+  ccp2_126: StageData
+  ccp2_80: StageData
+  ccp2_55: StageData
+  
+  # Standard CCP stages
+  ccp1: StageData
+  ccp2: StageData
+  coolingTo80: StageData
+  coolingTo54: StageData
+  finalChill: StageData
+  
+  # Add explicit fields for better GraphQL generation
+  __typename: String
+}
+
+# Stage data embedded type
+type StageData {
+  temperature: Float
+  time: AWSDateTime
+  isValid: Boolean
+  correctiveAction: String
+  employeeInitials: String
+  notes: String
+  dataLog: Boolean
+}
+
+# Pre Shipment Review for Piroshki form
+type PreShipmentReview {
+  date: String
+  initials: String
+  results: String
+}
+
+# Admin comment for forms
+type AdminComment {
+  id: ID!
+  adminInitial: String!
+  timestamp: AWSDateTime!
+  comment: String!
+}
+
+# Initial entry model for managing employee initials
+type InitialEntry @model {
+  id: ID!
+  initials: String!
+  name: String!
+  isActive: Boolean!
+  createdBy: String!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+# Enums
+enum UserRole {
+  EMPLOYEE
+  SUPERVISOR
+  ADMIN
+}
+
+enum FormStatus {
+  COMPLETE
+  IN_PROGRESS
+  ERROR
+}
+
+# Custom input types for mutations
+input StageDataInput {
+  temperature: Float
+  time: AWSDateTime
+  isValid: Boolean
+  correctiveAction: String
+  employeeInitials: String
+  notes: String
+  dataLog: Boolean
+}
+
+input PiroshkiFormRowInput {
+  type: String
+  rack: String
+  heatTreating: StageDataInput
+  ccp2_126: StageDataInput
+  ccp2_80: StageDataInput
+  ccp2_55: StageDataInput
+  ccp1: StageDataInput
+  ccp2: StageDataInput
+  coolingTo80: StageDataInput
+  coolingTo54: StageDataInput
+  finalChill: StageDataInput
+}
+
+input PreShipmentReviewInput {
+  date: String
+  initials: String
+  results: String
+}
+
+input AdminCommentInput {
+  id: ID!
+  adminInitial: String!
+  timestamp: AWSDateTime!
+  comment: String!
+}
+
+input CreatePiroshkiFormEntryInput {
+  id: String
+  date: AWSDateTime!
+  dateCreated: AWSDateTime!
+  lastTextEntry: AWSDateTime!
+  formInitial: String!
+  status: String!
+  title: String
+  
+  # Row entries (1-9)
+  entries: [PiroshkiFormRowInput!]!
+  
+  # Bottom section
+  thermometerNumber: String
+  ingredients: AWSJSON
+  lotNumbers: AWSJSON
+  correctiveActionsComments: String
+  
+  # Piroshki-specific fields
+  quantityAndFlavor: AWSJSON
+  preShipmentReview: PreShipmentReviewInput
+  
+  # Admin comments and resolution
+  adminComments: [AdminCommentInput!]
+  resolvedErrors: [String!]
+}
+
+input UpdatePiroshkiFormEntryInput {
+  id: String!
+  date: AWSDateTime
+  dateCreated: AWSDateTime
+  lastTextEntry: AWSDateTime
+  formInitial: String
+  status: String
+  title: String
+  
+  # Row entries (1-9)
+  entries: [PiroshkiFormRowInput!]
+  
+  # Bottom section
+  thermometerNumber: String
+  ingredients: AWSJSON
+  lotNumbers: AWSJSON
+  correctiveActionsComments: String
+  
+  # Piroshki-specific fields
+  quantityAndFlavor: AWSJSON
+  preShipmentReview: PreShipmentReviewInput
+  
+  # Admin comments and resolution
+  adminComments: [AdminCommentInput!]
+  resolvedErrors: [String!]
+}
+
+# Custom queries
+type Query {
+  # Piroshki Form queries
+  getPiroshkiFormsByDateRange(startDate: AWSDateTime!, endDate: AWSDateTime!): [PiroshkiFormEntry]
+  getTodaysPiroshkiForms: [PiroshkiFormEntry]
+  getPiroshkiFormsByStatus(status: FormStatus!): [PiroshkiFormEntry]
+  getPiroshkiFormsByInitial(initial: String!): [PiroshkiFormEntry]
+}
+
+# Custom mutations
+type Mutation {
+  # Piroshki Form mutations
+  updatePiroshkiFormStatus(
+    formId: ID!
+    status: FormStatus!
+  ): PiroshkiFormEntry
+  
+  addAdminComment(
+    formId: ID!
+    comment: AdminCommentInput!
+  ): PiroshkiFormEntry
+  
+  resolveError(
+    formId: ID!
+    errorId: String!
+  ): PiroshkiFormEntry
+}
+
+# Subscriptions for real-time updates
+type Subscription {
+  # Piroshki Form subscriptions
+  onPiroshkiFormEntryCreated: PiroshkiFormEntry
+    @aws_subscribe(mutations: ["createPiroshkiFormEntry"])
+  
+  onPiroshkiFormEntryUpdated: PiroshkiFormEntry
+    @aws_subscribe(mutations: ["updatePiroshkiFormEntry"])
+  
+  onPiroshkiFormStatusUpdated: PiroshkiFormEntry
+    @aws_subscribe(mutations: ["updatePiroshkiFormStatus"])
+}
+
+

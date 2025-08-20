@@ -37,8 +37,12 @@ export default function PaperForm({
     updateAdminForm,
   } = usePaperFormStore();
 
-  // allow parent to pass form data (admin modal) — prefer explicit prop over store
-  const form = formData ?? storeForm;
+  // allow parent to pass form data (admin modal) — for normal usage prefer the store
+  // Keep using the passed `formData` only when this is an admin-edit context so
+  // parent-driven forms remain editable by the admin UI. For regular forms we
+  // always read from the store so updates from `updateFormField`/`updateEntry`
+  // are reflected immediately in the UI (fixes non-editable lotNumbers inputs).
+  const form = isAdminForm && formData ? formData : storeForm;
 
   const [correctiveText, setCorrectiveText] = useState("");
   const [titleInput, setTitleInput] = useState(form?.title || "");
@@ -55,17 +59,15 @@ export default function PaperForm({
   useEffect(() => {
     if (!form) return;
     if (Array.isArray(form.ingredientColumns) && form.ingredientColumns.length) {
-      setIngredientCols(
-        form.ingredientColumns.map((c: any) => ({ key: c.key, label: String(c.label || "") ? String(c.label || "").charAt(0).toUpperCase() + String(c.label || "").slice(1) : "" }))
-      );
+      setIngredientCols(form.ingredientColumns);
       return;
     }
 
     const legacy = form.lotNumbers || {};
     const defaults = [
-      { key: "ingredient1", label: "Ingredient 1" },
-      { key: "ingredient2", label: "Ingredient 2" },
-      { key: "ingredient3", label: "Ingredient 3" },
+      { key: "beef", label: "Beef" },
+      { key: "chicken", label: "Chicken" },
+      { key: "liquidEggs", label: "Liquid Eggs" },
     ];
 
     // If legacy keys exist, use them first for labels
@@ -74,9 +76,7 @@ export default function PaperForm({
       return d;
     });
 
-    setIngredientCols(
-      derived.map((d, i) => ({ key: d.key, label: d.label ? d.label.charAt(0).toUpperCase() + d.label.slice(1) : d.label }))
-    );
+    setIngredientCols(derived);
   }, [form?.id, form?.lotNumbers, form?.ingredientColumns]);
 
   const slugForLabel = (label: string, idx: number) => {
@@ -89,12 +89,6 @@ export default function PaperForm({
       .map((p, i) => (i === 0 ? p.toLowerCase() : p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()))
       .join("");
     return cleaned || `ingredient${idx}`;
-  };
-
-  const capitalizeFirst = (s?: string) => {
-    if (!s) return "";
-    const str = String(s);
-    return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
   // Initialize correctiveText from the form's stored correctiveActionsComments so
@@ -1342,8 +1336,7 @@ export default function PaperForm({
                         }}
                         onBlur={(e) => {
                           const next = [...ingredientCols];
-                          const rawLabel = e.target.value;
-                          const newLabel = capitalizeFirst(rawLabel);
+                          const newLabel = e.target.value;
                           const newKey = slugForLabel(newLabel, i + 1);
                           next[i] = { key: newKey, label: newLabel };
                           setIngredientCols(next);

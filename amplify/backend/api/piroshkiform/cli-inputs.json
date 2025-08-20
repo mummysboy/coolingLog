@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "paths": {
+    "/": {
+      "name": "/",
+      "lambda": [],
+      "permissions": {
+        "setting": "open"
+      }
+    }
+  }
+}
+
+
