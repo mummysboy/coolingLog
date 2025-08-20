@@ -386,9 +386,12 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
     formInitial: result.formInitial,
     status: mappedStatus,
     title: result.title || '',
-  entries: (result.entries || []).map((entry: any) => ({
-  type: entry.type || '',
-  rack: entry.rack || '',
+    // Approval metadata
+    approvedBy: result.approvedBy || '',
+    approvedAt: result.approvedAt ? ensureDate(result.approvedAt) : undefined,
+    entries: (result.entries || []).map((entry: any) => ({
+      type: entry.type || '',
+      rack: entry.rack || '',
       // Piroshki-specific fields
       heatTreating: entry.heatTreating ? {
         temp: entry.heatTreating.temperature?.toString() || '',
@@ -439,7 +442,7 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
       finalChill: {
         temp: entry.finalChill?.temperature?.toString() || '',
         time: entry.finalChill?.time || '',
-  date: (entry.finalChill as any)?.date ? new Date((entry.finalChill as any).date) : undefined,
+        date: (entry.finalChill as any)?.date ? new Date((entry.finalChill as any).date) : undefined,
         initial: entry.finalChill?.employeeInitials || '',
         dataLog: entry.finalChill?.dataLog || false
       }

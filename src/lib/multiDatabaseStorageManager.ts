@@ -177,6 +177,9 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
     formInitial: form.formInitial,
     status: form.status.toUpperCase().replace(' ', '_'),
     title: form.title,
+  // Approval metadata
+  approvedBy: form.approvedBy || null,
+  approvedAt: form.approvedAt ? ensureDate(form.approvedAt).toISOString() : null,
   entries: form.entries.filter(entry => entry && typeof entry === 'object' && entry.type !== undefined).map(entry => ({
   type: entry.type,
   rack: entry.rack || '',
@@ -456,6 +459,9 @@ function mapGraphQLResultToPaperFormEntry(result: any, formType: FormType): Pape
     thermometerNumber: result.thermometerNumber || '',
     ingredients: parsedIngredients,
     lotNumbers: parsedLotNumbers,
+  // Map approval metadata from DB result
+  approvedBy: result.approvedBy || '',
+  approvedAt: result.approvedAt ? ensureValidDate(result.approvedAt) : undefined,
     correctiveActionsComments: result.correctiveActionsComments || '',
     adminComments: result.adminComments?.map((comment: any) => ({
       id: comment.id,
@@ -663,16 +669,47 @@ class MultiTableStorageManager {
   if (existingForm) {
           console.log('Updating existing cooking/cooling form...');
           try {
+            // Remove fields not present in the Update input type (backend schema may not include approval fields yet)
+            const graphqlInput = { ...input };
+            if ('approvedBy' in graphqlInput) { delete (graphqlInput as any).approvedBy; console.log('Stripped approvedBy from GraphQL update input'); }
+            if ('approvedAt' in graphqlInput) { delete (graphqlInput as any).approvedAt; console.log('Stripped approvedAt from GraphQL update input'); }
             const result = await client.graphql({
               query: `mutation UpdateCookingCoolingFormEntry($input: UpdateCookingCoolingFormEntryInput!) {
                 updateCookingCoolingFormEntry(input: $input) { id }
               }`,
-              variables: { input }
+              variables: { input: graphqlInput }
             });
             console.log('Update result:', result);
           } catch (graphqlError) {
-            console.error('GraphQL update error:', graphqlError);
-            throw new Error(`Failed to update cooking/cooling form: ${graphqlError instanceof Error ? graphqlError.message : 'Unknown error'}`);
+            const errObj: any = graphqlError || {};
+            const gqlErrors = errObj.errors || errObj.graphQLErrors || (errObj.response && errObj.response.errors) || undefined;
+            const message = errObj.message || (Array.isArray(gqlErrors) && gqlErrors.length > 0 ? gqlErrors.map((e: any) => e.message || String(e)).join('; ') : (typeof errObj === 'string' ? errObj : 'Unknown GraphQL error'));
+            try {
+              console.error('GraphQL update error (cooking/cooling) - detailed:', safeStringify(errObj));
+            } catch (e) {
+              console.error('GraphQL update error (cooking/cooling):', errObj);
+            }
+
+            // Fallback: attempt to create the form if update failed (helps when record isn't present or update mutation misbehaves)
+            try {
+              console.log('Attempting fallback create for cooking/cooling form after update failure...');
+              const createResult = await client.graphql({
+                query: `mutation CreateCookingCoolingFormEntry($input: CreateCookingCoolingFormEntryInput!) { createCookingCoolingFormEntry(input: $input) { id } }`,
+                variables: { input }
+              });
+              console.log('Fallback create result:', createResult);
+              const returnedId = (createResult as any)?.data?.createCookingCoolingFormEntry?.id;
+              if (returnedId) {
+                form.id = returnedId;
+                input.id = returnedId;
+                console.log('Fallback create succeeded, updated form id to:', returnedId);
+                return;
+              }
+            } catch (createErr) {
+              console.error('Fallback create also failed (cooking/cooling):', createErr);
+            }
+
+            throw new Error(`Failed to update cooking/cooling form: ${message}`);
           }
         } else {
           console.log('Creating new cooking/cooling form...');
@@ -686,11 +723,15 @@ class MultiTableStorageManager {
 
             // Log the full input object for debugging
             console.log('GraphQL create input (cooking/cooling):', input);
+            // Strip unknown fields before create as well (schema may not accept approval metadata)
+            const createInput = { ...input };
+            if ('approvedBy' in createInput) { delete (createInput as any).approvedBy; console.log('Stripped approvedBy from GraphQL create input'); }
+            if ('approvedAt' in createInput) { delete (createInput as any).approvedAt; console.log('Stripped approvedAt from GraphQL create input'); }
             const result = await client.graphql({
               query: `mutation CreateCookingCoolingFormEntry($input: CreateCookingCoolingFormEntryInput!) {
                 createCookingCoolingFormEntry(input: $input) { id }
               }`,
-              variables: { input }
+              variables: { input: createInput }
             });
             console.log('Create result:', result);
 
@@ -737,16 +778,45 @@ class MultiTableStorageManager {
   if (existingForm) {
           console.log('Updating existing piroshki form...');
           try {
+            const graphqlInput = { ...input };
+            if ('approvedBy' in graphqlInput) { delete (graphqlInput as any).approvedBy; console.log('Stripped approvedBy from GraphQL update input (piroshki)'); }
+            if ('approvedAt' in graphqlInput) { delete (graphqlInput as any).approvedAt; console.log('Stripped approvedAt from GraphQL update input (piroshki)'); }
             const result = await client.graphql({
               query: `mutation UpdatePiroshkiFormEntry($input: UpdatePiroshkiFormEntryInput!) {
                 updatePiroshkiFormEntry(input: $input) { id }
               }`,
-              variables: { input }
+              variables: { input: graphqlInput }
             });
             console.log('Update result:', result);
           } catch (graphqlError) {
-            console.error('GraphQL update error:', graphqlError);
-            throw new Error(`Failed to update piroshki form: ${graphqlError instanceof Error ? graphqlError.message : 'Unknown error'}`);
+            const errObj: any = graphqlError || {};
+            const gqlErrors = errObj.errors || errObj.graphQLErrors || (errObj.response && errObj.response.errors) || undefined;
+            const message = errObj.message || (Array.isArray(gqlErrors) && gqlErrors.length > 0 ? gqlErrors.map((e: any) => e.message || String(e)).join('; ') : (typeof errObj === 'string' ? errObj : 'Unknown GraphQL error'));
+            try {
+              console.error('GraphQL update error (piroshki) - detailed:', safeStringify(errObj));
+            } catch (e) {
+              console.error('GraphQL update error (piroshki):', errObj);
+            }
+
+            try {
+              console.log('Attempting fallback create for piroshki form after update failure...');
+              const createResult = await client.graphql({
+                query: `mutation CreatePiroshkiFormEntry($input: CreatePiroshkiFormEntryInput!) { createPiroshkiFormEntry(input: $input) { id } }`,
+                variables: { input }
+              });
+              console.log('Fallback create result (piroshki):', createResult);
+              const returnedId = (createResult as any)?.data?.createPiroshkiFormEntry?.id;
+              if (returnedId) {
+                form.id = returnedId;
+                input.id = returnedId;
+                console.log('Fallback create succeeded (piroshki), updated form id to:', returnedId);
+                return;
+              }
+            } catch (createErr) {
+              console.error('Fallback create also failed (piroshki):', createErr);
+            }
+
+            throw new Error(`Failed to update piroshki form: ${message}`);
           }
         } else {
           console.log('Creating new piroshki form...');
@@ -755,11 +825,14 @@ class MultiTableStorageManager {
             input.id = serverId;
             form.id = serverId;
 
+            const createInput = { ...input };
+            if ('approvedBy' in createInput) { delete (createInput as any).approvedBy; console.log('Stripped approvedBy from GraphQL create input (piroshki)'); }
+            if ('approvedAt' in createInput) { delete (createInput as any).approvedAt; console.log('Stripped approvedAt from GraphQL create input (piroshki)'); }
             const result = await client.graphql({
               query: `mutation CreatePiroshkiFormEntry($input: CreatePiroshkiFormEntryInput!) {
                 createPiroshkiFormEntry(input: $input) { id }
               }`,
-              variables: { input }
+              variables: { input: createInput }
             });
             console.log('Create result:', result);
 
@@ -790,16 +863,45 @@ class MultiTableStorageManager {
   if (existingForm) {
           console.log('Updating existing bagel dog form...');
           try {
+            const graphqlInput = { ...input };
+            if ('approvedBy' in graphqlInput) { delete (graphqlInput as any).approvedBy; console.log('Stripped approvedBy from GraphQL update input (bagel dog)'); }
+            if ('approvedAt' in graphqlInput) { delete (graphqlInput as any).approvedAt; console.log('Stripped approvedAt from GraphQL update input (bagel dog)'); }
             const result = await client.graphql({
               query: `mutation UpdateBagelDogFormEntry($input: UpdateBagelDogFormEntryInput!) {
                 updateBagelDogFormEntry(input: $input) { id }
               }`,
-              variables: { input }
+              variables: { input: graphqlInput }
             });
             console.log('Update result:', result);
           } catch (graphqlError) {
-            console.error('GraphQL update error:', graphqlError);
-            throw new Error(`Failed to update bagel dog form: ${graphqlError instanceof Error ? graphqlError.message : 'Unknown error'}`);
+            const errObj: any = graphqlError || {};
+            const gqlErrors = errObj.errors || errObj.graphQLErrors || (errObj.response && errObj.response.errors) || undefined;
+            const message = errObj.message || (Array.isArray(gqlErrors) && gqlErrors.length > 0 ? gqlErrors.map((e: any) => e.message || String(e)).join('; ') : (typeof errObj === 'string' ? errObj : 'Unknown GraphQL error'));
+            try {
+              console.error('GraphQL update error (bagel dog) - detailed:', safeStringify(errObj));
+            } catch (e) {
+              console.error('GraphQL update error (bagel dog):', errObj);
+            }
+
+            try {
+              console.log('Attempting fallback create for bagel dog form after update failure...');
+              const createResult = await client.graphql({
+                query: `mutation CreateBagelDogFormEntry($input: CreateBagelDogFormEntryInput!) { createBagelDogFormEntry(input: $input) { id } }`,
+                variables: { input }
+              });
+              console.log('Fallback create result (bagel dog):', createResult);
+              const returnedId = (createResult as any)?.data?.createBagelDogFormEntry?.id;
+              if (returnedId) {
+                form.id = returnedId;
+                input.id = returnedId;
+                console.log('Fallback create succeeded (bagel dog), updated form id to:', returnedId);
+                return;
+              }
+            } catch (createErr) {
+              console.error('Fallback create also failed (bagel dog):', createErr);
+            }
+
+            throw new Error(`Failed to update bagel dog form: ${message}`);
           }
         } else {
           console.log('Creating new bagel dog form...');
@@ -808,11 +910,14 @@ class MultiTableStorageManager {
             input.id = serverId;
             form.id = serverId;
 
+            const createInput = { ...input };
+            if ('approvedBy' in createInput) { delete (createInput as any).approvedBy; console.log('Stripped approvedBy from GraphQL create input (bagel dog)'); }
+            if ('approvedAt' in createInput) { delete (createInput as any).approvedAt; console.log('Stripped approvedAt from GraphQL create input (bagel dog)'); }
             const result = await client.graphql({
               query: `mutation CreateBagelDogFormEntry($input: CreateBagelDogFormEntryInput!) {
                 createBagelDogFormEntry(input: $input) { id }
               }`,
-              variables: { input }
+              variables: { input: createInput }
             });
             console.log('Create result:', result);
 

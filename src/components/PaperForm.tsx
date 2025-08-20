@@ -62,12 +62,13 @@ export default function PaperForm({
       setIngredientCols(form.ingredientColumns);
       return;
     }
-
     const legacy = form.lotNumbers || {};
+    // Show placeholder-style prefills (Ingredient 1/2/3) by default.
+    // Labels are left empty so the input placeholder is visible and faded.
     const defaults = [
-      { key: "beef", label: "Beef" },
-      { key: "chicken", label: "Chicken" },
-      { key: "liquidEggs", label: "Liquid Eggs" },
+      { key: "beef", label: "" },
+      { key: "chicken", label: "" },
+      { key: "liquidEggs", label: "" },
     ];
 
     // If legacy keys exist, use them first for labels
@@ -90,7 +91,6 @@ export default function PaperForm({
       .join("");
     return cleaned || `ingredient${idx}`;
   };
-
   // Initialize correctiveText from the form's stored correctiveActionsComments so
   // the expanded form shows the same comments that the admin list displays.
   useEffect(() => {
@@ -1350,7 +1350,7 @@ export default function PaperForm({
                             updateFormField(form.id, "ingredientColumns", next);
                           }
                         }}
-                        className="w-full text-sm border-0 bg-transparent text-center"
+                        className={`w-full text-sm border-0 bg-transparent text-center placeholder-gray-400 ${!col.label ? 'text-gray-400' : 'text-gray-900'}`}
                         readOnly={readOnly}
                         placeholder={`Ingredient ${i + 1}`}
                       />
@@ -1413,7 +1413,7 @@ export default function PaperForm({
                           onKeyDown={(e) => {
                             if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
                           }}
-                          className="w-full border-0 bg-transparent text-sm"
+                          className={`w-full border-0 bg-transparent text-sm ${!value ? 'text-gray-400' : 'text-gray-900'}`}
                           readOnly={readOnly}
                         />
                       </td>

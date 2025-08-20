@@ -7,6 +7,7 @@ import { usePinStore } from '@/stores/pinStore';
 import { MOCK_USERS } from '@/lib/types';
 import { PaperFormEntry, FormType, getFormTypeDisplayName, getFormTypeIcon, getFormTypeColors } from '@/lib/paperFormTypes';
 import PaperForm from '@/components/PaperForm';
+import { generateFormPDF } from '@/lib/pdfGenerator';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
 import BagelDogForm from '@/components/BagelDogForm';
 import { shouldHighlightCell } from '@/lib/validation';
@@ -621,6 +622,32 @@ export default function AdminDashboard() {
     }
   };
 
+  // Download PDF from admin page for approved forms
+  const handleDownloadPDF = async (form: PaperFormEntry) => {
+    try {
+      await generateFormPDF({
+        id: form.id,
+        title: form.title || getFormTypeDisplayName(form.formType),
+        formType: form.formType,
+        date: form.date instanceof Date ? form.date.toISOString() : new Date(form.date).toISOString(),
+        status: form.status,
+        approvedBy: form.approvedBy,
+        approvedAt: form.approvedAt ? (form.approvedAt instanceof Date ? form.approvedAt.toISOString() : new Date(form.approvedAt).toISOString()) : undefined,
+        correctiveActionsComments: form.correctiveActionsComments,
+        thermometerNumber: form.thermometerNumber,
+        lotNumbers: form.lotNumbers,
+        entries: form.entries,
+        quantityAndFlavor: (form as any).quantityAndFlavor,
+        preShipmentReview: (form as any).preShipmentReview,
+        frankFlavorSizeTable: (form as any).frankFlavorSizeTable,
+        bagelDogPreShipmentReview: (form as any).bagelDogPreShipmentReview
+      });
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      showToast('error', 'Failed to download PDF. Please try again.');
+    }
+  };
+
   const handleDeleteForm = (formId: string) => {
     const formToDelete = savedForms.find(form => form.id === formId);
     if (!formToDelete) return;
@@ -821,31 +848,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center space-x-4">
             
-            <button
-              onClick={async () => {
-                setIsRefreshingAdmin(true);
-                try {
-                  await loadFormsFromStorage();
-                  setDashboardRefreshKey(k => k + 1);
-                } catch (err) {
-                  showToast('error', 'Failed to refresh forms');
-                } finally {
-                  setIsRefreshingAdmin(false);
-                }
-              }}
-              disabled={isRefreshingAdmin}
-              aria-label="Refresh forms"
-              title="Refresh"
-              className={`inline-flex items-center px-3 py-2 border rounded-lg shadow-sm text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${isRefreshingAdmin ? 'bg-gray-100 text-gray-600 cursor-not-allowed opacity-80' : 'bg-white text-gray-800 hover:bg-gray-50'}`}
-            >
-              <span className="flex items-center space-x-2">
-                <svg className={`w-5 h-5 text-gray-600 ${isRefreshingAdmin ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <path d="M12 4v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M20.07 7.93A10 10 0 1112 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span>{isRefreshingAdmin ? 'Refreshing...' : 'Refresh'}</span>
-              </span>
-            </button>
+            {/* Refresh button removed per request */}
 
             <div className="text-right">
               <p className="font-medium text-gray-900">{adminUser?.name}</p>
@@ -906,85 +909,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* Approved Forms Section */}
-          {approvedForms.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
-                <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Approved Forms
-              </h2>
 
-              {approvedForms.map((form) => (
-                <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
-                  <div className={`p-6`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
-                          <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
-                          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                            <span>Form #{form.id.slice(-6)}</span>
-                            {form.approvedBy && (
-                              <span className="text-sm text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-3">
-                        <div className="flex flex-col items-end text-sm text-gray-600">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">✓ Approved</span>
-                          {form.approvedBy && (
-                            <span className="text-xs text-indigo-700 mt-1">By {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleViewForm(form)}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                          title="View approved form (read-only)"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                          View Form
-                        </button>
-                        <button
-                          onClick={async () => {
-                            if (!adminUser) {
-                              showToast('error', 'No admin user configured; cannot approve form', form.id);
-                              return;
-                            }
-
-                            if (!confirm(`Approve Form #${form.id.slice(-6)}? This will move the form to the Approved section.`)) return;
-
-                            try {
-                              await approveForm(form.id, adminUser.initials);
-                              showToast('success', `Form #${form.id.slice(-6)} approved`, form.id);
-                              // Force dashboard refresh to move the form into the Approved section
-                              setDashboardRefreshKey(prev => prev + 1);
-                            } catch (error) {
-                              console.error('Error approving form:', error);
-                              showToast('error', `Failed to approve form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
-                            }
-                          }}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-indigo-600 border border-indigo-600 rounded-md hover:bg-indigo-700 hover:text-white transition-colors"
-                          title="Approve form"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          Approve
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* Active Forms Section (card layout identical to /form page) */}
           <div className="mb-8">
@@ -1113,9 +1038,7 @@ export default function AdminDashboard() {
                           <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                             <span>Form #{form.id.slice(-6)}</span>
                             <span className="text-gray-600 font-medium">✓ Finalized</span>
-                            {form.approvedBy && (
-                              <span className="ml-2 text-indigo-600 text-sm">Approved by {form.approvedBy}</span>
-                            )}
+                            {/* Approved by text removed per request */}
                           </div>
                         </div>
                       </div>
@@ -1134,17 +1057,15 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           onClick={() => {
-                            if (confirm(`Are you sure you want to reopen Form #${form.id.slice(-6)} for editing? This will change the status from "${form.status}" to "In Progress".`)) {
-                              try {
-                                // First update the local state immediately for better UX
-                                updateFormStatus(form.id, 'In Progress');
-                                showToast('success', `Form #${form.id.slice(-6)} reopened for editing`, form.id);
-                                // Force dashboard refresh to show updated status
-                                setDashboardRefreshKey(prev => prev + 1);
-                              } catch (error) {
-                                console.error('Error reopening form:', error);
-                                showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
-                              }
+                            try {
+                              // First update the local state immediately for better UX
+                              updateFormStatus(form.id, 'In Progress');
+                              // removed success toast for reopen to avoid green notification
+                              // Force dashboard refresh to show updated status
+                              setDashboardRefreshKey(prev => prev + 1);
+                            } catch (error) {
+                              console.error('Error reopening form:', error);
+                              showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
                             }
                           }}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
@@ -1162,11 +1083,9 @@ export default function AdminDashboard() {
                               return;
                             }
 
-                            if (!confirm(`Approve Form #${form.id.slice(-6)}? This will move the form to the Approved section.`)) return;
-
                             try {
                               await approveForm(form.id, adminUser.initials);
-                              showToast('success', `Form #${form.id.slice(-6)} approved`, form.id);
+                              // removed success toast for approve to avoid green notification
                               setDashboardRefreshKey(prev => prev + 1);
                             } catch (error) {
                               console.error('Error approving form:', error);
@@ -1243,9 +1162,7 @@ export default function AdminDashboard() {
                           <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
                           <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                             <span>Form #{form.id.slice(-6)}</span>
-                            {form.approvedBy && (
-                              <span className="text-sm text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
-                            )}
+                            {/* Approved by text removed per request */}
                           </div>
                         </div>
                       </div>
@@ -1253,9 +1170,7 @@ export default function AdminDashboard() {
                       <div className="flex items-center space-x-3">
                         <div className="flex flex-col items-end text-sm text-gray-600">
                           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">✓ Approved</span>
-                          {form.approvedBy && (
-                            <span className="text-xs text-indigo-700 mt-1">By {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
-                          )}
+                          {/* Approved by text removed per request */}
                         </div>
                         <button
                           onClick={() => handleViewForm(form)}
@@ -1269,18 +1184,26 @@ export default function AdminDashboard() {
                           View Form
                         </button>
                         <button
+                          onClick={() => handleDownloadPDF(form)}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-700 transition-colors"
+                          title="Download approved form as PDF"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download PDF
+                        </button>
+                        <button
                           onClick={() => {
-                            if (confirm(`Are you sure you want to reopen Form #${form.id.slice(-6)} for editing? This will change the status from "${form.status}" to "In Progress".`)) {
-                              try {
-                                // First update the local state immediately for better UX
-                                updateFormStatus(form.id, 'In Progress');
-                                showToast('success', `Form #${form.id.slice(-6)} reopened for editing`, form.id);
-                                // Force dashboard refresh to show updated status
-                                setDashboardRefreshKey(prev => prev + 1);
-                              } catch (error) {
-                                console.error('Error reopening form:', error);
-                                showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
-                              }
+                            try {
+                              // First update the local state immediately for better UX
+                              updateFormStatus(form.id, 'In Progress');
+                              // removed success toast for reopen to avoid green notification
+                              // Force dashboard refresh to show updated status
+                              setDashboardRefreshKey(prev => prev + 1);
+                            } catch (error) {
+                              console.error('Error reopening form:', error);
+                              showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
                             }
                           }}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
@@ -1349,8 +1272,12 @@ export default function AdminDashboard() {
                         // Force dashboard refresh to show updated status
                         setDashboardRefreshKey(prev => prev + 1);
                         
-                        // Show success toast
-                        showToast('success', `Form status updated to ${updates.status}`, formId);
+                        // Do not show success toast here to avoid green notification
+                        // Close modal when form is completed
+                        if (updates.status === 'Complete') {
+                          setShowFormModal(false);
+                          setSelectedForm(null);
+                        }
                       }
                       
                       // Update the selectedForm state to reflect changes
@@ -1374,8 +1301,12 @@ export default function AdminDashboard() {
                          // Force dashboard refresh to show updated status
                          setDashboardRefreshKey(prev => prev + 1);
                          
-                         // Show success toast
-                         showToast('success', `Form status updated to ${updates.status}`, formId);
+                         // Do not show success toast here to avoid green notification
+                         // Close modal when form is completed
+                         if (updates.status === 'Complete') {
+                           setShowFormModal(false);
+                           setSelectedForm(null);
+                         }
                        }
                        
                        // Update the selectedForm state to reflect changes
@@ -1401,8 +1332,12 @@ export default function AdminDashboard() {
                         // Force dashboard refresh to show updated status
                         setDashboardRefreshKey(prev => prev + 1);
                         
-                        // Show success toast
-                        showToast('success', `Form status updated to ${updates.status}`, formId);
+                        // Do not show success toast here to avoid green notification
+                        // Close modal when form is completed
+                        if (updates.status === 'Complete') {
+                          setShowFormModal(false);
+                          setSelectedForm(null);
+                        }
                       }
                       
                       // Update the selectedForm state to reflect changes
