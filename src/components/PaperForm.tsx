@@ -42,11 +42,60 @@ export default function PaperForm({
 
   const [correctiveText, setCorrectiveText] = useState("");
   const [titleInput, setTitleInput] = useState(form?.title || "");
+  const [ingredientCols, setIngredientCols] = useState<Array<{ key: string; label: string }>>([]);
 
   // Keep the title input in sync when the parent passes a new form object
   useEffect(() => {
     setTitleInput(form?.title || "");
   }, [form?.id, form?.title]);
+
+  // Ingredient columns: keep editable labels and keys in-sync with the form.
+  // Persist as `ingredientColumns` on the form when changed. Fall back to
+  // legacy lotNumbers keys if present (beef/chicken/liquidEggs).
+  useEffect(() => {
+    if (!form) return;
+    if (Array.isArray(form.ingredientColumns) && form.ingredientColumns.length) {
+      setIngredientCols(
+        form.ingredientColumns.map((c: any) => ({ key: c.key, label: String(c.label || "") ? String(c.label || "").charAt(0).toUpperCase() + String(c.label || "").slice(1) : "" }))
+      );
+      return;
+    }
+
+    const legacy = form.lotNumbers || {};
+    const defaults = [
+      { key: "ingredient1", label: "Ingredient 1" },
+      { key: "ingredient2", label: "Ingredient 2" },
+      { key: "ingredient3", label: "Ingredient 3" },
+    ];
+
+    // If legacy keys exist, use them first for labels
+    const derived = defaults.map((d) => {
+      if (Object.prototype.hasOwnProperty.call(legacy, d.key)) return d;
+      return d;
+    });
+
+    setIngredientCols(
+      derived.map((d, i) => ({ key: d.key, label: d.label ? d.label.charAt(0).toUpperCase() + d.label.slice(1) : d.label }))
+    );
+  }, [form?.id, form?.lotNumbers, form?.ingredientColumns]);
+
+  const slugForLabel = (label: string, idx: number) => {
+    if (!label || String(label).trim() === "") return `ingredient${idx}`;
+    // create a compact key: remove non-alphanum, camelCase-ish
+    const cleaned = String(label)
+      .trim()
+      .replace(/[^a-zA-Z0-9 ]+/g, "")
+      .split(/\s+/)
+      .map((p, i) => (i === 0 ? p.toLowerCase() : p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()))
+      .join("");
+    return cleaned || `ingredient${idx}`;
+  };
+
+  const capitalizeFirst = (s?: string) => {
+    if (!s) return "";
+    const str = String(s);
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
 
   // Initialize correctiveText from the form's stored correctiveActionsComments so
   // the expanded form shows the same comments that the admin list displays.
@@ -61,6 +110,19 @@ export default function PaperForm({
 
   // Memoize entries cheaply; Zustand will re-render when 'entries' changes
   const memoizedEntries = form?.entries || [];
+
+  // Stage lock: if a stage has temp, time and initial filled, lock those inputs
+  const isStageLocked = (rowIndex: number, stage: StageKey) => {
+    if (!form) return false;
+    // Admin forms should always be editable via admin UI
+    if (isAdminForm) return false;
+    const entry = form.entries?.[rowIndex];
+    if (!entry) return false;
+    const stageData = entry[stage] as any;
+    if (!stageData) return false;
+    // Locked when all three primary fields are non-empty
+    return Boolean(stageData.temp || stageData.temp === 0) && Boolean(stageData.time) && Boolean(stageData.initial);
+  };
 
   // --- Helper utilities ------------------------------------------------------
 
@@ -504,6 +566,28 @@ export default function PaperForm({
       );
     }
 
+    // If this change completed a stage (temp+time+initial) for non-admin forms,
+    // auto-save so the locked state is persisted. We don't await to avoid
+    // blocking the UI; just log errors if saving fails.
+    try {
+      const stageMatch2 =
+        typeof field === "string"
+          ? field.match(/^([^.]+)\.(temp|time|initial)$/)
+          : null;
+      if (stageMatch2 && !isAdminForm && !readOnly && form) {
+        const stage = stageMatch2[1] as StageKey;
+        const entry = form.entries?.[rowIndex] as any;
+        const sd = entry?.[stage];
+        const nowLocked = sd && (sd.temp || sd.temp === 0) && sd.time && sd.initial;
+        if (nowLocked) {
+          // Fire-and-forget save
+          saveForm().catch((err) => console.error('Error auto-saving form after stage complete:', err));
+        }
+      }
+    } catch (err) {
+      console.error('Error during auto-save-on-stage-complete check:', err);
+    }
+
     // After side-effects, ensure form status reflects validation state.
     try {
       const validation = validateForm(form);
@@ -760,7 +844,7 @@ export default function PaperForm({
                       formId={form.id}
                       field={`${rowIndex}-ccp1.temp`}
                       valueFromStore={entry.ccp1?.temp || ""}
-                      readOnly={readOnly}
+                      readOnly={readOnly || isStageLocked(rowIndex, 'ccp1')}
                       commitField={(value: string) => {
                         commitField(rowIndex, "ccp1.temp", value);
                       }}
@@ -786,7 +870,7 @@ export default function PaperForm({
                       }
                       placeholder="Time"
                       className={getCellClasses(rowIndex, "ccp1.time", "w-full")}
-                      disabled={readOnly}
+                      disabled={readOnly || isStageLocked(rowIndex, 'ccp1')}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.ccp1?.dataLog || false}
@@ -815,7 +899,7 @@ export default function PaperForm({
                       formId={form.id}
                       field={`${rowIndex}-ccp1.initial`}
                       valueFromStore={entry.ccp1?.initial || ""}
-                      readOnly={readOnly}
+                      readOnly={readOnly || isStageLocked(rowIndex, 'ccp1')}
                       commitField={(value: string) =>
                         commitField(
                           rowIndex,
@@ -841,7 +925,7 @@ export default function PaperForm({
                       formId={form.id}
                       field={`${rowIndex}-ccp2.temp`}
                       valueFromStore={entry.ccp2?.temp || ""}
-                      readOnly={readOnly}
+                      readOnly={readOnly || isStageLocked(rowIndex, 'ccp2')}
                       commitField={(value: string) =>
                         commitField(rowIndex, "ccp2.temp", value)
                       }
@@ -874,7 +958,7 @@ export default function PaperForm({
                       }
                       placeholder="Time"
                       className={getCellClasses(rowIndex, "ccp2.time", "w-full")}
-                      disabled={readOnly}
+                      disabled={readOnly || isStageLocked(rowIndex, 'ccp2')}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.ccp2?.dataLog || false}
@@ -903,7 +987,7 @@ export default function PaperForm({
                       formId={form.id}
                       field={`${rowIndex}-ccp2.initial`}
                       valueFromStore={entry.ccp2?.initial || ""}
-                      readOnly={readOnly}
+                      readOnly={readOnly || isStageLocked(rowIndex, 'ccp2')}
                       commitField={(value: string) =>
                         commitField(
                           rowIndex,
@@ -929,7 +1013,7 @@ export default function PaperForm({
                       formId={form.id}
                       field={`${rowIndex}-coolingTo80.temp`}
                       valueFromStore={entry.coolingTo80?.temp || ""}
-                      readOnly={readOnly}
+                      readOnly={readOnly || isStageLocked(rowIndex, 'coolingTo80')}
                       commitField={(value: string) =>
                         commitField(rowIndex, "coolingTo80.temp", value)
                       }
@@ -961,7 +1045,7 @@ export default function PaperForm({
                       }
                       placeholder="Time"
                       className={getCellClasses(rowIndex, "coolingTo80.time", "w-full")}
-                      disabled={readOnly}
+                      disabled={readOnly || isStageLocked(rowIndex, 'coolingTo80')}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.coolingTo80?.dataLog || false}
@@ -997,7 +1081,7 @@ export default function PaperForm({
                       formId={form.id}
                       field={`${rowIndex}-coolingTo80.initial`}
                       valueFromStore={entry.coolingTo80?.initial || ""}
-                      readOnly={readOnly}
+                      readOnly={readOnly || isStageLocked(rowIndex, 'coolingTo80')}
                       commitField={(value: string) =>
                         commitField(
                           rowIndex,
@@ -1023,7 +1107,7 @@ export default function PaperForm({
                       formId={form.id}
                       field={`${rowIndex}-coolingTo54.temp`}
                       valueFromStore={entry.coolingTo54?.temp || ""}
-                      readOnly={readOnly}
+                      readOnly={readOnly || isStageLocked(rowIndex, 'coolingTo54')}
                       commitField={(value: string) => {
                         commitField(rowIndex, "coolingTo54.temp", value);
                       }}
@@ -1049,7 +1133,7 @@ export default function PaperForm({
                       }
                       placeholder="Time"
                       className={getCellClasses(rowIndex, "coolingTo54.time", "w-full")}
-                      disabled={readOnly}
+                      disabled={readOnly || isStageLocked(rowIndex, 'coolingTo54')}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.coolingTo54?.dataLog || false}
@@ -1085,7 +1169,7 @@ export default function PaperForm({
                       formId={form.id}
                       field={`${rowIndex}-coolingTo54.initial`}
                       valueFromStore={entry.coolingTo54?.initial || ""}
-                      readOnly={readOnly}
+                      readOnly={readOnly || isStageLocked(rowIndex, 'coolingTo54')}
                       commitField={(value: string) =>
                         commitField(
                           rowIndex,
@@ -1111,7 +1195,7 @@ export default function PaperForm({
                       formId={form.id}
                       field={`${rowIndex}-finalChill.temp`}
                       valueFromStore={entry.finalChill?.temp || ""}
-                      readOnly={readOnly}
+                      readOnly={readOnly || isStageLocked(rowIndex, 'finalChill')}
                       commitField={(value: string) => {
                         commitField(rowIndex, "finalChill.temp", value);
                       }}
@@ -1134,7 +1218,7 @@ export default function PaperForm({
                             value={entry.finalChill?.date ? ensureDate(entry.finalChill?.date).toISOString().split('T')[0] : ''}
                             onChange={(e) => handleCellChange(rowIndex, 'finalChill.date', e.target.value)}
                             className="w-24 md:w-28 text-xs md:text-sm border-0 bg-transparent text-center mb-1"
-                            readOnly={readOnly}
+                            readOnly={readOnly || isStageLocked(rowIndex, 'finalChill')}
                             onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
                             aria-label="Final chill date picker"
                           />
@@ -1146,7 +1230,7 @@ export default function PaperForm({
                           }
                           placeholder="Time"
                           className={getCellClasses(rowIndex, "finalChill.time", "w-20 md:w-24 mx-auto")}
-                          disabled={readOnly}
+                          disabled={readOnly || isStageLocked(rowIndex, 'finalChill')}
                           showQuickTimes={false}
                           compact
                           dataLog={entry.finalChill?.dataLog || false}
@@ -1245,207 +1329,103 @@ export default function PaperForm({
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  <th className="border border-black p-2 bg-gray-100">
-                    Ingredient
-                  </th>
-                  <th className="border border-black p-2 bg-gray-100">Beef</th>
-                  <th className="border border-black p-2 bg-gray-100">
-                    Chicken
-                  </th>
-                  <th className="border border-black p-2 bg-gray-100">
-                    Liquid Eggs
-                  </th>
+                  <th className="border border-black p-2 bg-gray-100">Ingredient</th>
+                  {ingredientCols.map((col, i) => (
+                    <th key={`ing-h-${i}`} className="border border-black p-2 bg-gray-100">
+                      <input
+                        type="text"
+                        value={col.label}
+                        onChange={(e) => {
+                          const next = [...ingredientCols];
+                          next[i] = { ...next[i], label: e.target.value };
+                          setIngredientCols(next);
+                        }}
+                        onBlur={(e) => {
+                          const next = [...ingredientCols];
+                          const rawLabel = e.target.value;
+                          const newLabel = capitalizeFirst(rawLabel);
+                          const newKey = slugForLabel(newLabel, i + 1);
+                          next[i] = { key: newKey, label: newLabel };
+                          setIngredientCols(next);
+                          // persist to form
+                          if (!form) return;
+                          const payload = { ingredientColumns: next };
+                          if (isAdminForm) {
+                            updateAdminForm(form.id, payload as any);
+                            if (onFormUpdate) onFormUpdate(form.id, payload);
+                          } else {
+                            updateFormField(form.id, "ingredientColumns", next);
+                          }
+                        }}
+                        className="w-full text-sm border-0 bg-transparent text-center"
+                        readOnly={readOnly}
+                        placeholder={`Ingredient ${i + 1}`}
+                      />
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td className="border border-black p-2 font-semibold">
-                    Lot #(s)
-                  </td>
-                  <td className="border border-black p-1">
-                    <input
-                      type="text"
-                      value={form.lotNumbers?.beef || ""}
-                      onChange={(e) => {
-                        const newValue = e.target.value;
-                        if (!form) return;
-                        // Update immediately so the input remains controlled and editable
-                        if (isAdminForm) {
-                          updateAdminForm(form.id, {
-                            lotNumbers: {
-                              ...form.lotNumbers,
-                              beef: newValue,
-                            },
-                          });
-                          if (onFormUpdate)
-                            onFormUpdate(form.id, {
-                              lotNumbers: {
-                                ...form.lotNumbers,
-                                beef: newValue,
-                              },
-                            });
-                        } else {
-                          updateFormField(form.id, "lotNumbers", {
-                            ...form.lotNumbers,
-                            beef: newValue,
-                          });
-                        }
-                      }}
-                      onBlur={(e) => {
-                        const newValue = e.target.value;
-                        if (!readOnly) {
-                          if (isAdminForm) {
-                            updateAdminForm(form.id, {
-                              lotNumbers: {
-                                ...form.lotNumbers,
-                                beef: newValue,
-                              },
-                            });
-                            if (onFormUpdate)
-                              onFormUpdate(form.id, {
-                                lotNumbers: {
-                                  ...form.lotNumbers,
-                                  beef: newValue,
-                                },
-                              });
-                          } else {
-                            updateFormField(form.id, "lotNumbers", {
-                              ...form.lotNumbers,
-                              beef: newValue,
-                            });
-                          }
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter")
-                          (e.currentTarget as HTMLInputElement).blur();
-                      }}
-                      className="w-full border-0 bg-transparent text-sm"
-                      readOnly={readOnly}
-                    />
-                  </td>
-                  <td className="border border-black p-1">
-                    <input
-                      type="text"
-                      value={form.lotNumbers?.chicken || ""}
-                      onChange={(e) => {
-                        const newValue = e.target.value;
-                        if (!form) return;
-                        if (isAdminForm) {
-                          updateAdminForm(form.id, {
-                            lotNumbers: {
-                              ...form.lotNumbers,
-                              chicken: newValue,
-                            },
-                          });
-                          if (onFormUpdate)
-                            onFormUpdate(form.id, {
-                              lotNumbers: {
-                                ...form.lotNumbers,
-                                chicken: newValue,
-                              },
-                            });
-                        } else {
-                          updateFormField(form.id, "lotNumbers", {
-                            ...form.lotNumbers,
-                            chicken: newValue,
-                          });
-                        }
-                      }}
-                      onBlur={(e) => {
-                        const newValue = e.target.value;
-                        if (!readOnly) {
-                          if (isAdminForm) {
-                            updateAdminForm(form.id, {
-                              lotNumbers: {
-                                ...form.lotNumbers,
-                                chicken: newValue,
-                              },
-                            });
-                            if (onFormUpdate)
-                              onFormUpdate(form.id, {
-                                lotNumbers: {
-                                  ...form.lotNumbers,
-                                  chicken: newValue,
-                                },
-                              });
-                          } else {
-                            updateFormField(form.id, "lotNumbers", {
-                              ...form.lotNumbers,
-                              chicken: newValue,
-                            });
-                          }
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter")
-                          (e.currentTarget as HTMLInputElement).blur();
-                      }}
-                      className="w-full border-0 bg-transparent text-sm"
-                      readOnly={readOnly}
-                    />
-                  </td>
-                  <td className="border border-black p-1">
-                    <input
-                      type="text"
-                      value={form.lotNumbers?.liquidEggs || ""}
-                      onChange={(e) => {
-                        const newValue = e.target.value;
-                        if (!form) return;
-                        if (isAdminForm) {
-                          updateAdminForm(form.id, {
-                            lotNumbers: {
-                              ...form.lotNumbers,
-                              liquidEggs: newValue,
-                            },
-                          });
-                          if (onFormUpdate)
-                            onFormUpdate(form.id, {
-                              lotNumbers: {
-                                ...form.lotNumbers,
-                                liquidEggs: newValue,
-                              },
-                            });
-                        } else {
-                          updateFormField(form.id, "lotNumbers", {
-                            ...form.lotNumbers,
-                            liquidEggs: newValue,
-                          });
-                        }
-                      }}
-                      onBlur={(e) => {
-                        const newValue = e.target.value;
-                        if (!readOnly) {
-                          if (isAdminForm) {
-                            updateAdminForm(form.id, {
-                              lotNumbers: {
-                                ...form.lotNumbers,
-                                liquidEggs: newValue,
-                              },
-                            });
-                            if (onFormUpdate)
-                              onFormUpdate(form.id, {
-                                lotNumbers: {
-                                  ...form.lotNumbers,
-                                  liquidEggs: newValue,
-                                },
-                              });
-                          } else {
-                            updateFormField(form.id, "lotNumbers", {
-                              ...form.lotNumbers,
-                              liquidEggs: newValue,
-                            });
-                          }
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter")
-                          (e.currentTarget as HTMLInputElement).blur();
-                      }}
-                      className="w-full border-0 bg-transparent text-sm"
-                      readOnly={readOnly}
-                    />
-                  </td>
+                  <td className="border border-black p-2 font-semibold">Lot #(s)</td>
+                  {ingredientCols.map((col, i) => {
+                    const key = col.key || slugForLabel(col.label, i + 1);
+                    // Read value from ingredientColumns-backed lotNumbers first,
+                    // then fall back to legacy form.lotNumbers keys.
+                    const legacyVal = form.lotNumbers ? form.lotNumbers[key] : undefined;
+                    const legacyFallback = (() => {
+                      // handle legacy known keys
+                      const map: Record<string, string> = {
+                        beef: form.lotNumbers?.beef,
+                        chicken: form.lotNumbers?.chicken,
+                        liquidEggs: form.lotNumbers?.liquidEggs,
+                      };
+                      return map[key];
+                    })();
+                    const value = (form.lotNumbers && Object.prototype.hasOwnProperty.call(form.lotNumbers, key))
+                      ? legacyVal
+                      : (legacyFallback ?? "");
+
+                    return (
+                      <td key={`lot-${i}`} className="border border-black p-1">
+                        <input
+                          type="text"
+                          value={value || ""}
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            if (!form) return;
+                            // keep controlled
+                            const updatedLotNumbers = { ...(form.lotNumbers || {}) };
+                            updatedLotNumbers[key] = newValue;
+                            if (isAdminForm) {
+                              updateAdminForm(form.id, { lotNumbers: updatedLotNumbers });
+                              if (onFormUpdate) onFormUpdate(form.id, { lotNumbers: updatedLotNumbers });
+                            } else {
+                              updateFormField(form.id, "lotNumbers", updatedLotNumbers);
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const newValue = e.target.value;
+                            if (!readOnly) {
+                              const updatedLotNumbers = { ...(form.lotNumbers || {}) };
+                              updatedLotNumbers[key] = newValue;
+                              if (isAdminForm) {
+                                updateAdminForm(form.id, { lotNumbers: updatedLotNumbers });
+                                if (onFormUpdate) onFormUpdate(form.id, { lotNumbers: updatedLotNumbers });
+                              } else {
+                                updateFormField(form.id, "lotNumbers", updatedLotNumbers);
+                              }
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+                          }}
+                          className="w-full border-0 bg-transparent text-sm"
+                          readOnly={readOnly}
+                        />
+                      </td>
+                    );
+                  })}
                 </tr>
               </tbody>
             </table>

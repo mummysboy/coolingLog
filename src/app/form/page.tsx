@@ -950,7 +950,7 @@ export default function FormPage() {
               </div>
               <button
                 onClick={async () => {
-                  // Auto-save form to AWS when closing modal
+                  // Auto-save form to AWS when closing modal (do not finalize status)
                   try {
                     console.log('Modal closing - auto-saving form to AWS');
                     await saveForm();
