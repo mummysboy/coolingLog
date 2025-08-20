@@ -1,9 +1,0 @@
-{
-  "AppSyncApiName": "bageldogform",
-  "DynamoDBBillingMode": "PAY_PER_REQUEST",
-  "DynamoDBEnableServerSideEncryption": false,
-  "S3DeploymentBucket": "amplify-foodchillinglog-dev-123456789012-deployment",
-  "S3DeploymentRootKey": "amplify-appsync-files/12345678901234567890123456789012/deployment"
-}
-
-

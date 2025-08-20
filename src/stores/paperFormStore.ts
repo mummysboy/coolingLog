@@ -135,7 +135,28 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
     // representation, reconcile the local savedForms/currentForm to match it.
     (async () => {
       try {
-        const updated = await (storageManager as any).updatePaperFormStatus(formId, status);
+        // If this form has a client-generated id (starts with 'form-') it
+        // may not exist in AWS yet. Proactively save the full form and
+        // use the server-assigned id for the status update to avoid
+        // "not found in any form table" errors.
+        let targetId = formId;
+        try {
+          if (typeof formId === 'string' && formId.startsWith('form-')) {
+            const state = get();
+            const localForm = state.savedForms.find((f) => f.id === formId) || state.currentForm;
+            if (localForm) {
+              console.log('Client-side id detected; saving full form to AWS before status update:', formId);
+              await storageManager.savePaperForm(localForm);
+              // storageManager may update the form.id to a server-assigned id
+              targetId = localForm.id || formId;
+              console.log('Using id for status update:', targetId);
+            }
+          }
+        } catch (preSaveErr) {
+          console.warn('Pre-save before status update failed (will still try status update):', preSaveErr);
+        }
+
+        const updated = await (storageManager as any).updatePaperFormStatus(targetId, status);
         if (updated && updated.id) {
           set((state) => ({
             savedForms: state.savedForms.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)),
@@ -145,6 +166,38 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
       } catch (err) {
         // Do not block UI on errors; log for diagnostics.
         console.error('Failed to persist form status change to AWS:', err);
+
+        // If the backend reports the form wasn't found in any table, it
+        // likely means the form was never persisted to AWS (client-local id).
+        // Attempt to save the full local form and then retry the status update.
+        try {
+          const message = err instanceof Error ? err.message : String(err);
+          if (message.includes('not found in any form table') || /not found/i.test(message)) {
+            const state = get();
+            // Prefer the savedForms entry, fallback to currentForm
+            const localForm = state.savedForms.find((f) => f.id === formId) || state.currentForm;
+            if (localForm) {
+              console.log('Form not found in AWS, attempting to save local form then retry status update:', localForm.id);
+              // Save the full form to AWS (may assign a new server id)
+              await storageManager.savePaperForm(localForm);
+
+              // After save, retry the status update using the possibly-updated id
+              const newId = localForm.id;
+              console.log('Retrying status update with form id:', newId);
+              const retried = await (storageManager as any).updatePaperFormStatus(newId, status);
+              if (retried && retried.id) {
+                set((state) => ({
+                  savedForms: state.savedForms.map((f) => (f.id === retried.id ? { ...f, ...retried } : f)),
+                  currentForm: state.currentForm?.id === retried.id ? { ...state.currentForm, ...retried } : state.currentForm,
+                } as Partial<typeof state>));
+              }
+            } else {
+              console.warn('No local form found to save for id:', formId);
+            }
+          }
+        } catch (retryErr) {
+          console.error('Retry to save form and update status failed:', retryErr);
+        }
       }
     })();
   },

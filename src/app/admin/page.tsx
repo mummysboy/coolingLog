@@ -1,24 +1,19 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import { usePinStore } from '@/stores/pinStore';
 import { MOCK_USERS } from '@/lib/types';
-import { PaperFormEntry, FormType, getFormTypeDisplayName, getFormTypeDescription, getFormTypeIcon, getFormTypeColors, ensureDate } from '@/lib/paperFormTypes';
+import { PaperFormEntry, FormType, getFormTypeDisplayName, getFormTypeIcon, getFormTypeColors } from '@/lib/paperFormTypes';
 import PaperForm from '@/components/PaperForm';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
 import BagelDogForm from '@/components/BagelDogForm';
-import { validateForm, shouldHighlightCell } from '@/lib/validation';
-import { generateFormPDF } from '@/lib/pdfGenerator';
-
-// Debug flag for development
-const DEBUG_ALLOW_EDIT = false;
+import { shouldHighlightCell } from '@/lib/validation';
 
 
 export default function AdminDashboard() {
-  const { savedForms, currentForm, loadForm, loadFormsFromStorage, updateFormStatus, approveForm, deleteForm, isFormBlank, exportState, syncFormsToAWS, saveForm, createNewForm } = usePaperFormStore();
-  const store = usePaperFormStore; // Get store reference for getState()
+  const { savedForms, currentForm, loadForm, loadFormsFromStorage, updateFormStatus, approveForm, deleteForm, isFormBlank, exportState, syncFormsToAWS } = usePaperFormStore();
 
   const { createPin, updatePin, deletePin, getAllPins, getPinForInitials } = usePinStore();
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
@@ -37,9 +32,8 @@ export default function AdminDashboard() {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
 
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0); // Force dashboard refresh
+  const [isRefreshingAdmin, setIsRefreshingAdmin] = useState(false);
   const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
-  const [isAddFormDropdownOpen, setIsAddFormDropdownOpen] = useState(false);
-  const [newlyCreatedFormId, setNewlyCreatedFormId] = useState<string | null>(null);
 
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'complete' | 'error'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,7 +49,6 @@ export default function AdminDashboard() {
   }>>([]);
 
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
-  const addFormDropdownRef = useRef<HTMLDivElement>(null);
 
 
   const adminUser = MOCK_USERS.find(user => user.role === 'admin');
@@ -261,17 +254,14 @@ export default function AdminDashboard() {
         setShowSettingsDropdown(false);
       }
       
-      // Close add form dropdown
-      if (isAddFormDropdownOpen && addFormDropdownRef.current && !addFormDropdownRef.current.contains(event.target as Node)) {
-        setIsAddFormDropdownOpen(false);
-      }
+
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isAddFormDropdownOpen]);
+  }, []);
 
   // Auto-clear success message after 5 seconds
   useEffect(() => {
@@ -283,39 +273,6 @@ export default function AdminDashboard() {
       return () => clearTimeout(timer);
     }
   }, [deleteSuccessMessage]);
-
-  // Body scroll lock when modal is open
-  useEffect(() => {
-    if (showFormModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [showFormModal]);
-
-  // Auto-open newly created forms (matches form page behavior)
-  useEffect(() => {
-    if (newlyCreatedFormId && newlyCreatedFormId !== 'pending' && savedForms.some(form => form.id === newlyCreatedFormId)) {
-      const formToOpen = savedForms.find(form => form.id === newlyCreatedFormId);
-      if (formToOpen) {
-        console.log('Automatically opening newly created form:', newlyCreatedFormId);
-        setSelectedForm(formToOpen);
-        setShowFormModal(true);
-        setNewlyCreatedFormId(null);
-      }
-    }
-  }, [newlyCreatedFormId, savedForms]);
-
-  // Clean up newlyCreatedFormId if modal is closed without opening
-  useEffect(() => {
-    if (!showFormModal && newlyCreatedFormId) {
-      setNewlyCreatedFormId(null);
-    }
-  }, [newlyCreatedFormId, showFormModal]);
 
   const handleViewForm = (form: PaperFormEntry) => {
     // Load the authoritative form data into the store first so the modal shows the same title
@@ -333,55 +290,6 @@ export default function AdminDashboard() {
       setShowFormModal(true);
     })();
   };
-
-  // Enhanced form update handler - matches form page behavior exactly
-  const handleFormUpdate = useCallback((formId: string, updates: Partial<PaperFormEntry>) => {
-    console.log('Form updated in admin modal:', formId, updates);
-    
-    // Handle status updates by calling the store's updateFormStatus function
-    if (updates.status) {
-      console.log('Status updated to:', updates.status, 'updating store');
-      updateFormStatus(formId, updates.status);
-      
-      // Force a re-render of the dashboard by updating the dashboardRefreshKey
-      setDashboardRefreshKey(prev => prev + 1);
-      
-      // Show success toast
-      showToast('success', `Form status updated to ${updates.status}`, formId);
-    }
-    
-    // Update the selectedForm state to reflect changes
-    if (selectedForm && selectedForm.id === formId) {
-      const updatedForm = { ...selectedForm, ...updates } as PaperFormEntry;
-      setSelectedForm(updatedForm);
-      console.log('SelectedForm updated to:', updatedForm.status);
-    }
-  }, [updateFormStatus, selectedForm, showToast]);
-
-  // Function to handle form creation and return the new ID
-  const handleCreateForm = useCallback(async (formType: FormType) => {
-    // Set a default initial (can be changed later by the user)
-    const defaultInitial = 'ADMIN';
-    store.getState().setSelectedInitial(defaultInitial);
-    
-    // Create the form locally
-    createNewForm(formType, defaultInitial);
-    setIsAddFormDropdownOpen(false);
-
-    // Try to persist immediately; on failure still open the local form
-    try {
-      await saveForm();
-    } catch (err) {
-      console.error('Error saving newly created form to AWS (continuing with local form):', err);
-    }
-
-    // Get the newly created form from the store (may have been updated by save)
-    const { currentForm } = store.getState();
-    if (currentForm) {
-      // Store the new form ID to track it (used to auto-open the modal)
-      setNewlyCreatedFormId(currentForm.id);
-    }
-  }, [createNewForm, store, saveForm]);
 
 
 
@@ -713,31 +621,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDownloadPDF = async (form: PaperFormEntry) => {
-    try {
-      await generateFormPDF({
-        id: form.id,
-        title: form.title || getFormTypeDisplayName(form.formType),
-        formType: form.formType,
-        date: form.date.toISOString(),
-        status: form.status,
-        approvedBy: form.approvedBy,
-        approvedAt: form.approvedAt ? form.approvedAt.toISOString() : undefined,
-        correctiveActionsComments: form.correctiveActionsComments,
-        thermometerNumber: form.thermometerNumber,
-        lotNumbers: form.lotNumbers,
-        entries: form.entries,
-        quantityAndFlavor: (form as any).quantityAndFlavor,
-        preShipmentReview: (form as any).preShipmentReview,
-        frankFlavorSizeTable: (form as any).frankFlavorSizeTable,
-        bagelDogPreShipmentReview: (form as any).bagelDogPreShipmentReview
-      });
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      alert('Failed to download PDF. Please try again.');
-    }
-  };
-
   const handleDeleteForm = (formId: string) => {
     const formToDelete = savedForms.find(form => form.id === formId);
     if (!formToDelete) return;
@@ -938,88 +821,31 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center space-x-4">
             
-            {/* Add Form Button with Dropdown */}
-            <div className="relative" ref={addFormDropdownRef}>
-              <button
-                onClick={() => setIsAddFormDropdownOpen(!isAddFormDropdownOpen)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <button
+              onClick={async () => {
+                setIsRefreshingAdmin(true);
+                try {
+                  await loadFormsFromStorage();
+                  setDashboardRefreshKey(k => k + 1);
+                } catch (err) {
+                  showToast('error', 'Failed to refresh forms');
+                } finally {
+                  setIsRefreshingAdmin(false);
+                }
+              }}
+              disabled={isRefreshingAdmin}
+              aria-label="Refresh forms"
+              title="Refresh"
+              className={`inline-flex items-center px-3 py-2 border rounded-lg shadow-sm text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${isRefreshingAdmin ? 'bg-gray-100 text-gray-600 cursor-not-allowed opacity-80' : 'bg-white text-gray-800 hover:bg-gray-50'}`}
+            >
+              <span className="flex items-center space-x-2">
+                <svg className={`w-5 h-5 text-gray-600 ${isRefreshingAdmin ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M12 4v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M20.07 7.93A10 10 0 1112 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                Add Form
-                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              {/* Dropdown Menu */}
-              {isAddFormDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                  <div className="py-1" role="menu" aria-orientation="vertical">
-                    <button
-                      onClick={() => {
-                        handleCreateForm(FormType.COOKING_AND_COOLING);
-                      }}
-                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
-                      role="menuitem"
-                    >
-                      <div className="flex items-center">
-                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.COOKING_AND_COOLING).bg} rounded-lg flex items-center justify-center mr-3`}>
-                          <span className={`text-lg ${getFormTypeColors(FormType.COOKING_AND_COOLING).text}`}>
-                            {getFormTypeIcon(FormType.COOKING_AND_COOLING)}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="font-medium">{getFormTypeDisplayName(FormType.COOKING_AND_COOLING)}</div>
-                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.COOKING_AND_COOLING)}</div>
-                        </div>
-                      </div>
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        handleCreateForm(FormType.PIROSHKI_CALZONE_EMPANADA);
-                      }}
-                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
-                      role="menuitem"
-                    >
-                      <div className="flex items-center">
-                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.PIROSHKI_CALZONE_EMPANADA).bg} rounded-lg flex items-center justify-center mr-3`}>
-                          <span className={`text-lg ${getFormTypeColors(FormType.PIROSHKI_CALZONE_EMPANADA).text}`}>
-                            {getFormTypeIcon(FormType.PIROSHKI_CALZONE_EMPANADA)}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="font-medium">{getFormTypeDisplayName(FormType.PIROSHKI_CALZONE_EMPANADA)}</div>
-                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.PIROSHKI_CALZONE_EMPANADA)}</div>
-                        </div>
-                      </div>
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        handleCreateForm(FormType.BAGEL_DOG_COOKING_COOLING);
-                      }}
-                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
-                      role="menuitem"
-                    >
-                      <div className="flex items-center">
-                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.BAGEL_DOG_COOKING_COOLING).bg} rounded-lg flex items-center justify-center mr-3`}>
-                          <span className={`text-lg ${getFormTypeColors(FormType.BAGEL_DOG_COOKING_COOLING).text}`}>
-                            {getFormTypeIcon(FormType.BAGEL_DOG_COOKING_COOLING)}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="font-medium">{getFormTypeDisplayName(FormType.BAGEL_DOG_COOKING_COOLING)}</div>
-                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.BAGEL_DOG_COOKING_COOLING)}</div>
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+                <span>{isRefreshingAdmin ? 'Refreshing...' : 'Refresh'}</span>
+              </span>
+            </button>
 
             <div className="text-right">
               <p className="font-medium text-gray-900">{adminUser?.name}</p>
@@ -1077,6 +903,89 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Approved Forms Section */}
+          {approvedForms.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Approved Forms
+              </h2>
+
+              {approvedForms.map((form) => (
+                <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
+                  <div className={`p-6`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
+                          <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                            <span>Form #{form.id.slice(-6)}</span>
+                            {form.approvedBy && (
+                              <span className="text-sm text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        <div className="flex flex-col items-end text-sm text-gray-600">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">✓ Approved</span>
+                          {form.approvedBy && (
+                            <span className="text-xs text-indigo-700 mt-1">By {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleViewForm(form)}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                          title="View approved form (read-only)"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          View Form
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to reopen Form #${form.id.slice(-6)} for editing? This will change the status from "${form.status}" to "In Progress".`)) {
+                              try {
+                                console.log('Reopening form:', {
+                                  id: form.id,
+                                  formType: form.formType,
+                                  status: form.status,
+                                  title: form.title
+                                });
+                                
+                                // First update the local state immediately for better UX
+                                updateFormStatus(form.id, 'In Progress');
+                                showToast('success', `Form #${form.id.slice(-6)} reopened for editing`, form.id);
+                                // Force dashboard refresh to show updated status
+                                setDashboardRefreshKey(prev => prev + 1);
+                              } catch (error) {
+                                console.error('Error reopening form:', error);
+                                showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
+                              }
+                            }
+                          }}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
+                          title="Reopen form for editing"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Reopen
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -1216,26 +1125,6 @@ export default function AdminDashboard() {
 
                       <div className="flex items-center space-x-3">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">✓ Complete</span>
-                        
-                        <button
-                          onClick={async () => {
-                            try {
-                              await approveForm(form.id, adminUser?.initials || 'ADMIN');
-                              // Force dashboard refresh to show updated status
-                              setDashboardRefreshKey(prev => prev + 1);
-                            } catch (error) {
-                              console.error('Error approving form:', error);
-                              showToast('error', 'Failed to approve form', form.id);
-                            }
-                          }}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100 hover:text-indigo-700 transition-colors"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          Approve
-                        </button>
-
                         <button
                           onClick={() => handleViewForm(form)}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
@@ -1246,46 +1135,56 @@ export default function AdminDashboard() {
                           </svg>
                           View Form
                         </button>
-
-                        {/* Download PDF Button */}
                         <button
-                          onClick={() => handleDownloadPDF(form)}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-700 transition-colors"
-                          title="Download form as PDF"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Download PDF
-                        </button>
-
-                        <button
-                          onClick={() => handleDeleteForm(form.id)}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          Delete
-                        </button>
-
-                        <button
-                          onClick={async () => {
-                            try {
-                              await updateFormStatus(form.id, 'In Progress');
-                              showToast('success', `Form #${form.id.slice(-6)} reopened for editing`, form.id);
-                              // Force dashboard refresh to show updated status
-                              setDashboardRefreshKey(prev => prev + 1);
-                            } catch (error) {
-                              console.error('Error reopening form:', error);
-                              showToast('error', 'Failed to reopen form', form.id);
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to reopen Form #${form.id.slice(-6)} for editing? This will change the status from "${form.status}" to "In Progress".`)) {
+                              try {
+                                // First update the local state immediately for better UX
+                                updateFormStatus(form.id, 'In Progress');
+                                showToast('success', `Form #${form.id.slice(-6)} reopened for editing`, form.id);
+                                // Force dashboard refresh to show updated status
+                                setDashboardRefreshKey(prev => prev + 1);
+                              } catch (error) {
+                                console.error('Error reopening form:', error);
+                                showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
+                              }
                             }
                           }}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
+                          title="Reopen form for editing"
                         >
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v4" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.07 7.93A10 10 0 1112 2v2" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.003 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Reopen
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to reopen Form #${form.id.slice(-6)} for editing? This will change the status from "${form.status}" to "In Progress".`)) {
+                              try {
+                                console.log('Reopening form:', {
+                                  id: form.id,
+                                  formType: form.formType,
+                                  status: form.status,
+                                  title: form.title
+                                });
+                                
+                                // First update the local state immediately for better UX
+                                updateFormStatus(form.id, 'In Progress');
+                                showToast('success', `Form #${form.id.slice(-6)} reopened for editing`, form.id);
+                                // Force dashboard refresh to show updated status
+                                setDashboardRefreshKey(prev => prev + 1);
+                              } catch (error) {
+                                console.error('Error reopening form:', error);
+                                showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
+                              }
+                            }
+                          }}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
+                          title="Reopen form for editing"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                           </svg>
                           Reopen
                         </button>
@@ -1323,7 +1222,15 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* Approved Forms Section - Now at the bottom */}
+          {getFilteredAndSortedForms().length === 0 && (
+            <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200 mt-6">
+              <div className="text-6xl mb-4">📋</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Forms Found</h3>
+              <p className="text-gray-500">No forms match your current search criteria or filters.</p>
+            </div>
+          )}
+
+          {/* Approved Forms Section */}
           {approvedForms.length > 0 && (
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
@@ -1368,46 +1275,26 @@ export default function AdminDashboard() {
                           </svg>
                           View Form
                         </button>
-
                         <button
-                          onClick={() => handlePrintForm(form)}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                          </svg>
-                          Print
-                        </button>
-
-                        {/* Download PDF Button */}
-                        <button
-                          onClick={() => handleDownloadPDF(form)}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-700 transition-colors"
-                          title="Download form as PDF"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Download PDF
-                        </button>
-
-                        <button
-                          onClick={async () => {
-                            try {
-                              await updateFormStatus(form.id, 'In Progress');
-                              showToast('success', `Form #${form.id.slice(-6)} reopened for editing`, form.id);
-                              // Force dashboard refresh to show updated status
-                              setDashboardRefreshKey(prev => prev + 1);
-                            } catch (error) {
-                              console.error('Error reopening form:', error);
-                              showToast('error', 'Failed to reopen form', form.id);
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to reopen Form #${form.id.slice(-6)} for editing? This will change the status from "${form.status}" to "In Progress".`)) {
+                              try {
+                                // First update the local state immediately for better UX
+                                updateFormStatus(form.id, 'In Progress');
+                                showToast('success', `Form #${form.id.slice(-6)} reopened for editing`, form.id);
+                                // Force dashboard refresh to show updated status
+                                setDashboardRefreshKey(prev => prev + 1);
+                              } catch (error) {
+                                console.error('Error reopening form:', error);
+                                showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
+                              }
                             }
                           }}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
+                          title="Reopen form for editing"
                         >
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v4" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.07 7.93A10 10 0 1112 2v2" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.003 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                           </svg>
                           Reopen
                         </button>
@@ -1416,14 +1303,6 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-
-          {getFilteredAndSortedForms().length === 0 && (
-            <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200 mt-6">
-              <div className="text-6xl mb-4">📋</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Forms Found</h3>
-              <p className="text-gray-500">No forms match your current search criteria or filters.</p>
             </div>
           )}
 
@@ -1440,95 +1319,108 @@ export default function AdminDashboard() {
                 </h3>
                 <div className="text-sm text-gray-600 mt-1">
                   Status: <span className={`font-medium ${
-                    selectedForm.status === 'Approved' ? 'text-indigo-600' :
                     selectedForm.status === 'Complete' ? 'text-green-600' :
                     selectedForm.status === 'In Progress' ? 'text-yellow-600' :
                     'text-orange-600'
                   }`}>
                     {selectedForm.status}
                   </span>
-                  {(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && (
-                    <span className={`ml-2 font-medium ${selectedForm.status === 'Approved' ? 'text-indigo-600' : 'text-green-600'}`}>(Read-Only)</span>
-                  )}
-                  {DEBUG_ALLOW_EDIT && (
-                    <div className="mt-1 text-orange-600 font-medium">
-                      ⚠️ Debug mode: Forms are editable regardless of status
-                    </div>
-                  )}
                 </div>
               </div>
               <button
-                onClick={async () => {
-                  // Auto-save form to AWS when closing modal
-                  try {
-                    console.log('Modal closing - auto-saving form to AWS');
-                    await saveForm();
-                    console.log('Form auto-saved successfully to AWS');
-                  } catch (error) {
-                    console.error('Error auto-saving form when closing modal:', error);
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    alert(`Warning: Form could not be auto-saved: ${errorMessage}`);
-                  }
-                  
-                  // Close the modal
+                onClick={() => {
+                  console.log('Closing admin modal, forcing dashboard refresh');
                   setShowFormModal(false);
-                  setSelectedForm(null);
                   // Force a re-render of the dashboard to show updated status
                   setDashboardRefreshKey(prev => prev + 1);
                   console.log('Dashboard refresh triggered on modal close');
                 }}
-                className="text-gray-400 hover:text-gray-600 text-2xl transition-colors"
-                title="Close and save form to AWS"
-                aria-label="Close modal and save form to AWS"
+                className="text-gray-400 hover:text-gray-600 text-2xl"
               >
                 ✕
               </button>
-              
-              {/* Temporary button to reset form status */}
-              {selectedForm.status === 'Complete' && DEBUG_ALLOW_EDIT && (
-                <button
-                  onClick={() => {
-                    if (confirm('Reset form status from Complete to In Progress? This will allow editing.')) {
-                      updateFormStatus(selectedForm.id, 'In Progress');
-                      // Update the local state
-                      setSelectedForm({ ...selectedForm, status: 'In Progress' });
-                      // Force re-render
-                      setDashboardRefreshKey(prev => prev + 1);
-                    }
-                  }}
-                  className="ml-2 px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
-                  title="Reset form status to allow editing"
-                  aria-label="Reset form status to In Progress"
-                >
-                  Reset Status
-                </button>
-              )}
             </div>
             
             <div className="flex-1 overflow-y-auto">
-              {selectedForm.formType === FormType.PIROSHKI_CALZONE_EMPANADA ? (
-                <PiroshkiForm 
-                  key={`${selectedForm.id}-${dashboardRefreshKey}`}
-                  formData={selectedForm}
-                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
-                  onFormUpdate={handleFormUpdate}
-                />
-              ) : selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING ? (
-                <BagelDogForm
-                  key={`${selectedForm.id}-${dashboardRefreshKey}`}
-                  formData={selectedForm}
-                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
-                  onFormUpdate={handleFormUpdate}
-                />
-              ) : (
-                <PaperForm 
-                  key={`${selectedForm?.id || 'none'}-${dashboardRefreshKey}`}
-                  formId={selectedForm?.id || ''}
-                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
-                  onFormUpdate={handleFormUpdate}
-                />
-              )}
-            </div>
+                {selectedForm.formType === FormType.PIROSHKI_CALZONE_EMPANADA ? (
+                  <PiroshkiForm 
+                    key={`${selectedForm.id}-${dashboardRefreshKey}`}
+                    formData={selectedForm}
+                    readOnly={false}
+                    onFormUpdate={(formId, updates) => {
+                      console.log('Admin form updated:', formId, updates);
+                      
+                      // Handle status updates
+                      if (updates.status) {
+                        updateFormStatus(formId, updates.status);
+                        // Force dashboard refresh to show updated status
+                        setDashboardRefreshKey(prev => prev + 1);
+                        
+                        // Show success toast
+                        showToast('success', `Form status updated to ${updates.status}`, formId);
+                      }
+                      
+                      // Update the selectedForm state to reflect changes
+                      if (selectedForm && selectedForm.id === formId) {
+                        const updatedForm = { ...selectedForm, ...updates };
+                        setSelectedForm(updatedForm as PaperFormEntry);
+                      }
+                    }}
+                  />
+                                 ) : selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING ? (
+                   <BagelDogForm
+                     key={`${selectedForm.id}-${dashboardRefreshKey}`}
+                     formData={selectedForm}
+                     readOnly={false}
+                     onFormUpdate={(formId: string, updates: any) => {
+                       console.log('Admin form updated:', formId, updates);
+                       
+                       // Handle status updates
+                       if (updates.status) {
+                         updateFormStatus(formId, updates.status);
+                         // Force dashboard refresh to show updated status
+                         setDashboardRefreshKey(prev => prev + 1);
+                         
+                         // Show success toast
+                         showToast('success', `Form status updated to ${updates.status}`, formId);
+                       }
+                       
+                       // Update the selectedForm state to reflect changes
+                       if (selectedForm && selectedForm.id === formId) {
+                         const updatedForm = { ...selectedForm, ...updates };
+                         setSelectedForm(updatedForm as PaperFormEntry);
+                       }
+                     }}
+                   />
+                ) : (
+                  <PaperForm 
+                    key={`${selectedForm?.id || 'none'}-${dashboardRefreshKey}`}
+                    formId={selectedForm?.id || ''}
+                    formData={selectedForm}
+                    isAdminForm={true}
+                    readOnly={false}
+                    onFormUpdate={(formId, updates) => {
+                      console.log('Admin form updated:', formId, updates);
+                      
+                      // Handle status updates
+                      if (updates.status) {
+                        updateFormStatus(formId, updates.status);
+                        // Force dashboard refresh to show updated status
+                        setDashboardRefreshKey(prev => prev + 1);
+                        
+                        // Show success toast
+                        showToast('success', `Form status updated to ${updates.status}`, formId);
+                      }
+                      
+                      // Update the selectedForm state to reflect changes
+                      if (selectedForm && selectedForm.id === formId) {
+                        const updatedForm = { ...selectedForm, ...updates };
+                        setSelectedForm(updatedForm as PaperFormEntry);
+                      }
+                    }}
+                  />
+                )}
+              </div>
           </div>
         </div>
       )}

@@ -769,9 +769,133 @@ class AWSStorageManager {
   // }
 
     async getPaperForms(): Promise<PaperFormEntry[]> {
-    console.warn('Paper form retrieval is temporarily disabled - GraphQL queries not available');
-    return [];
-  }
+      try {
+        console.log('🔍 [AWS] Getting paper forms from all tables...');
+        
+        const allForms: PaperFormEntry[] = [];
+        
+        // Get forms from cooking cooling table
+        try {
+          const cookingResult = await client.graphql({
+            query: `query ListCookingCoolingFormEntries {
+              listCookingCoolingFormEntries {
+                items {
+                  id
+                  date
+                  dateCreated
+                  lastTextEntry
+                  formInitial
+                  status
+                  title
+                  thermometerNumber
+                  ingredients
+                  lotNumbers
+                  correctiveActionsComments
+                  resolvedErrors
+                  createdAt
+                  updatedAt
+                }
+              }
+            }`
+          }) as GraphQLResult<any>;
+          
+          if (cookingResult.data?.listCookingCoolingFormEntries?.items) {
+            const cookingForms = cookingResult.data.listCookingCoolingFormEntries.items.map((item: any) => ({
+              ...item,
+              formType: 'COOKING_AND_COOLING' as const,
+              entries: [] // We'll need to fetch entries separately if needed
+            }));
+            allForms.push(...cookingForms);
+            console.log(`🔍 [AWS] Found ${cookingForms.length} cooking cooling forms`);
+          }
+        } catch (error) {
+          console.log('🔍 [AWS] Error fetching cooking cooling forms:', error);
+        }
+        
+        // Get forms from piroshki table
+        try {
+          const piroshkiResult = await client.graphql({
+            query: `query ListPiroshkiFormEntries {
+              listPiroshkiFormEntries {
+                items {
+                  id
+                  date
+                  dateCreated
+                  lastTextEntry
+                  formInitial
+                  status
+                  title
+                  thermometerNumber
+                  ingredients
+                  lotNumbers
+                  correctiveActionsComments
+                  resolvedErrors
+                  createdAt
+                  updatedAt
+                }
+              }
+            }`
+          }) as GraphQLResult<any>;
+          
+          if (piroshkiResult.data?.listPiroshkiFormEntries?.items) {
+            const piroshkiForms = piroshkiResult.data.listPiroshkiFormEntries.items.map((item: any) => ({
+              ...item,
+              formType: 'PIROSHKI_CALZONE_EMPANADA' as const,
+              entries: [] // We'll need to fetch entries separately if needed
+            }));
+            allForms.push(...piroshkiForms);
+            console.log(`🔍 [AWS] Found ${piroshkiForms.length} piroshki forms`);
+          }
+        } catch (error) {
+          console.log('🔍 [AWS] Error fetching piroshki forms:', error);
+        }
+        
+        // Get forms from bagel dog table
+        try {
+          const bagelDogResult = await client.graphql({
+            query: `query ListBagelDogFormEntries {
+              listBagelDogFormEntries {
+                items {
+                  id
+                  date
+                  dateCreated
+                  lastTextEntry
+                  formInitial
+                  status
+                  title
+                  thermometerNumber
+                  ingredients
+                  lotNumbers
+                  correctiveActionsComments
+                  resolvedErrors
+                  createdAt
+                  updatedAt
+                }
+              }
+            }`
+          }) as GraphQLResult<any>;
+          
+          if (bagelDogResult.data?.listBagelDogFormEntries?.items) {
+            const bagelDogForms = bagelDogResult.data.listBagelDogFormEntries.items.map((item: any) => ({
+              ...item,
+              formType: 'BAGEL_DOG_COOKING_COOLING' as const,
+              entries: [] // We'll need to fetch entries separately if needed
+            }));
+            allForms.push(...bagelDogForms);
+            console.log(`🔍 [AWS] Found ${bagelDogForms.length} bagel dog forms`);
+          }
+        } catch (error) {
+          console.log('🔍 [AWS] Error fetching bagel dog forms:', error);
+        }
+        
+        console.log(`🔍 [AWS] Total forms found: ${allForms.length}`);
+        return allForms;
+        
+      } catch (error) {
+        console.error('🔍 [AWS] Error getting paper forms:', error);
+        return [];
+      }
+    }
 
   async deletePaperForm(id: string): Promise<void> {
     try {
@@ -1107,9 +1231,50 @@ class AWSStorageManager {
   async updatePaperFormStatus(formId: string, status: string): Promise<PaperFormEntry> {
     try {
       const formattedStatus = status.toUpperCase().replace(' ', '_');
+              console.log(`🔍 [AWS] Attempting to update form status:`, { formId, status, formattedStatus });
+        console.log(`🔍 [AWS] Form ID type:`, typeof formId);
+        console.log(`🔍 [AWS] Form ID length:`, formId.length);
+        console.log(`🔍 [AWS] Form ID format check:`, {
+          startsWithForm: formId.startsWith('form-'),
+          hasTimestamp: /form-\d+/.test(formId),
+          hasRandomSuffix: /form-\d+-[a-z0-9]+/.test(formId)
+        });
+      
+
       
       // Try to update cooking cooling form status first
       try {
+        console.log(`🔍 [AWS] Trying to update cooking cooling form status for ID: ${formId}`);
+        console.log(`🔍 [AWS] Mutation variables:`, { formId, status: formattedStatus });
+        console.log(`🔍 [AWS] Mutation variables JSON:`, JSON.stringify({ formId, status: formattedStatus }, null, 2));
+        
+        // Let's also check what forms we currently have loaded to see if there's an ID mismatch
+        const currentForms = await this.getPaperForms();
+        const matchingForm = currentForms.find(f => f.id === formId);
+        console.log(`🔍 [AWS] Current forms loaded:`, currentForms.map(f => ({ id: f.id, type: f.formType, status: f.status, title: f.title })));
+        console.log(`🔍 [AWS] Form we're trying to update:`, matchingForm);
+        console.log(`🔍 [AWS] Form ID we're using:`, formId);
+        console.log(`🔍 [AWS] Form ID from loaded form:`, matchingForm?.id);
+        console.log(`🔍 [AWS] ID match:`, formId === matchingForm?.id);
+        
+        // Check if there are any forms with similar IDs (maybe the server assigned a different ID)
+        const similarForms = currentForms.filter(f => 
+          f.formType === 'COOKING_AND_COOLING' && 
+          f.title === matchingForm?.title &&
+          f.date === matchingForm?.date
+        );
+        console.log(`🔍 [AWS] Similar forms (same type, title, date):`, similarForms);
+        
+        // Also check if there are any forms with the same title and date but different IDs
+        if (matchingForm) {
+          const sameContentForms = currentForms.filter(f => 
+            f.title === matchingForm.title && 
+            f.date === matchingForm.date &&
+            f.formType === matchingForm.formType
+          );
+          console.log(`🔍 [AWS] Forms with same content but different IDs:`, sameContentForms);
+        }
+        
         const result = await client.graphql({
           query: mutations.updateCookingCoolingFormStatus,
           variables: { 
@@ -1118,15 +1283,29 @@ class AWSStorageManager {
           }
         }) as GraphQLResult<any>;
 
+        console.log(`🔍 [AWS] Cooking cooling update result:`, JSON.stringify(result, null, 2));
+        console.log(`🔍 [AWS] Result data:`, result.data);
+        console.log(`🔍 [AWS] Result errors:`, result.errors);
+
         if (result.data?.updateCookingCoolingFormStatus) {
+          console.log(`🔍 [AWS] Successfully updated cooking cooling form status`);
           return mapGraphQLResultToPaperFormEntry(result.data.updateCookingCoolingFormStatus);
+        } else {
+          console.log(`🔍 [AWS] No data returned from cooking cooling update mutation`);
         }
       } catch (error) {
-        console.log(`Form ${formId} not found in cooking cooling forms, trying piroshki forms...`);
+        console.log(`🔍 [AWS] Form ${formId} not found in cooking cooling forms, error:`, error);
+        console.log(`🔍 [AWS] Error details:`, {
+          name: error instanceof Error ? error.name : 'Unknown',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : 'No stack trace'
+        });
+        console.log(`🔍 [AWS] Trying piroshki forms...`);
       }
       
       // Try to update piroshki form status
       try {
+        console.log(`🔍 [AWS] Trying to update piroshki form status for ID: ${formId}`);
         const result = await client.graphql({
           query: mutations.updatePiroshkiFormStatus,
           variables: { 
@@ -1135,15 +1314,24 @@ class AWSStorageManager {
           }
         }) as GraphQLResult<any>;
 
+        console.log(`🔍 [AWS] Piroshki update result:`, JSON.stringify(result, null, 2));
+        console.log(`🔍 [AWS] Result data:`, result.data);
+        console.log(`🔍 [AWS] Result errors:`, result.errors);
+
         if (result.data?.updatePiroshkiFormStatus) {
+          console.log(`🔍 [AWS] Successfully updated piroshki form status`);
           return mapGraphQLResultToPaperFormEntry(result.data.updatePiroshkiFormStatus);
+        } else {
+          console.log(`🔍 [AWS] No data returned from piroshki update mutation`);
         }
       } catch (error) {
-        console.log(`Form ${formId} not found in piroshki forms, trying bagel dog forms...`);
+        console.log(`🔍 [AWS] Form ${formId} not found in piroshki forms, error:`, error);
+        console.log(`🔍 [AWS] Trying bagel dog forms...`);
       }
       
       // Try to update bagel dog form status
       try {
+        console.log(`🔍 [AWS] Trying to update bagel dog form status for ID: ${formId}`);
         const result = await client.graphql({
           query: mutations.updateBagelDogFormStatus,
           variables: { 
@@ -1152,14 +1340,22 @@ class AWSStorageManager {
           }
         }) as GraphQLResult<any>;
 
+        console.log(`🔍 [AWS] Bagel dog update result:`, JSON.stringify(result, null, 2));
+        console.log(`🔍 [AWS] Result data:`, result.data);
+        console.log(`🔍 [AWS] Result errors:`, result.errors);
+
         if (result.data?.updateBagelDogFormStatus) {
+          console.log(`🔍 [AWS] Successfully updated bagel dog form status`);
           return mapGraphQLResultToPaperFormEntry(result.data.updateBagelDogFormStatus);
+        } else {
+          console.log(`🔍 [AWS] No data returned from bagel dog update mutation`);
         }
       } catch (error) {
-        console.log(`Form ${formId} not found in bagel dog forms`);
+        console.log(`🔍 [AWS] Form ${formId} not found in bagel dog forms, error:`, error);
       }
       
       // If we get here, the form wasn't found in any table
+      console.log(`🔍 [AWS] Form ${formId} not found in any table after trying all mutations`);
       throw new Error(`Form with ID ${formId} not found in any form table`);
       
     } catch (error) {
