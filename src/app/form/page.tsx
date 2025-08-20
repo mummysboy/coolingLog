@@ -1002,6 +1002,13 @@ export default function FormPage() {
                   readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
                   onFormUpdate={handleFormUpdate}
                 />
+              ) : selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING ? (
+                <BagelDogForm
+                  key={`${selectedForm.id}-${formUpdateKey}`}
+                  formData={selectedForm}
+                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
+                  onFormUpdate={handleFormUpdate}
+                />
               ) : (
                 <PaperForm 
                   key={`${selectedForm.id}-${formUpdateKey}`}
@@ -1010,7 +1017,6 @@ export default function FormPage() {
                   onFormUpdate={handleFormUpdate}
                 />
               )}
-              
             </div>
           </div>
         </div>

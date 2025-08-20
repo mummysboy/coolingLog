@@ -1,20 +1,24 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import { usePinStore } from '@/stores/pinStore';
 import { MOCK_USERS } from '@/lib/types';
-import { PaperFormEntry, FormType, getFormTypeDisplayName, getFormTypeIcon, getFormTypeColors } from '@/lib/paperFormTypes';
+import { PaperFormEntry, FormType, getFormTypeDisplayName, getFormTypeDescription, getFormTypeIcon, getFormTypeColors, ensureDate } from '@/lib/paperFormTypes';
 import PaperForm from '@/components/PaperForm';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
 import BagelDogForm from '@/components/BagelDogForm';
-import { shouldHighlightCell } from '@/lib/validation';
+import { validateForm, shouldHighlightCell } from '@/lib/validation';
 import { generateFormPDF } from '@/lib/pdfGenerator';
+
+// Debug flag for development
+const DEBUG_ALLOW_EDIT = false;
 
 
 export default function AdminDashboard() {
-  const { savedForms, currentForm, loadForm, loadFormsFromStorage, updateFormStatus, approveForm, deleteForm, isFormBlank, exportState, syncFormsToAWS } = usePaperFormStore();
+  const { savedForms, currentForm, loadForm, loadFormsFromStorage, updateFormStatus, approveForm, deleteForm, isFormBlank, exportState, syncFormsToAWS, saveForm, createNewForm } = usePaperFormStore();
+  const store = usePaperFormStore; // Get store reference for getState()
 
   const { createPin, updatePin, deletePin, getAllPins, getPinForInitials } = usePinStore();
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
@@ -34,6 +38,8 @@ export default function AdminDashboard() {
 
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0); // Force dashboard refresh
   const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
+  const [isAddFormDropdownOpen, setIsAddFormDropdownOpen] = useState(false);
+  const [newlyCreatedFormId, setNewlyCreatedFormId] = useState<string | null>(null);
 
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'complete' | 'error'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,6 +55,7 @@ export default function AdminDashboard() {
   }>>([]);
 
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
+  const addFormDropdownRef = useRef<HTMLDivElement>(null);
 
 
   const adminUser = MOCK_USERS.find(user => user.role === 'admin');
@@ -254,14 +261,17 @@ export default function AdminDashboard() {
         setShowSettingsDropdown(false);
       }
       
-
+      // Close add form dropdown
+      if (isAddFormDropdownOpen && addFormDropdownRef.current && !addFormDropdownRef.current.contains(event.target as Node)) {
+        setIsAddFormDropdownOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [isAddFormDropdownOpen]);
 
   // Auto-clear success message after 5 seconds
   useEffect(() => {
@@ -273,6 +283,39 @@ export default function AdminDashboard() {
       return () => clearTimeout(timer);
     }
   }, [deleteSuccessMessage]);
+
+  // Body scroll lock when modal is open
+  useEffect(() => {
+    if (showFormModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showFormModal]);
+
+  // Auto-open newly created forms (matches form page behavior)
+  useEffect(() => {
+    if (newlyCreatedFormId && newlyCreatedFormId !== 'pending' && savedForms.some(form => form.id === newlyCreatedFormId)) {
+      const formToOpen = savedForms.find(form => form.id === newlyCreatedFormId);
+      if (formToOpen) {
+        console.log('Automatically opening newly created form:', newlyCreatedFormId);
+        setSelectedForm(formToOpen);
+        setShowFormModal(true);
+        setNewlyCreatedFormId(null);
+      }
+    }
+  }, [newlyCreatedFormId, savedForms]);
+
+  // Clean up newlyCreatedFormId if modal is closed without opening
+  useEffect(() => {
+    if (!showFormModal && newlyCreatedFormId) {
+      setNewlyCreatedFormId(null);
+    }
+  }, [newlyCreatedFormId, showFormModal]);
 
   const handleViewForm = (form: PaperFormEntry) => {
     // Load the authoritative form data into the store first so the modal shows the same title
@@ -290,6 +333,55 @@ export default function AdminDashboard() {
       setShowFormModal(true);
     })();
   };
+
+  // Enhanced form update handler - matches form page behavior exactly
+  const handleFormUpdate = useCallback((formId: string, updates: Partial<PaperFormEntry>) => {
+    console.log('Form updated in admin modal:', formId, updates);
+    
+    // Handle status updates by calling the store's updateFormStatus function
+    if (updates.status) {
+      console.log('Status updated to:', updates.status, 'updating store');
+      updateFormStatus(formId, updates.status);
+      
+      // Force a re-render of the dashboard by updating the dashboardRefreshKey
+      setDashboardRefreshKey(prev => prev + 1);
+      
+      // Show success toast
+      showToast('success', `Form status updated to ${updates.status}`, formId);
+    }
+    
+    // Update the selectedForm state to reflect changes
+    if (selectedForm && selectedForm.id === formId) {
+      const updatedForm = { ...selectedForm, ...updates } as PaperFormEntry;
+      setSelectedForm(updatedForm);
+      console.log('SelectedForm updated to:', updatedForm.status);
+    }
+  }, [updateFormStatus, selectedForm, showToast]);
+
+  // Function to handle form creation and return the new ID
+  const handleCreateForm = useCallback(async (formType: FormType) => {
+    // Set a default initial (can be changed later by the user)
+    const defaultInitial = 'ADMIN';
+    store.getState().setSelectedInitial(defaultInitial);
+    
+    // Create the form locally
+    createNewForm(formType, defaultInitial);
+    setIsAddFormDropdownOpen(false);
+
+    // Try to persist immediately; on failure still open the local form
+    try {
+      await saveForm();
+    } catch (err) {
+      console.error('Error saving newly created form to AWS (continuing with local form):', err);
+    }
+
+    // Get the newly created form from the store (may have been updated by save)
+    const { currentForm } = store.getState();
+    if (currentForm) {
+      // Store the new form ID to track it (used to auto-open the modal)
+      setNewlyCreatedFormId(currentForm.id);
+    }
+  }, [createNewForm, store, saveForm]);
 
 
 
@@ -846,6 +938,89 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center space-x-4">
             
+            {/* Add Form Button with Dropdown */}
+            <div className="relative" ref={addFormDropdownRef}>
+              <button
+                onClick={() => setIsAddFormDropdownOpen(!isAddFormDropdownOpen)}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Form
+                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {/* Dropdown Menu */}
+              {isAddFormDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                  <div className="py-1" role="menu" aria-orientation="vertical">
+                    <button
+                      onClick={() => {
+                        handleCreateForm(FormType.COOKING_AND_COOLING);
+                      }}
+                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
+                      role="menuitem"
+                    >
+                      <div className="flex items-center">
+                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.COOKING_AND_COOLING).bg} rounded-lg flex items-center justify-center mr-3`}>
+                          <span className={`text-lg ${getFormTypeColors(FormType.COOKING_AND_COOLING).text}`}>
+                            {getFormTypeIcon(FormType.COOKING_AND_COOLING)}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium">{getFormTypeDisplayName(FormType.COOKING_AND_COOLING)}</div>
+                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.COOKING_AND_COOLING)}</div>
+                        </div>
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        handleCreateForm(FormType.PIROSHKI_CALZONE_EMPANADA);
+                      }}
+                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
+                      role="menuitem"
+                    >
+                      <div className="flex items-center">
+                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.PIROSHKI_CALZONE_EMPANADA).bg} rounded-lg flex items-center justify-center mr-3`}>
+                          <span className={`text-lg ${getFormTypeColors(FormType.PIROSHKI_CALZONE_EMPANADA).text}`}>
+                            {getFormTypeIcon(FormType.PIROSHKI_CALZONE_EMPANADA)}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium">{getFormTypeDisplayName(FormType.PIROSHKI_CALZONE_EMPANADA)}</div>
+                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.PIROSHKI_CALZONE_EMPANADA)}</div>
+                        </div>
+                      </div>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        handleCreateForm(FormType.BAGEL_DOG_COOKING_COOLING);
+                      }}
+                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
+                      role="menuitem"
+                    >
+                      <div className="flex items-center">
+                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.BAGEL_DOG_COOKING_COOLING).bg} rounded-lg flex items-center justify-center mr-3`}>
+                          <span className={`text-lg ${getFormTypeColors(FormType.BAGEL_DOG_COOKING_COOLING).text}`}>
+                            {getFormTypeIcon(FormType.BAGEL_DOG_COOKING_COOLING)}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium">{getFormTypeDisplayName(FormType.BAGEL_DOG_COOKING_COOLING)}</div>
+                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.BAGEL_DOG_COOKING_COOLING)}</div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="text-right">
               <p className="font-medium text-gray-900">{adminUser?.name}</p>
               <p className="text-sm text-gray-600">{adminUser?.role}</p>
@@ -1265,108 +1440,95 @@ export default function AdminDashboard() {
                 </h3>
                 <div className="text-sm text-gray-600 mt-1">
                   Status: <span className={`font-medium ${
+                    selectedForm.status === 'Approved' ? 'text-indigo-600' :
                     selectedForm.status === 'Complete' ? 'text-green-600' :
                     selectedForm.status === 'In Progress' ? 'text-yellow-600' :
                     'text-orange-600'
                   }`}>
                     {selectedForm.status}
                   </span>
+                  {(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && (
+                    <span className={`ml-2 font-medium ${selectedForm.status === 'Approved' ? 'text-indigo-600' : 'text-green-600'}`}>(Read-Only)</span>
+                  )}
+                  {DEBUG_ALLOW_EDIT && (
+                    <div className="mt-1 text-orange-600 font-medium">
+                      ⚠️ Debug mode: Forms are editable regardless of status
+                    </div>
+                  )}
                 </div>
               </div>
               <button
-                onClick={() => {
-                  console.log('Closing admin modal, forcing dashboard refresh');
+                onClick={async () => {
+                  // Auto-save form to AWS when closing modal
+                  try {
+                    console.log('Modal closing - auto-saving form to AWS');
+                    await saveForm();
+                    console.log('Form auto-saved successfully to AWS');
+                  } catch (error) {
+                    console.error('Error auto-saving form when closing modal:', error);
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    alert(`Warning: Form could not be auto-saved: ${errorMessage}`);
+                  }
+                  
+                  // Close the modal
                   setShowFormModal(false);
+                  setSelectedForm(null);
                   // Force a re-render of the dashboard to show updated status
                   setDashboardRefreshKey(prev => prev + 1);
                   console.log('Dashboard refresh triggered on modal close');
                 }}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
+                className="text-gray-400 hover:text-gray-600 text-2xl transition-colors"
+                title="Close and save form to AWS"
+                aria-label="Close modal and save form to AWS"
               >
                 ✕
               </button>
+              
+              {/* Temporary button to reset form status */}
+              {selectedForm.status === 'Complete' && DEBUG_ALLOW_EDIT && (
+                <button
+                  onClick={() => {
+                    if (confirm('Reset form status from Complete to In Progress? This will allow editing.')) {
+                      updateFormStatus(selectedForm.id, 'In Progress');
+                      // Update the local state
+                      setSelectedForm({ ...selectedForm, status: 'In Progress' });
+                      // Force re-render
+                      setDashboardRefreshKey(prev => prev + 1);
+                    }
+                  }}
+                  className="ml-2 px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
+                  title="Reset form status to allow editing"
+                  aria-label="Reset form status to In Progress"
+                >
+                  Reset Status
+                </button>
+              )}
             </div>
             
             <div className="flex-1 overflow-y-auto">
-                {selectedForm.formType === FormType.PIROSHKI_CALZONE_EMPANADA ? (
-                  <PiroshkiForm 
-                    key={`${selectedForm.id}-${dashboardRefreshKey}`}
-                    formData={selectedForm}
-                    readOnly={false}
-                    onFormUpdate={(formId, updates) => {
-                      console.log('Admin form updated:', formId, updates);
-                      
-                      // Handle status updates
-                      if (updates.status) {
-                        updateFormStatus(formId, updates.status);
-                        // Force dashboard refresh to show updated status
-                        setDashboardRefreshKey(prev => prev + 1);
-                        
-                        // Show success toast
-                        showToast('success', `Form status updated to ${updates.status}`, formId);
-                      }
-                      
-                      // Update the selectedForm state to reflect changes
-                      if (selectedForm && selectedForm.id === formId) {
-                        const updatedForm = { ...selectedForm, ...updates };
-                        setSelectedForm(updatedForm as PaperFormEntry);
-                      }
-                    }}
-                  />
-                                 ) : selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING ? (
-                   <BagelDogForm
-                     key={`${selectedForm.id}-${dashboardRefreshKey}`}
-                     formData={selectedForm}
-                     readOnly={false}
-                     onFormUpdate={(formId: string, updates: any) => {
-                       console.log('Admin form updated:', formId, updates);
-                       
-                       // Handle status updates
-                       if (updates.status) {
-                         updateFormStatus(formId, updates.status);
-                         // Force dashboard refresh to show updated status
-                         setDashboardRefreshKey(prev => prev + 1);
-                         
-                         // Show success toast
-                         showToast('success', `Form status updated to ${updates.status}`, formId);
-                       }
-                       
-                       // Update the selectedForm state to reflect changes
-                       if (selectedForm && selectedForm.id === formId) {
-                         const updatedForm = { ...selectedForm, ...updates };
-                         setSelectedForm(updatedForm as PaperFormEntry);
-                       }
-                     }}
-                   />
-                ) : (
-                  <PaperForm 
-                    key={`${selectedForm?.id || 'none'}-${dashboardRefreshKey}`}
-                    formId={selectedForm?.id || ''}
-                    formData={selectedForm}
-                    isAdminForm={true}
-                    readOnly={false}
-                    onFormUpdate={(formId, updates) => {
-                      console.log('Admin form updated:', formId, updates);
-                      
-                      // Handle status updates
-                      if (updates.status) {
-                        updateFormStatus(formId, updates.status);
-                        // Force dashboard refresh to show updated status
-                        setDashboardRefreshKey(prev => prev + 1);
-                        
-                        // Show success toast
-                        showToast('success', `Form status updated to ${updates.status}`, formId);
-                      }
-                      
-                      // Update the selectedForm state to reflect changes
-                      if (selectedForm && selectedForm.id === formId) {
-                        const updatedForm = { ...selectedForm, ...updates };
-                        setSelectedForm(updatedForm as PaperFormEntry);
-                      }
-                    }}
-                  />
-                )}
-              </div>
+              {selectedForm.formType === FormType.PIROSHKI_CALZONE_EMPANADA ? (
+                <PiroshkiForm 
+                  key={`${selectedForm.id}-${dashboardRefreshKey}`}
+                  formData={selectedForm}
+                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
+                  onFormUpdate={handleFormUpdate}
+                />
+              ) : selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING ? (
+                <BagelDogForm
+                  key={`${selectedForm.id}-${dashboardRefreshKey}`}
+                  formData={selectedForm}
+                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
+                  onFormUpdate={handleFormUpdate}
+                />
+              ) : (
+                <PaperForm 
+                  key={`${selectedForm?.id || 'none'}-${dashboardRefreshKey}`}
+                  formId={selectedForm?.id || ''}
+                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
+                  onFormUpdate={handleFormUpdate}
+                />
+              )}
+            </div>
           </div>
         </div>
       )}
