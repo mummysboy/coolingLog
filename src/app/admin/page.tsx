@@ -33,7 +33,6 @@ export default function AdminDashboard() {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
 
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0); // Force dashboard refresh
-  const [isRefreshingAdmin, setIsRefreshingAdmin] = useState(false);
   const [deleteSuccessMessage, setDeleteSuccessMessage] = useState<string | null>(null);
 
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'complete' | 'error'>('all');
@@ -847,32 +846,6 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center space-x-4">
             
-            <button
-              onClick={async () => {
-                setIsRefreshingAdmin(true);
-                try {
-                  await loadFormsFromStorage();
-                  setDashboardRefreshKey(k => k + 1);
-                } catch (err) {
-                  showToast('error', 'Failed to refresh forms');
-                } finally {
-                  setIsRefreshingAdmin(false);
-                }
-              }}
-              disabled={isRefreshingAdmin}
-              aria-label="Refresh forms"
-              title="Refresh"
-              className={`inline-flex items-center px-3 py-2 border rounded-lg shadow-sm text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${isRefreshingAdmin ? 'bg-gray-100 text-gray-600 cursor-not-allowed opacity-80' : 'bg-white text-gray-800 hover:bg-gray-50'}`}
-            >
-              <span className="flex items-center space-x-2">
-                <svg className={`w-5 h-5 text-gray-600 ${isRefreshingAdmin ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <path d="M12 4v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M20.07 7.93A10 10 0 1112 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span>{isRefreshingAdmin ? 'Refreshing...' : 'Refresh'}</span>
-              </span>
-            </button>
-
             <div className="text-right">
               <p className="font-medium text-gray-900">{adminUser?.name}</p>
               <p className="text-sm text-gray-600">{adminUser?.role}</p>

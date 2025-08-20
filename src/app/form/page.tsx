@@ -18,7 +18,6 @@ export default function FormPage() {
   const { currentForm, createNewForm, updateFormStatus, approveForm, saveForm, savedForms, loadForm, deleteForm, loadFormsFromStorage } = usePaperFormStore();
   const store = usePaperFormStore; // Get store reference for getState()
   const [formUpdateKey, setFormUpdateKey] = useState(0); // Force re-render when form updates
-  const [isRefreshingForms, setIsRefreshingForms] = useState(false);
 
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
@@ -491,31 +490,6 @@ export default function FormPage() {
           
           {/* NEW: Navigation and Add Form Section */}
           <div className="flex items-center space-x-4">
-            <button
-              onClick={async () => {
-                setIsRefreshingForms(true);
-                try {
-                  await loadFormsFromStorage();
-                } catch (err) {
-                  console.error('Refresh failed', err);
-                } finally {
-                  setIsRefreshingForms(false);
-                  setFormUpdateKey(k => k + 1);
-                }
-              }}
-              disabled={isRefreshingForms}
-              aria-label="Refresh forms"
-              title="Refresh forms"
-              className={`inline-flex items-center px-3 py-2 border rounded-lg shadow-sm text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${isRefreshingForms ? 'bg-gray-100 text-gray-600 cursor-not-allowed opacity-80' : 'bg-white text-gray-800 hover:bg-gray-50'}`}
-            >
-              <span className="flex items-center space-x-2">
-                <svg className={`w-5 h-5 text-gray-600 ${isRefreshingForms ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <path d="M12 4v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M20.07 7.93A10 10 0 1112 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span>{isRefreshingForms ? 'Refreshing...' : 'Refresh'}</span>
-              </span>
-            </button>
             {/* Add Form Button with Dropdown */}
             <div className="relative" ref={addFormDropdownRef}>
               <button
