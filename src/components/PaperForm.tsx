@@ -177,7 +177,7 @@ export default function PaperForm({
     // hook for any future logic
   };
 
-  const commitField = (rowIndex: number, field: string, value: any) => {
+  const commitField = async (rowIndex: number, field: string, value: any) => {
     if (!form) return;
 
     if (isAdminForm) {
@@ -201,15 +201,19 @@ export default function PaperForm({
         };
       }
 
-      updateAdminForm(form.id, { entries: updatedEntries });
-      if (onFormUpdate) onFormUpdate(form.id, { entries: updatedEntries });
+      try {
+        await updateAdminForm(form.id, { entries: updatedEntries });
+        if (onFormUpdate) onFormUpdate(form.id, { entries: updatedEntries });
+      } catch (error) {
+        console.error('Failed to save admin changes:', error);
+      }
     } else {
       updateEntry(rowIndex, field, value);
     }
   };
 
   // Main change handler (validation/comments side-effects)
-  const handleCellChange = (
+  const handleCellChange = async (
     rowIndex: number,
     field: string,
     value: string | boolean
@@ -238,8 +242,12 @@ export default function PaperForm({
           [field]: value,
         };
       }
-      updateAdminForm(form.id, { entries: updatedEntries });
-      if (onFormUpdate) onFormUpdate(form.id, { entries: updatedEntries });
+      try {
+        await updateAdminForm(form.id, { entries: updatedEntries });
+        if (onFormUpdate) onFormUpdate(form.id, { entries: updatedEntries });
+      } catch (error) {
+        console.error('Failed to save admin changes:', error);
+      }
     } else {
       try {
         updateEntry(rowIndex, field, value);
@@ -592,7 +600,7 @@ export default function PaperForm({
         if (hasErrors && form.status !== "Error") {
           // Move to Error state
           if (isAdminForm) {
-            updateAdminForm(form.id, { status: "Error" });
+            await updateAdminForm(form.id, { status: "Error" });
             if (onFormUpdate) onFormUpdate(form.id, { status: "Error" });
           } else {
             updateFormStatus(form.id, "Error");
@@ -603,7 +611,7 @@ export default function PaperForm({
         } else if (!hasErrors && form.status === "Error") {
           // Clear Error state back to In Progress
           if (isAdminForm) {
-            updateAdminForm(form.id, { status: "In Progress" });
+            await updateAdminForm(form.id, { status: "In Progress" });
             if (onFormUpdate) onFormUpdate(form.id, { status: "In Progress" });
           } else {
             updateFormStatus(form.id, "In Progress");
@@ -791,8 +799,8 @@ export default function PaperForm({
                 <td className="border border-black p-1 text-center">
                   <select
                     value={entry.rack ?? ""}
-                    onChange={(e) =>
-                      handleCellChange(rowIndex, "rack", e.target.value)
+                    onChange={async (e) =>
+                      await handleCellChange(rowIndex, "rack", e.target.value)
                     }
                     className="w-full text-xs border-0 bg-transparent text-center cursor-pointer"
                     disabled={readOnly}
@@ -842,8 +850,8 @@ export default function PaperForm({
                       commitField={(value: string) => {
                         commitField(rowIndex, "ccp1.temp", value);
                       }}
-                      onBlurValidate={(value: string) =>
-                        handleCellChange(rowIndex, "ccp1.temp", value)
+                      onBlurValidate={async (value: string) =>
+                        await handleCellChange(rowIndex, "ccp1.temp", value)
                       }
                       className={getCellClasses(
                         rowIndex,
@@ -859,8 +867,8 @@ export default function PaperForm({
                     />
                     <TimePicker
                       value={entry.ccp1?.time}
-                      onChange={(time: string) =>
-                        handleCellChange(rowIndex, "ccp1.time", time)
+                      onChange={async (time: string) =>
+                        await handleCellChange(rowIndex, "ccp1.time", time)
                       }
                       placeholder="Time"
                       className={getCellClasses(rowIndex, "ccp1.time", "w-full")}
@@ -868,7 +876,7 @@ export default function PaperForm({
                       showQuickTimes={false}
                       compact
                       dataLog={entry.ccp1?.dataLog || false}
-                      onDataLogChange={(dataLog: boolean) => {
+                      onDataLogChange={async (dataLog: boolean) => {
                         if (!form) return;
                         const updatedEntries = [...form.entries];
                         updatedEntries[rowIndex] = {
@@ -876,7 +884,7 @@ export default function PaperForm({
                           ccp1: { ...updatedEntries[rowIndex].ccp1, dataLog },
                         };
                         if (isAdminForm) {
-                          updateAdminForm(form.id, { entries: updatedEntries });
+                          await updateAdminForm(form.id, { entries: updatedEntries });
                         } else {
                           updateFormField(form.id, "entries", updatedEntries);
                         }
@@ -885,7 +893,7 @@ export default function PaperForm({
                           "ccp1",
                           dataLog
                         );
-                        handleCellChange(rowIndex, "ccp1.dataLog", dataLog);
+                        await handleCellChange(rowIndex, "ccp1.dataLog", dataLog);
                         if (!readOnly) saveForm();
                       }}
                     />
@@ -923,8 +931,8 @@ export default function PaperForm({
                       commitField={(value: string) =>
                         commitField(rowIndex, "ccp2.temp", value)
                       }
-                      onBlurValidate={(value: string) =>
-                        handleCellChange(rowIndex, "ccp2.temp", value)
+                      onBlurValidate={async (value: string) =>
+                        await handleCellChange(rowIndex, "ccp2.temp", value)
                       }
                       shouldHighlightWhileTyping={(next: string) => {
                         const parsed = parseFloat(
@@ -947,8 +955,8 @@ export default function PaperForm({
                     />
                     <TimePicker
                       value={entry.ccp2?.time}
-                      onChange={(time: string) =>
-                        handleCellChange(rowIndex, "ccp2.time", time)
+                      onChange={async (time: string) =>
+                        await handleCellChange(rowIndex, "ccp2.time", time)
                       }
                       placeholder="Time"
                       className={getCellClasses(rowIndex, "ccp2.time", "w-full")}
@@ -956,7 +964,7 @@ export default function PaperForm({
                       showQuickTimes={false}
                       compact
                       dataLog={entry.ccp2?.dataLog || false}
-                      onDataLogChange={(dataLog: boolean) => {
+                      onDataLogChange={async (dataLog: boolean) => {
                         if (!form) return;
                         const updatedEntries = [...form.entries];
                         updatedEntries[rowIndex] = {
@@ -964,7 +972,7 @@ export default function PaperForm({
                           ccp2: { ...updatedEntries[rowIndex].ccp2, dataLog },
                         };
                         if (isAdminForm) {
-                          updateAdminForm(form.id, { entries: updatedEntries });
+                          await updateAdminForm(form.id, { entries: updatedEntries });
                         } else {
                           updateFormField(form.id, "entries", updatedEntries);
                         }
@@ -973,7 +981,7 @@ export default function PaperForm({
                           "ccp2",
                           dataLog
                         );
-                        handleCellChange(rowIndex, "ccp2.dataLog", dataLog);
+                        await handleCellChange(rowIndex, "ccp2.dataLog", dataLog);
                         if (!readOnly) saveForm();
                       }}
                     />
@@ -1011,8 +1019,8 @@ export default function PaperForm({
                       commitField={(value: string) =>
                         commitField(rowIndex, "coolingTo80.temp", value)
                       }
-                      onBlurValidate={(value: string) =>
-                        handleCellChange(rowIndex, "coolingTo80.temp", value)
+                      onBlurValidate={async (value: string) =>
+                        await handleCellChange(rowIndex, "coolingTo80.temp", value)
                       }
                       shouldHighlightWhileTyping={(next: string) => {
                         const parsed = parseFloat(
@@ -1462,7 +1470,7 @@ export default function PaperForm({
       {!readOnly && form.status !== "Complete" && (
         <div className="mt-6 text-center">
           <button
-            onClick={() => {
+            onClick={async () => {
               const validation = validateForm(form);
               const hasErrors = validation.errors.some(
                 (e: any) => e.severity === "error"
@@ -1483,7 +1491,7 @@ export default function PaperForm({
               }
               if (onFormUpdate) onFormUpdate(form.id, { status: "Complete" });
               if (isAdminForm) {
-                updateAdminForm(form.id, { status: "Complete" });
+                await updateAdminForm(form.id, { status: "Complete" });
               } else {
                 updateFormStatus(form.id, "Complete");
                 updateFormField(form.id, "status", "Complete");

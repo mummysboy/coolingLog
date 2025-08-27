@@ -33,7 +33,7 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
 
   if (!form) return null;
 
-  const handleCellChange = (rowIndex: number, field: string, value: string | boolean) => {
+  const handleCellChange = async (rowIndex: number, field: string, value: string | boolean) => {
     if (!readOnly) {
       if (isAdminForm) {
         // For admin forms, update the specific form directly
@@ -57,7 +57,7 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
           };
         }
         
-        updateAdminForm(form.id, { entries: updatedEntries });
+        await updateAdminForm(form.id, { entries: updatedEntries });
       } else {
         // For regular forms, use the store's updateEntry
         updateEntry(rowIndex, field, value);
@@ -70,11 +70,11 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
     }
   };
 
-  const handleFormFieldChange = (field: string, value: any) => {
+  const handleFormFieldChange = async (field: string, value: any) => {
     if (!readOnly) {
       if (isAdminForm) {
         // For admin forms, update the specific form directly
-        updateAdminForm(form.id, { [field]: value });
+        await updateAdminForm(form.id, { [field]: value });
         
         // Notify parent component of the update
         if (onFormUpdate) {
@@ -111,7 +111,7 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
                 key={`title-${form?.id || 'new'}`}
                 type="text"
                 value={form?.title || ''}
-                onChange={(e) => handleFormFieldChange('title', e.target.value)}
+                onChange={async (e) => await handleFormFieldChange('title', e.target.value)}
                 placeholder="Enter form title (e.g., 'Morning Batch', 'Pastry Prep')"
                 className="border-b-2 border-gray-300 bg-transparent w-full px-2 py-1 transition-all duration-200 ease-in-out focus:border-blue-500 focus:outline-none hover:border-gray-400"
                 readOnly={readOnly}
@@ -122,7 +122,7 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
               <input
                 type="date"
                 value={ensureDate(form.date).toISOString().split('T')[0]}
-                onChange={(e) => handleFormFieldChange('date', new Date(e.target.value))}
+                onChange={async (e) => await handleFormFieldChange('date', new Date(e.target.value))}
                 className="border-b border-black bg-transparent"
                 readOnly={readOnly}
               />
@@ -574,14 +574,14 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
       {!readOnly && form.status !== 'Complete' && (
         <div className="mt-6 text-center">
           <button
-            onClick={() => {
+            onClick={async () => {
               // Update form status to Complete
               if (onFormUpdate) {
                 onFormUpdate(form.id, { status: 'Complete' });
               }
               
               if (isAdminForm) {
-                updateAdminForm(form.id, { status: 'Complete' });
+                await updateAdminForm(form.id, { status: 'Complete' });
               } else {
                 updateFormStatus(form.id, 'Complete');
                 updateFormField(form.id, 'status', 'Complete');

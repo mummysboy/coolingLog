@@ -37,7 +37,7 @@ interface PaperFormStore {
     stageData: any
   ) => void;
   updateEntry: (rowIndex: number, field: string, value: any) => void;
-  updateAdminForm: (formId: string, updates: Partial<PaperFormEntry>) => void;
+  updateAdminForm: (formId: string, updates: Partial<PaperFormEntry>) => Promise<void>;
   getFormByDateAndInitial: (
     date: Date,
     initial: string
@@ -756,7 +756,7 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
     });
   },
 
-  updateAdminForm: (formId: string, updates: Partial<PaperFormEntry>) => {
+  updateAdminForm: async (formId: string, updates: Partial<PaperFormEntry>) => {
     // Admin actions are not per-keystroke for the grid; safe to touch both
     set((state) => ({
       savedForms: state.savedForms.map((form) =>
@@ -767,6 +767,22 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
           ? { ...state.currentForm, ...updates }
           : state.currentForm,
     } as Partial<PaperFormStore>));
+
+    // CRITICAL: Admin changes must be saved to AWS immediately
+    // Find the updated form and save it to ensure persistence
+    try {
+      const { savedForms } = get();
+      const updatedForm = savedForms.find(form => form.id === formId);
+      if (updatedForm) {
+        console.log('🔄 Auto-saving admin changes to AWS for form:', formId);
+        await storageManager.savePaperForm(updatedForm);
+        console.log('✅ Admin changes saved successfully to AWS');
+      }
+    } catch (error) {
+      console.error('❌ Failed to save admin changes to AWS:', error);
+      // Don't throw here - we want the UI to continue working even if AWS save fails
+      // The changes are still in local state and can be retried later
+    }
   },
 
   getFormByDateAndInitial: (date: Date, initial: string) => {
