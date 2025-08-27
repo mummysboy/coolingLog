@@ -1,12 +1,11 @@
 {
   "version": 1,
-  "paths": {
-    "/": {
-      "name": "/",
-      "lambda": [],
-      "permissions": {
-        "setting": "open"
-      }
+  "serviceConfiguration": {
+    "apiName": "bageldogform",
+    "serviceName": "AppSync",
+    "defaultAuthType": {
+      "mode": "API_KEY",
+      "expirationTime": 365
     }
   }
 }
