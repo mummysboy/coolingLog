@@ -1,22 +1,4 @@
 {
-  "main": {
-    "awscloudformation": {
-      "AuthRoleName": "amplify-foodchillinglog-main-11e21-authRole",
-      "UnauthRoleArn": "arn:aws:iam::851725394837:role/amplify-foodchillinglog-main-11e21-unauthRole",
-      "AuthRoleArn": "arn:aws:iam::851725394837:role/amplify-foodchillinglog-main-11e21-authRole",
-      "Region": "us-west-1",
-      "DeploymentBucketName": "amplify-foodchillinglog-main-11e21-deployment",
-      "UnauthRoleName": "amplify-foodchillinglog-main-11e21-unauthRole",
-      "StackName": "amplify-foodchillinglog-main-11e21",
-      "StackId": "arn:aws:cloudformation:us-west-1:851725394837:stack/amplify-foodchillinglog-main-11e21/794a7db0-756f-11f0-87c0-06561e8a91ad",
-      "AmplifyAppId": "d1zp7k08v02kkn"
-    },
-    "categories": {
-      "api": {
-        "foodchillinglog": {}
-      }
-    }
-  },
   "dev": {
     "awscloudformation": {
       "AuthRoleName": "amplify-foodchillinglog-dev-a4e45-authRole",
@@ -27,6 +9,24 @@
       "UnauthRoleName": "amplify-foodchillinglog-dev-a4e45-unauthRole",
       "StackName": "amplify-foodchillinglog-dev-a4e45",
       "StackId": "arn:aws:cloudformation:us-west-1:851725394837:stack/amplify-foodchillinglog-dev-a4e45/d6a31d90-756b-11f0-9066-06d52c629cb5",
+      "AmplifyAppId": "d1zp7k08v02kkn"
+    },
+    "categories": {
+      "api": {
+        "foodchillinglog": {}
+      }
+    }
+  },
+  "main": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-foodchillinglog-main-144a5-authRole",
+      "UnauthRoleArn": "arn:aws:iam::851725394837:role/amplify-foodchillinglog-main-144a5-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::851725394837:role/amplify-foodchillinglog-main-144a5-authRole",
+      "Region": "us-west-1",
+      "DeploymentBucketName": "amplify-foodchillinglog-main-144a5-deployment",
+      "UnauthRoleName": "amplify-foodchillinglog-main-144a5-unauthRole",
+      "StackName": "amplify-foodchillinglog-main-144a5",
+      "StackId": "arn:aws:cloudformation:us-west-1:851725394837:stack/amplify-foodchillinglog-main-144a5/806f9b40-83e6-11f0-8acd-02831e5d94f5",
       "AmplifyAppId": "d1zp7k08v02kkn"
     },
     "categories": {
