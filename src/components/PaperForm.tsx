@@ -11,6 +11,7 @@ import {
 import { TimePicker } from "./TimePicker";
 import { TextCell } from "./TextCell";
 
+
 interface PaperFormProps {
   formId: string;
   readOnly?: boolean;
@@ -47,6 +48,7 @@ export default function PaperForm({
   const [correctiveText, setCorrectiveText] = useState("");
   const [titleInput, setTitleInput] = useState(form?.title || "");
   const [ingredientCols, setIngredientCols] = useState<Array<{ key: string; label: string }>>([]);
+
 
   // Keep the title input in sync when the parent passes a new form object
   useEffect(() => {
@@ -170,11 +172,47 @@ export default function PaperForm({
   ) => {};
 
   const updateCorrectiveActionsForDataLog = (
-    _rowIndex: number,
-    _stage: string,
-    _dataLog: boolean
+    rowIndex: number,
+    stage: string,
+    dataLog: boolean
   ) => {
-    // hook for any future logic
+    if (dataLog && form) {
+      // When data log is checked, add it to the corrective actions section
+      const stageNames: Record<string, string> = {
+        'ccp1': 'CCP1',
+        'ccp2': 'CCP2', 
+        'coolingTo80': 'Cooling to 80°F',
+        'coolingTo54': 'Cooling to 54°F',
+        'finalChill': 'Final Chill'
+      };
+      
+      const stageName = stageNames[stage] || stage;
+      
+      // Get existing corrective actions
+      const existingComments = form.correctiveActionsComments || "";
+      
+      // Check if this data log entry already exists to avoid duplicates
+      const dataLogEntry = `Row ${rowIndex + 1} - ${stageName}: Check data log`;
+      if (existingComments.includes(dataLogEntry)) {
+        return; // Already exists, don't add duplicate
+      }
+      
+      // Add new data log entry on its own row
+      const updatedComments = existingComments 
+        ? existingComments + '\n' + dataLogEntry
+        : dataLogEntry;
+      
+      // Update the form with the new corrective actions
+      if (isAdminForm) {
+        updateAdminForm(form.id, { correctiveActionsComments: updatedComments });
+        if (onFormUpdate) onFormUpdate(form.id, { correctiveActionsComments: updatedComments });
+      } else {
+        updateFormField(form.id, "correctiveActionsComments", updatedComments);
+      }
+      
+      // Update the local state to reflect the change
+      setCorrectiveText(formatNumberedTextFromRaw(updatedComments));
+    }
   };
 
   const commitField = async (rowIndex: number, field: string, value: any) => {
@@ -654,7 +692,7 @@ export default function PaperForm({
 
   return (
     <div className="p-6 bg-white rounded-xl border-2 border-gray-200 max-w-7xl mx-auto">
-      {/* Form Header */}
+        {/* Form Header */}
       <div className="mb-6">
         <div className="border-2 border-black mb-4">
           <div className="bg-gray-100 p-4 text-center">

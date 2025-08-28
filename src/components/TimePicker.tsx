@@ -31,6 +31,7 @@ export function TimePicker({
   const [selectedMinute, setSelectedMinute] = useState('00');
   const [selectedAMPM, setSelectedAMPM] = useState<'AM' | 'PM'>('AM');
   const [dropdownPosition, setDropdownPosition] = useState<'left' | 'right'>('right');
+  const [isInitialOpen, setIsInitialOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const hourScrollRef = useRef<HTMLDivElement>(null);
   const minuteScrollRef = useRef<HTMLDivElement>(null);
@@ -123,29 +124,78 @@ export function TimePicker({
       if (hour12 === 0) hour12 = 12;
       else if (hour12 > 12) hour12 -= 12;
       
-      const hourIndex = hour12 - 1; // Convert to 0-based index
+      // Find the correct index in the hours array [1, 2, 3, ..., 12]
+      const hourIndex = hours.indexOf(hour12);
       const minuteIndex = parseInt(minute);
       
-      // Scroll to the selected time positions
+      // Ensure indices are within bounds
+      if (hourIndex < 0 || hourIndex >= 12) return;
+      if (minuteIndex < 0 || minuteIndex >= 60) return;
+      
+      // Get the actual elements
       const hourElement = hourScrollRef.current.children[hourIndex] as HTMLElement;
       const minuteElement = minuteScrollRef.current.children[minuteIndex] as HTMLElement;
       
-      if (hourElement) {
-        hourScrollRef.current.scrollTop = hourElement.offsetTop - 80; // Center the selected hour
-      }
-      if (minuteElement) {
-        minuteScrollRef.current.scrollTop = minuteElement.offsetTop - 80; // Center the selected minute
+      if (hourElement && minuteElement) {
+        // Temporarily disable scroll-snap to allow programmatic scrolling
+        hourScrollRef.current.style.scrollSnapType = 'none';
+        minuteScrollRef.current.style.scrollSnapType = 'none';
+        
+        // Calculate scroll positions to center the selected items
+        const wheelHeight = hourScrollRef.current.clientHeight;
+        const itemHeight = 40; // Height of each time item
+        
+        // Debug logging
+        console.log('Scrolling to:', { hour: hourElement.textContent, minute: minuteElement.textContent });
+        console.log('Wheel dimensions:', { wheelHeight, itemHeight });
+        console.log('Element positions:', { hourOffsetTop: hourElement.offsetTop, minuteOffsetTop: minuteElement.offsetTop });
+        
+        // Calculate scroll positions relative to the scrollable container
+        const hourContainer = hourScrollRef.current;
+        const minuteContainer = minuteScrollRef.current;
+        
+        // Get the position of the element relative to its container
+        const hourRect = hourElement.getBoundingClientRect();
+        const hourContainerRect = hourContainer.getBoundingClientRect();
+        const hourRelativeTop = hourRect.top - hourContainerRect.top;
+        
+        const minuteRect = minuteElement.getBoundingClientRect();
+        const minuteContainerRect = minuteContainer.getBoundingClientRect();
+        const minuteRelativeTop = minuteRect.top - minuteContainerRect.top;
+        
+        console.log('Relative positions:', { hourRelativeTop, minuteRelativeTop });
+        
+        // Scroll to center the selected hour
+        const hourScrollTop = hourRelativeTop - (wheelHeight / 2) + (itemHeight / 2);
+        console.log('Hour scroll calculation:', { hourScrollTop });
+        hourContainer.scrollTop = Math.max(0, hourScrollTop);
+        
+        // Scroll to center the selected minute
+        const minuteScrollTop = minuteRelativeTop - (wheelHeight / 2) + (itemHeight / 2);
+        console.log('Minute scroll calculation:', { minuteScrollTop });
+        minuteContainer.scrollTop = Math.max(0, minuteScrollTop);
+        
+        // Force a reflow and try scrolling again
+        hourScrollRef.current.offsetHeight;
+        minuteScrollRef.current.offsetHeight;
+        
+
       }
     }
   };
 
   // Calculate optimal dropdown position to prevent overflow
   const calculateDropdownPosition = () => {
-    if (!dropdownRef.current) return 'right';
+    if (!dropdownRef.current) return 'left'; // Force left positioning for now
     
     const rect = dropdownRef.current.getBoundingClientRect();
     const dropdownWidth = 320; // w-80 = 20rem = 320px
     const viewportWidth = window.innerWidth;
+    
+    // Always open to the left if we're in the right half of the screen
+    if (rect.left > viewportWidth * 0.5) {
+      return 'left';
+    }
     
     // Check if dropdown would overflow to the right
     if (rect.left + dropdownWidth > viewportWidth) {
@@ -163,22 +213,31 @@ export function TimePicker({
         setDropdownPosition(position);
         
         // Set current time when opening if no value exists
+        let currentHour = selectedHour;
+        let currentMinute = selectedMinute;
+        
         if (!value) {
           const currentTime = getCurrentTime();
           const [hours, minutes] = currentTime.split(':');
           const hour24 = parseInt(hours);
           // Convert 24-hour to 12-hour
           const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
-          setSelectedHour(hour12.toString());
-          setSelectedMinute(minutes);
+          currentHour = hour12.toString();
+          currentMinute = minutes;
+          setSelectedHour(currentHour);
+          setSelectedMinute(currentMinute);
           setSelectedAMPM(hour24 >= 12 ? 'PM' : 'AM');
         }
         
         // Open dropdown and scroll to current time
         setIsOpen(true);
+        setIsInitialOpen(true);
+        // Use a longer delay to ensure the dropdown is fully rendered and visible
         setTimeout(() => {
-          scrollToTime(selectedHour, selectedMinute);
-        }, 100);
+          scrollToTime(currentHour, currentMinute);
+          // Remove the initial open effect after scrolling
+          setTimeout(() => setIsInitialOpen(false), 600);
+        }, 250);
       } else {
         setIsOpen(false);
       }
@@ -273,7 +332,7 @@ export function TimePicker({
                     className={`
                       py-2 mobile:py-3 ipad:py-3 text-center cursor-pointer transition-all duration-150 touch-manipulation
                       ${selectedHour === hour.toString() 
-                        ? 'bg-blue-500 text-white font-semibold' 
+                        ? `bg-blue-500 text-white font-semibold ${isInitialOpen ? 'ring-2 ring-blue-300 ring-offset-2' : ''}` 
                         : 'hover:bg-gray-100'
                       }
                       scroll-snap-align: center
@@ -301,7 +360,7 @@ export function TimePicker({
                     className={`
                       py-2 mobile:py-3 ipad:py-3 text-center cursor-pointer transition-all duration-150 touch-manipulation
                       ${selectedMinute === minute 
-                        ? 'bg-blue-500 text-white font-semibold' 
+                        ? `bg-blue-500 text-white font-semibold ${isInitialOpen ? 'ring-2 ring-blue-300 ring-offset-2' : ''}` 
                         : 'hover:bg-gray-100'
                       }
                       scroll-snap-align: center
@@ -323,7 +382,7 @@ export function TimePicker({
                   className={`
                     flex-1 flex items-center justify-center cursor-pointer transition-all duration-150 touch-manipulation
                     ${selectedAMPM === 'AM' 
-                      ? 'bg-blue-500 text-white font-semibold' 
+                      ? `bg-blue-500 text-white font-semibold ${isInitialOpen ? 'ring-2 ring-blue-300 ring-offset-2' : ''}` 
                       : 'bg-gray-50 hover:bg-gray-100'
                     }
                   `}
@@ -336,7 +395,7 @@ export function TimePicker({
                   className={`
                     flex-1 flex items-center justify-center cursor-pointer transition-all duration-150 touch-manipulation
                     ${selectedAMPM === 'PM' 
-                      ? 'bg-blue-500 text-white font-semibold' 
+                      ? `bg-blue-500 text-white font-semibold ${isInitialOpen ? 'ring-2 ring-blue-300 ring-offset-2' : ''}` 
                       : 'bg-gray-50 hover:bg-gray-100'
                     }
                   `}

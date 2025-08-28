@@ -44,7 +44,7 @@
 @layer components {
   /* Base touch target size for mobile */
   .touch-target {
-    @apply min-h-[44px] min-w-[44px];
+    /* Removed min-height and min-width to make buttons regular size */
   }
   
   /* Stage card base styles */
