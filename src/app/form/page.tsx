@@ -872,7 +872,7 @@ export default function FormPage() {
             <div className="relative" ref={addFormDropdownRef}>
               <button
                 onClick={() => setIsAddFormDropdownOpen(!isAddFormDropdownOpen)}
-                className="inline-flex items-center px-4 py-3 mobile:px-6 mobile:py-4 ipad:px-8 ipad:py-5 border border-transparent text-sm mobile:text-base ipad:text-lg font-medium rounded-lg mobile:rounded-xl ipad:rounded-2xl shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 touch-target transition-all duration-200"
+                className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-6 ipad:py-4 border border-transparent text-sm mobile:text-base ipad:text-lg font-medium rounded-lg mobile:rounded-xl ipad:rounded-2xl shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
               >
                 <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -891,7 +891,7 @@ export default function FormPage() {
                       onClick={() => {
                         handleCreateForm(FormType.COOKING_AND_COOLING);
                       }}
-                      className={`block w-full text-left px-4 py-3 mobile:py-4 ipad:py-5 text-sm mobile:text-base ipad:text-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors`}
+                      className={`block w-full text-left px-3 py-2 mobile:py-3 ipad:py-4 text-sm mobile:text-base ipad:text-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors`}
                       role="menuitem"
                     >
                       <div className="flex items-center">
@@ -911,7 +911,7 @@ export default function FormPage() {
                       onClick={() => {
                         handleCreateForm(FormType.PIROSHKI_CALZONE_EMPANADA);
                       }}
-                      className={`block w-full text-left px-4 py-3 mobile:py-4 ipad:py-5 text-sm mobile:text-base ipad:text-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors`}
+                      className={`block w-full text-left px-3 py-2 mobile:py-3 ipad:py-4 text-sm mobile:text-base ipad:text-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors`}
                       role="menuitem"
                     >
                       <div className="flex items-center">
@@ -931,7 +931,7 @@ export default function FormPage() {
                       onClick={() => {
                         handleCreateForm(FormType.BAGEL_DOG_COOKING_COOLING);
                       }}
-                      className={`block w-full text-left px-4 py-3 mobile:py-4 ipad:py-5 text-sm mobile:text-base ipad:text-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors`}
+                      className={`block w-full text-left px-3 py-2 mobile:py-3 ipad:py-4 text-sm mobile:text-base ipad:text-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors`}
                       role="menuitem"
                     >
                       <div className="flex items-center">
@@ -1019,7 +1019,7 @@ export default function FormPage() {
                           {/* View Form Button */}
                           <button
                             onClick={() => handleViewForm(form)}
-                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-5 ipad:py-4 text-sm mobile:text-base ipad:text-lg font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-blue-100 hover:text-blue-700 transition-colors touch-target"
+                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-5 ipad:py-4 text-sm mobile:text-base ipad:text-lg font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-blue-100 hover:text-blue-700 transition-colors"
                             title="View and edit form details"
                           >
                             <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1127,7 +1127,7 @@ export default function FormPage() {
                             {/* View Form Button - Read Only */}
                             <button
                               onClick={() => handleViewForm(form)}
-                              className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-5 ipad:py-4 text-sm mobile:text-base ipad:text-lg font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-blue-100 hover:text-blue-700 transition-colors touch-target"
+                              className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-5 ipad:py-4 text-sm mobile:text-base ipad:text-lg font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-blue-100 hover:text-blue-700 transition-colors"
                               title="View completed form (read-only)"
                             >
                               <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1219,7 +1219,7 @@ export default function FormPage() {
                           {/* Download PDF Button */}
                           <button
                             onClick={() => handleDownloadPDF(form)}
-                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-5 ipad:py-4 text-sm mobile:text-base ipad:text-lg font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-green-100 hover:text-green-700 transition-colors touch-target"
+                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-5 ipad:py-4 text-sm mobile:text-base ipad:text-lg font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-green-100 hover:text-green-700 transition-colors"
                             title="Download form as PDF"
                           >
                             <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1231,7 +1231,7 @@ export default function FormPage() {
                           {/* Download JPEG Button */}
                           <button
                             onClick={() => handleDownloadJPEG(form)}
-                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-5 ipad:py-4 text-sm mobile:text-base ipad:text-lg font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-purple-100 hover:text-purple-700 transition-colors touch-target"
+                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-5 ipad:py-4 text-sm mobile:text-base ipad:text-lg font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-purple-100 hover:text-purple-700 transition-colors"
                             title="Download form as JPEG"
                           >
                             <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1242,7 +1242,7 @@ export default function FormPage() {
                           
                           <button
                             onClick={() => handleViewForm(form)}
-                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-5 ipad:py-4 text-sm mobile:text-base ipad:text-lg font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-blue-100 hover:text-blue-700 transition-colors touch-target"
+                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-5 ipad:py-4 text-sm mobile:text-base ipad:text-lg font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-blue-100 hover:text-blue-700 transition-colors"
                             title="View approved form (read-only)"
                           >
                             <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1305,7 +1305,7 @@ export default function FormPage() {
                         setFormUpdateKey(prev => prev + 1);
                       }
                     }}
-                    className="px-3 py-2 mobile:px-4 mobile:py-2 ipad:px-5 ipad:py-3 text-sm mobile:text-base ipad:text-lg bg-orange-500 text-white rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-orange-600 transition-colors touch-target"
+                    className="px-3 py-2 mobile:px-4 mobile:py-2 ipad:px-5 ipad:py-3 text-sm mobile:text-base ipad:text-lg bg-orange-500 text-white rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-orange-600 transition-colors"
                     title="Reset form status to allow editing"
                     aria-label="Reset form status to In Progress"
                   >
@@ -1332,7 +1332,7 @@ export default function FormPage() {
                        alert(`Error saving form: ${errorMessage}`);
                      }
                    }}
-                   className="inline-flex items-center px-4 py-3 mobile:px-6 mobile:py-4 ipad:px-8 ipad:py-5 text-sm mobile:text-base ipad:text-lg font-medium text-white bg-blue-600 border border-transparent rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors touch-target"
+                   className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-6 ipad:py-4 text-sm mobile:text-base ipad:text-lg font-medium text-white bg-blue-600 border border-transparent rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                    title="Save form to AWS and close"
                    aria-label="Save form to AWS and close"
                  >
@@ -1350,7 +1350,7 @@ export default function FormPage() {
                     setSelectedForm(null);
                     setNewlyCreatedFormId(null); // Reset the flag when closing
                   }}
-                  className="inline-flex items-center px-4 py-3 mobile:px-6 mobile:py-4 ipad:px-8 ipad:py-5 text-sm mobile:text-base ipad:text-lg font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors touch-target"
+                  className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-6 ipad:py-4 text-sm mobile:text-base ipad:text-lg font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
                   title="Cancel and close modal without saving"
                   aria-label="Cancel and close modal without saving"
                 >

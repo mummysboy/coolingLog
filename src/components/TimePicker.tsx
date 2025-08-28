@@ -215,7 +215,7 @@ export function TimePicker({
           ${compact ? 'border border-gray-200 rounded-md' : 'border border-gray-300 rounded-lg mobile:rounded-xl ipad:rounded-2xl'}
           ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-blue-500 active:bg-blue-50'}
           ${isOpen ? 'border-blue-500 ring-2 ring-blue-200' : ''}
-          transition-all duration-150 ease-in-out touch-target
+          transition-all duration-150 ease-in-out
         `}
         style={{ minHeight: compact ? '44px' : '48px' }}
       >
@@ -353,15 +353,15 @@ export function TimePicker({
             <div className="flex space-x-2 mobile:space-x-3 ipad:space-x-4">
               <button
                 onClick={() => setIsOpen(false)}
-                className="flex-1 py-3 mobile:py-3 ipad:py-4 px-3 mobile:px-4 ipad:px-5 bg-gray-300 text-gray-700 text-sm mobile:text-base ipad:text-lg font-medium rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-gray-400 active:bg-gray-500 transition-colors touch-manipulation touch-target"
-                style={{ minHeight: '44px' }}
+                className="flex-1 py-2 mobile:py-3 ipad:py-4 px-3 mobile:px-4 ipad:px-5 bg-gray-300 text-gray-700 text-sm mobile:text-base ipad:text-lg font-medium rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-gray-400 active:bg-gray-500 transition-colors touch-manipulation"
+                style={{ minHeight: '40px' }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleTimeConfirm}
-                className="flex-1 py-3 mobile:py-3 ipad:py-4 px-3 mobile:px-4 ipad:px-5 bg-blue-500 text-white text-sm mobile:text-base ipad:text-lg font-medium rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-blue-600 active:bg-blue-700 transition-colors touch-manipulation touch-target"
-                style={{ minHeight: '44px' }}
+                className="flex-1 py-2 mobile:py-3 ipad:py-4 px-3 mobile:px-4 ipad:px-5 bg-blue-500 text-white text-sm mobile:text-base ipad:text-lg font-medium rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-blue-600 active:bg-blue-700 transition-colors touch-manipulation"
+                style={{ minHeight: '40px' }}
               >
                 Confirm
               </button>

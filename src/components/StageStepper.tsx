@@ -203,7 +203,7 @@ export function StageStepper() {
                           newTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
                           handleTimeChange(stageConfig.id, newTime);
                         }}
-                        className="w-full px-4 py-3 mobile:px-6 mobile:py-4 ipad:px-8 ipad:py-5 text-base mobile:text-lg ipad:text-xl border-2 border-gray-300 rounded-lg mobile:rounded-xl ipad:rounded-2xl focus:border-blue-500 focus:outline-none touch-target"
+                        className="w-full px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-6 ipad:py-4 text-base mobile:text-lg ipad:text-xl border-2 border-gray-300 rounded-lg mobile:rounded-xl ipad:rounded-2xl focus:border-blue-500 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -214,7 +214,7 @@ export function StageStepper() {
                   <button
                     onClick={() => handleSaveStage(stageConfig.id)}
                     disabled={!input.temp}
-                    className="w-full touch-target py-4 mobile:py-5 ipad:py-6 bg-blue-600 text-white text-base mobile:text-lg ipad:text-xl font-semibold rounded-lg mobile:rounded-xl ipad:rounded-2xl disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+                    className="w-full py-3 mobile:py-4 ipad:py-5 bg-blue-600 text-white text-base mobile:text-lg ipad:text-xl font-semibold rounded-lg mobile:rounded-xl ipad:rounded-2xl disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
                   >
                     Save Stage
                   </button>

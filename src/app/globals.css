@@ -47,16 +47,6 @@
     @apply min-h-[44px] min-w-[44px];
   }
   
-  /* Enhanced touch targets for iPad */
-  .touch-target-ipad {
-    @apply min-h-[48px] min-w-[48px];
-  }
-  
-  /* Large touch targets for critical actions */
-  .touch-target-large {
-    @apply min-h-[56px] min-w-[56px];
-  }
-  
   /* Stage card base styles */
   .stage-card {
     @apply rounded-xl border-2 p-4 transition-all duration-200;
@@ -81,10 +71,6 @@
   /* Mobile-first responsive design */
   /* Mobile Portrait (320px - 767px) */
   @media (max-width: 767px) and (orientation: portrait) {
-    .touch-target {
-      @apply min-h-[48px] min-w-[48px];
-    }
-    
     .stage-card {
       @apply p-4 rounded-lg;
     }
@@ -98,18 +84,14 @@
       @apply grid-cols-1 gap-4;
     }
     
-    /* Larger buttons for mobile */
+    /* Appropriate button sizing for mobile */
     .mobile-button {
-      @apply px-6 py-4 text-base font-medium;
+      @apply px-4 py-3 text-base font-medium;
     }
   }
 
   /* Mobile Landscape (320px - 767px) */
   @media (max-width: 767px) and (orientation: landscape) {
-    .touch-target {
-      @apply min-h-[44px] min-w-[44px];
-    }
-    
     .stage-card {
       @apply p-3 rounded-lg;
     }
@@ -126,10 +108,6 @@
 
   /* iPad Portrait (768px - 1023px) */
   @media (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
-    .touch-target {
-      @apply min-h-[52px] min-w-[52px];
-    }
-    
     .stage-card {
       @apply p-6 rounded-xl;
     }
@@ -151,10 +129,6 @@
 
   /* iPad Landscape (1024px+) */
   @media (min-width: 1024px) and (orientation: landscape) {
-    .touch-target {
-      @apply min-h-[56px] min-w-[56px];
-    }
-    
     .stage-card {
       @apply p-8 rounded-2xl;
     }
@@ -185,10 +159,6 @@
 
   /* iPad Pro and larger (1280px+) */
   @media (min-width: 1280px) {
-    .touch-target {
-      @apply min-h-[60px] min-w-[60px];
-    }
-    
     .stage-card {
       @apply p-10 rounded-3xl;
     }
@@ -225,19 +195,19 @@
 
   /* Enhanced form styling for different screen sizes */
   .form-input-mobile {
-    @apply w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none;
+    @apply w-full px-3 py-2 text-base border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none;
   }
   
   .form-input-ipad {
-    @apply w-full px-6 py-4 text-lg border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none;
+    @apply w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none;
   }
   
   .form-button-mobile {
-    @apply w-full px-6 py-4 text-base font-semibold rounded-lg transition-colors;
+    @apply w-full px-4 py-3 text-base font-semibold rounded-lg transition-colors;
   }
   
   .form-button-ipad {
-    @apply w-full px-8 py-5 text-lg font-semibold rounded-xl transition-colors;
+    @apply w-full px-6 py-4 text-lg font-semibold rounded-xl transition-colors;
   }
 
   /* Responsive table styles */
