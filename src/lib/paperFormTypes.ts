@@ -78,7 +78,7 @@ export interface BaseFormEntry {
   lastTextEntry: Date;
   formType: FormType;
   formInitial: string;
-  status: 'Complete' | 'In Progress' | 'Error' | 'Approved';
+  status: 'Complete' | 'In Progress' | 'Error' | 'Approved' | 'Archive';
   title: string;
   entries: BaseFormRow[];
   thermometerNumber: string;

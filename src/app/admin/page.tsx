@@ -76,6 +76,11 @@ export default function AdminDashboard() {
     timestamp: Date;
   }>>([]);
 
+  // Archive functionality state
+  const [archiveSearchTerm, setArchiveSearchTerm] = useState('');
+  const [archiveFormTypeFilter, setArchiveFormTypeFilter] = useState('');
+  const [archiveDateFilter, setArchiveDateFilter] = useState('');
+
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
 
 
@@ -167,7 +172,7 @@ export default function AdminDashboard() {
 
   // OPTIMIZATION: Memoize filtered forms to avoid repeated isFormBlank calls
   const filteredForms = useMemo(() => {
-    return savedForms.filter(form => !isFormBlank(form));
+    return savedForms.filter(form => !isFormBlank(form) && form.status !== 'Archive');
   }, [savedForms, isFormBlank]);
 
   const errorForms = useMemo(() => {
@@ -191,18 +196,27 @@ export default function AdminDashboard() {
   const approvedForms = useMemo(() =>
     filteredForms
       .filter(form => form.status === 'Approved')
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      .sort((a, b) => new Date(b.date).getTime() - new Date(b.date).getTime()),
     [filteredForms]
+  );
+
+  // Archive filtering and search functions
+  const archivedForms = useMemo(() => 
+    savedForms
+      .filter((form: PaperFormEntry) => form.status === 'Archive')
+      .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [savedForms]
   );
 
   const formCounts = useMemo(() => {
     return {
       total: filteredForms.length,
-  pending: activeForms.length,
+      pending: activeForms.length,
       complete: filteredForms.filter(f => f.status === 'Complete').length,
-      error: errorForms.length
+      error: errorForms.length,
+      archived: archivedForms.length
     };
-  }, [filteredForms, activeForms, errorForms]);
+  }, [filteredForms, activeForms, errorForms, archivedForms]);
 
   // REMOVED: Complex status calculation logic that was interfering with form page status updates
   // The admin page should just display the current status from the store, not try to recalculate it
@@ -216,15 +230,23 @@ export default function AdminDashboard() {
         setShowSettingsDropdown(false);
       }
       
-      // Close status dropdown
-      setShowStatusDropdown(null);
+      // Close status dropdown only if clicking outside both the button and dropdown
+      const target = event.target as Node;
+      const statusButton = document.querySelector(`[data-form-id="${showStatusDropdown}"]`);
+      const statusDropdown = document.querySelector(`[data-dropdown-for="${showStatusDropdown}"]`);
+      
+      if (showStatusDropdown && 
+          statusButton && !statusButton.contains(target) && 
+          statusDropdown && !statusDropdown.contains(target)) {
+        setShowStatusDropdown(null);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [showStatusDropdown]);
 
   // Auto-clear success message after 5 seconds
   useEffect(() => {
@@ -1046,8 +1068,49 @@ export default function AdminDashboard() {
     });
   };
 
+  // Archive functionality
+  const handleUnarchiveForm = async (formId: string) => {
+    try {
+      updateFormStatus(formId, 'In Progress');
+      setDashboardRefreshKey(prev => prev + 1);
+    } catch (error) {
+      console.error('Error restoring form from archive:', error);
+    }
+  };
+
+  const getFilteredArchivedForms = useCallback(() => {
+    let filtered = archivedForms;
+
+    // Apply search filter
+    if (archiveSearchTerm) {
+      const searchLower = archiveSearchTerm.toLowerCase();
+      filtered = filtered.filter(form => 
+        form.id.toLowerCase().includes(searchLower) ||
+        form.title?.toLowerCase().includes(searchLower) ||
+        getFormTypeDisplayName(form.formType).toLowerCase().includes(searchLower) ||
+        form.formInitial?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply form type filter
+    if (archiveFormTypeFilter) {
+      filtered = filtered.filter(form => form.formType === archiveFormTypeFilter);
+    }
+
+    // Apply date filter
+    if (archiveDateFilter) {
+      const days = parseInt(archiveDateFilter);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      
+      filtered = filtered.filter(form => new Date(form.date) >= cutoffDate);
+    }
+
+    return filtered;
+  }, [archivedForms, archiveSearchTerm, archiveFormTypeFilter, archiveDateFilter]);
+
   const getFilteredAndSortedForms = () => {
-    let filtered = savedForms; // Show ALL forms in admin page, including blank ones
+    let filtered = savedForms.filter(form => form.status !== 'Archive'); // Exclude archived forms from main view
     
     // Apply status filter
     if (filterStatus !== 'all') {
@@ -1151,6 +1214,20 @@ export default function AdminDashboard() {
             bg: 'bg-orange-50',
             border: 'border-orange-200'
           };
+        case 'Approved':
+          return {
+            text: 'text-indigo-600',
+            icon: '✓',
+            bg: 'bg-indigo-50',
+            border: 'border-indigo-200'
+          };
+        case 'Archive':
+          return {
+            text: 'text-gray-600',
+            icon: '📁',
+            bg: 'bg-gray-50',
+            border: 'border-gray-200'
+          };
         default:
           return {
             text: 'text-gray-600',
@@ -1163,27 +1240,36 @@ export default function AdminDashboard() {
 
     const styles = getStatusStyles(form.status);
 
-    const handleStatusChange = (newStatus: 'Complete' | 'In Progress' | 'Error' | 'Approved') => {
-      updateFormStatus(form.id, newStatus);
-      setShowStatusDropdown(null); // Close dropdown after selection
-      // Force dashboard refresh to show updated status
-      setDashboardRefreshKey(prev => prev + 1);
-      showToast('success', `Form status updated to ${newStatus}`, form.id);
+    const handleStatusChange = (newStatus: 'Complete' | 'In Progress' | 'Error' | 'Approved' | 'Archive') => {
+      console.log('🔄 Status change requested:', { formId: form.id, currentStatus: form.status, newStatus });
+      
+      try {
+        updateFormStatus(form.id, newStatus);
+        console.log('✅ Status update function called successfully');
+        
+        setShowStatusDropdown(null); // Close dropdown after selection
+        // Force dashboard refresh to show updated status
+        setDashboardRefreshKey(prev => prev + 1);
+      } catch (error) {
+        console.error('❌ Error updating form status:', error);
+      }
     };
 
-    const availableStatuses: Array<'Complete' | 'In Progress' | 'Error' | 'Approved'> = ['In Progress', 'Complete', 'Error', 'Approved'];
+    const availableStatuses: Array<'Complete' | 'In Progress' | 'Error' | 'Approved' | 'Archive'> = ['In Progress', 'Complete', 'Error', 'Approved', 'Archive'];
 
     return (
-      <div className="space-y-1">
-        <div className="relative">
+      <div className="relative">
           <button
+            data-form-id={form.id}
             onClick={() => {
-              console.log('Status button clicked for form:', form.id);
+              console.log('🖱️ Status button clicked for form:', form.id);
               console.log('Current showStatusDropdown:', showStatusDropdown);
-              setShowStatusDropdown(showStatusDropdown === form.id ? null : form.id);
+              const newState = showStatusDropdown === form.id ? null : form.id;
+              console.log('Setting showStatusDropdown to:', newState);
+              setShowStatusDropdown(newState);
             }}
             className={`
-              w-full px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200
+              inline-flex items-center px-3 py-2 text-sm font-medium rounded-md border transition-all duration-200
               ${styles.bg} ${styles.border} ${styles.text}
               hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500
               ${showStatusDropdown === form.id ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
@@ -1198,7 +1284,17 @@ export default function AdminDashboard() {
           </button>
 
           {showStatusDropdown === form.id && (
-            <div className="absolute top-full left-0 mt-1 w-48 bg-white border-2 border-blue-300 rounded-lg shadow-xl z-50">
+            <div 
+              data-dropdown-for={form.id}
+              className="absolute top-full left-0 mt-1 w-48 bg-white border-2 border-blue-300 rounded-lg shadow-xl z-[999999]"
+              style={{ 
+                position: 'absolute',
+                zIndex: 999999,
+                maxHeight: '300px',
+                overflow: 'visible'
+              }}
+            >
+
               <div className="py-1">
                 <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
                   Change Status
@@ -1206,9 +1302,12 @@ export default function AdminDashboard() {
                 {availableStatuses.map((status) => (
                   <button
                     key={status}
-                    onClick={() => handleStatusChange(status)}
+                    onClick={() => {
+                      console.log('🎯 Status option clicked:', status);
+                      handleStatusChange(status);
+                    }}
                     className={`
-                      w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors
+                      w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors cursor-pointer
                       ${form.status === status ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}
                     `}
                   >
@@ -1219,12 +1318,6 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
-        
-        {/* Show last update time */}
-        <div className="text-xs text-gray-500 px-3">
-          Last updated: {form.lastTextEntry ? `${new Date(form.lastTextEntry).toLocaleDateString()} at ${new Date(form.lastTextEntry).toLocaleTimeString()}` : 'No text entered yet'}
-        </div>
-      </div>
     );
   };
 
@@ -1294,6 +1387,7 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4">
+
           {/* Success Message */}
           {deleteSuccessMessage && (
             <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4">
@@ -1337,7 +1431,7 @@ export default function AdminDashboard() {
                 // The form page handles status updates, admin page should just display them
 
                 return (
-                  <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
+                  <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 mb-6`}>
                     <div className={`p-6`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
@@ -1357,13 +1451,7 @@ export default function AdminDashboard() {
                         </div>
 
                         <div className="flex items-center space-x-3">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                            form.status === 'Complete' ? 'bg-green-100 text-green-800' :
-                            form.status === 'Error' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {form.status === 'Complete' ? '✓ Complete' : form.status === 'Error' ? '⚠️ Has Errors' : '⏳ In Progress'}
-                          </span>
+                          {renderStatusDisplay(form)}
 
                           <button
                             onClick={() => handleViewForm(form)}
@@ -1437,7 +1525,7 @@ export default function AdminDashboard() {
                 Completed Forms
               </h2>
               {completedForms.map((form) => (
-                <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
+                <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 mb-6`}>
                   <div className={`p-6`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
@@ -1453,7 +1541,7 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="flex items-center space-x-3">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">✓ Complete</span>
+                        {renderStatusDisplay(form)}
                         <button
                           onClick={() => handleViewForm(form)}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
@@ -1465,40 +1553,16 @@ export default function AdminDashboard() {
                           View Form
                         </button>
                         <button
-                          onClick={() => {
-                            try {
-                              // First update the local state immediately for better UX
-                              updateFormStatus(form.id, 'In Progress');
-                              // removed success toast for reopen to avoid green notification
-                              // Force dashboard refresh to show updated status
-                              setDashboardRefreshKey(prev => prev + 1);
-                            } catch (error) {
-                              console.error('Error reopening form:', error);
-                              showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
-                            }
-                          }}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
-                          title="Reopen form for editing"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.003 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                          Reopen
-                        </button>
-                        <button
                           onClick={async () => {
                             if (!adminUser) {
-                              showToast('error', 'No admin user configured; cannot approve form', form.id);
                               return;
                             }
 
                             try {
                               await approveForm(form.id, adminUser.initials);
-                              // removed success toast for approve to avoid green notification
                               setDashboardRefreshKey(prev => prev + 1);
                             } catch (error) {
                               console.error('Error approving form:', error);
-                              showToast('error', `Failed to approve form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
                             }
                           }}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-indigo-600 border border-indigo-600 rounded-md hover:bg-indigo-700 hover:text-white transition-colors"
@@ -1562,7 +1626,7 @@ export default function AdminDashboard() {
               </h2>
 
               {approvedForms.map((form) => (
-                <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
+                <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 mb-6`}>
                   <div className={`p-6`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
@@ -1577,10 +1641,7 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="flex items-center space-x-3">
-                        <div className="flex flex-col items-end text-sm text-gray-600">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">✓ Approved</span>
-                          {/* Approved by text removed per request */}
-                        </div>
+                        {renderStatusDisplay(form)}
                         <button
                           onClick={() => handleViewForm(form)}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
@@ -1608,30 +1669,123 @@ export default function AdminDashboard() {
                           title="Download approved form as JPEG"
                         >
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L22 10" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                           Download JPEG
                         </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Archive Section */}
+          {archivedForms.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                <svg className="w-6 h-6 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2V9a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Archive
+              </h2>
+
+              {/* Archive Search and Filters */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Search */}
+                  <div>
+                    <label htmlFor="archive-search" className="block text-sm font-medium text-gray-700 mb-1">
+                      Search Archive
+                    </label>
+                    <input
+                      id="archive-search"
+                      type="text"
+                      value={archiveSearchTerm}
+                      onChange={(e) => setArchiveSearchTerm(e.target.value)}
+                      placeholder="Search by form number, title, type, or initials..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Form Type Filter */}
+                  <div>
+                    <label htmlFor="archive-type-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                      Form Type
+                    </label>
+                    <select
+                      id="archive-type-filter"
+                      value={archiveFormTypeFilter}
+                      onChange={(e) => setArchiveFormTypeFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">All Types</option>
+                      <option value="cooking-cooling">Cooking/Cooling</option>
+                      <option value="piroshki">Piroshki</option>
+                      <option value="bagel-dog">Bagel Dog</option>
+                    </select>
+                  </div>
+
+                  {/* Date Filter */}
+                  <div>
+                    <label htmlFor="archive-date-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                      Date Range
+                    </label>
+                    <select
+                      id="archive-date-filter"
+                      value={archiveDateFilter}
+                      onChange={(e) => setArchiveDateFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">All Time</option>
+                      <option value="7">Last 7 days</option>
+                      <option value="30">Last 30 days</option>
+                      <option value="90">Last 90 days</option>
+                      <option value="365">Last year</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Archived Forms List */}
+              {getFilteredArchivedForms().map((form) => (
+                <div key={form.id} className="bg-white rounded-xl border-2 border-gray-200 mb-6">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
+                          <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                            <span>Form #{form.id.slice(-6)}</span>
+                            <span>Archived: {new Date(form.date).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        {renderStatusDisplay(form)}
                         <button
-                          onClick={() => {
-                            try {
-                              // First update the local state immediately for better UX
-                              updateFormStatus(form.id, 'In Progress');
-                              // removed success toast for reopen to avoid green notification
-                              // Force dashboard refresh to show updated status
-                              setDashboardRefreshKey(prev => prev + 1);
-                            } catch (error) {
-                              console.error('Error reopening form:', error);
-                              showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
-                            }
-                          }}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
-                          title="Reopen form for editing"
+                          onClick={() => handleViewForm(form)}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                          title="View archived form (read-only)"
                         >
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.003 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
-                          Reopen
+                          View Form
+                        </button>
+                        <button
+                          onClick={() => handleUnarchiveForm(form.id)}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-700 transition-colors"
+                          title="Restore form from archive"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Restore
                         </button>
                       </div>
                     </div>
@@ -1656,6 +1810,7 @@ export default function AdminDashboard() {
                   Status: <span className={`font-medium ${
                     selectedForm.status === 'Complete' ? 'text-green-600' :
                     selectedForm.status === 'In Progress' ? 'text-yellow-600' :
+                    selectedForm.status === 'Approved' ? 'text-indigo-600' :
                     'text-orange-600'
                   }`}>
                     {selectedForm.status}

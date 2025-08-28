@@ -30,7 +30,7 @@ export default function FormPage() {
   // Memoized form lists to avoid repeated filtering/sorting on every render
   const activeForms = useMemo(() => 
     savedForms
-      .filter((form: PaperFormEntry) => form.status !== 'Complete' && form.status !== 'Approved')
+      .filter((form: PaperFormEntry) => form.status !== 'Complete' && form.status !== 'Approved' && form.status !== 'Archive')
       .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [savedForms]
   );
@@ -46,6 +46,24 @@ export default function FormPage() {
     savedForms
       .filter((form: PaperFormEntry) => form.status === 'Approved')
       .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [savedForms]
+  );
+
+  // Archived forms list
+  const archivedForms = useMemo(() => {
+    const filtered = savedForms.filter((form: PaperFormEntry) => form.status === 'Archive');
+    console.log('🔍 Archived forms debug:', {
+      totalForms: savedForms.length,
+      archivedCount: filtered.length,
+      allStatuses: savedForms.map(f => ({ id: f.id, status: f.status })),
+      archivedForms: filtered.map(f => ({ id: f.id, status: f.status, title: f.title }))
+    });
+    return filtered.sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [savedForms]);
+
+  // Total count excluding archived forms
+  const totalNonArchivedForms = useMemo(() => 
+    savedForms.filter((form: PaperFormEntry) => form.status !== 'Archive').length,
     [savedForms]
   );
 
@@ -1258,6 +1276,79 @@ export default function FormPage() {
                 ))}
               </div>
             )}
+
+            {/* Archived Forms Section */}
+            {archivedForms.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-xl mobile:text-2xl ipad:text-3xl font-bold text-gray-900 mb-4 flex items-center">
+                  <svg className="w-5 h-5 mobile:w-6 mobile:h-6 ipad:w-7 ipad:h-7 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2V9a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Archived Forms
+                </h2>
+
+                {archivedForms.map((form: PaperFormEntry) => (
+                  <div key={form.id} className="bg-white rounded-xl border-2 border-gray-200 mb-6">
+                    <div className="p-4 mobile:p-6 ipad:p-8">
+                      <div className="flex flex-col mobile:flex-row mobile:items-center mobile:justify-between space-y-4 mobile:space-y-0">
+                        <div className="flex items-center space-x-4">
+                          <div>
+                            <h3 className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
+                            <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
+                            <div className="flex items-center space-x-4 text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                              <span>Form #{form.id.slice(-6)}</span>
+                              <span>Archived: {new Date(form.date).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col mobile:flex-row items-start mobile:items-center space-y-3 mobile:space-y-0 mobile:space-x-3">
+                          <div className="flex flex-col items-end text-sm mobile:text-base ipad:text-lg text-gray-600">
+                            <span className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-2 ipad:px-5 ipad:py-3 rounded-full text-sm mobile:text-base ipad:text-lg font-medium bg-gray-100 text-gray-800">📁 Archived</span>
+                          </div>
+                          
+                          {/* Download PDF Button */}
+                          <button
+                            onClick={() => handleDownloadPDF(form)}
+                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-green-100 hover:text-green-700 transition-colors"
+                            title="Download archived form as PDF"
+                          >
+                            <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Download PDF
+                          </button>
+                          
+                          {/* Download JPEG Button */}
+                          <button
+                            onClick={() => handleDownloadJPEG(form)}
+                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-purple-100 hover:text-purple-700 transition-colors"
+                            title="Download archived form as JPEG"
+                          >
+                            <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L22 10" />
+                            </svg>
+                            Download JPEG
+                          </button>
+                          
+                          <button
+                            onClick={() => handleViewForm(form)}
+                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                            title="View archived form (read-only)"
+                          >
+                            <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            View Form
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -1276,12 +1367,17 @@ export default function FormPage() {
                     selectedForm.status === 'Approved' ? 'text-indigo-600' :
                     selectedForm.status === 'Complete' ? 'text-green-600' :
                     selectedForm.status === 'In Progress' ? 'text-yellow-600' :
+                    selectedForm.status === 'Archive' ? 'text-gray-600' :
                     'text-orange-600'
                   }`}>
                     {selectedForm.status}
                   </span>
-                  {(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && (
-                    <span className={`ml-2 font-medium ${selectedForm.status === 'Approved' ? 'text-indigo-600' : 'text-green-600'}`}>(Read-Only)</span>
+                  {(selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive') && (
+                    <span className={`ml-2 font-medium ${
+                      selectedForm.status === 'Approved' ? 'text-indigo-600' : 
+                      selectedForm.status === 'Complete' ? 'text-green-600' :
+                      'text-gray-600'
+                    }`}>(Read-Only)</span>
                   )}
                   {DEBUG_ALLOW_EDIT && (
                     <div className="mt-1 text-orange-600 font-medium">
@@ -1316,6 +1412,12 @@ export default function FormPage() {
                                  {/* Save Button */}
                  <button
                    onClick={async () => {
+                     // Prevent saving if form is Complete, Approved, or Archived
+                     if (selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive') {
+                       alert('Cannot save forms that are Complete, Approved, or Archived. These forms are read-only.');
+                       return;
+                     }
+                     
                      // Save form to AWS when clicking save button
                      try {
                        console.log('Saving form to AWS...');
@@ -1332,8 +1434,15 @@ export default function FormPage() {
                        alert(`Error saving form: ${errorMessage}`);
                      }
                    }}
-                   className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-white bg-blue-600 border border-transparent rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                   title="Save form to AWS and close"
+                   disabled={selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive'}
+                   className={`inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-2 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium border border-transparent rounded-lg mobile:rounded-xl ipad:rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors ${
+                     selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive'
+                       ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                       : 'bg-blue-600 text-white hover:bg-blue-700'
+                   }`}
+                   title={selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive' 
+                     ? 'Cannot save read-only forms' 
+                     : 'Save form to AWS and close'}
                    aria-label="Save form to AWS and close"
                  >
                    <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1367,21 +1476,21 @@ export default function FormPage() {
                 <PiroshkiForm 
                   key={`${selectedForm.id}-${formUpdateKey}`}
                   formData={selectedForm}
-                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
+                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive') && !DEBUG_ALLOW_EDIT}
                   onFormUpdate={handleFormUpdate}
                 />
               ) : selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING ? (
                 <BagelDogForm
                   key={`${selectedForm.id}-${formUpdateKey}`}
                   formData={selectedForm}
-                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
+                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive') && !DEBUG_ALLOW_EDIT}
                   onFormUpdate={handleFormUpdate}
                 />
               ) : (
                 <PaperForm 
                   key={`${selectedForm.id}-${formUpdateKey}`}
                   formId={selectedForm.id}
-                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
+                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive') && !DEBUG_ALLOW_EDIT}
                   onFormUpdate={handleFormUpdate}
                 />
               )}
