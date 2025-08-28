@@ -1177,11 +1177,16 @@ export default function AdminDashboard() {
       <div className="space-y-1">
         <div className="relative">
           <button
-            onClick={() => setShowStatusDropdown(form.id)}
+            onClick={() => {
+              console.log('Status button clicked for form:', form.id);
+              console.log('Current showStatusDropdown:', showStatusDropdown);
+              setShowStatusDropdown(showStatusDropdown === form.id ? null : form.id);
+            }}
             className={`
               w-full px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200
               ${styles.bg} ${styles.border} ${styles.text}
               hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500
+              ${showStatusDropdown === form.id ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
             `}
           >
             <div className="flex items-center justify-between">
@@ -1193,8 +1198,11 @@ export default function AdminDashboard() {
           </button>
 
           {showStatusDropdown === form.id && (
-            <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+            <div className="absolute top-full left-0 mt-1 w-48 bg-white border-2 border-blue-300 rounded-lg shadow-xl z-50">
               <div className="py-1">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                  Change Status
+                </div>
                 {availableStatuses.map((status) => (
                   <button
                     key={status}
