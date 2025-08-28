@@ -161,6 +161,12 @@ export interface PiroshkiFormEntry extends BaseFormEntry {
     initials: string;
     results: string; // 'P' for Pass, 'F' for Fail
   };
+  lastRackBatch: {
+    ccp2_126: { temp: string; time: string; initial: string };
+    ccp2_80: { temp: string; time: string; initial: string };
+    ccp2_55: { temp: string; time: string; initial: string };
+    finalChill: { temp: string; time: string; initial: string };
+  };
 }
 
 export interface PiroshkiFormRow extends BaseFormRow {
@@ -169,21 +175,25 @@ export interface PiroshkiFormRow extends BaseFormRow {
     temp: string;
     time: string;
     initial: string;
+    dataLog: boolean;
   };
   ccp2_126: {
     temp: string;
     time: string;
     initial: string;
+    dataLog: boolean;
   };
   ccp2_80: {
     temp: string;
     time: string;
     initial: string;
+    dataLog: boolean;
   };
   ccp2_55: {
     temp: string;
     time: string;
     initial: string;
+    dataLog: boolean;
   };
 }
 
@@ -191,6 +201,7 @@ export interface PiroshkiFormRow extends BaseFormRow {
 export interface BagelDogFormEntry extends BaseFormEntry {
   formType: FormType.BAGEL_DOG_COOKING_COOLING;
   entries: BagelDogFormRow[];
+  lotNumber: string; // Main lot number for the form
   frankFlavorSizeTable: {
     beef81: { flavor: string; lotNumbers: string; packagesUsed: string };
     polish81: { flavor: string; lotNumbers: string; packagesUsed: string };
@@ -229,10 +240,10 @@ export const EMPTY_BASE_ROW: BaseFormRow = {
 
 export const EMPTY_PIROSHKI_ROW: PiroshkiFormRow = {
   ...EMPTY_BASE_ROW,
-  heatTreating: { temp: '', time: '', initial: '', type: '' },
-  ccp2_126: { temp: '', time: '', initial: '' },
-  ccp2_80: { temp: '', time: '', initial: '' },
-  ccp2_55: { temp: '', time: '', initial: '' },
+  heatTreating: { temp: '', time: '', initial: '', type: '', dataLog: false },
+  ccp2_126: { temp: '', time: '', initial: '', dataLog: false },
+  ccp2_80: { temp: '', time: '', initial: '', dataLog: false },
+  ccp2_55: { temp: '', time: '', initial: '', dataLog: false },
 };
 
 export const createEmptyForm = (formType: FormType = FormType.COOKING_AND_COOLING, formInitial: string = ''): PaperFormEntry => {
@@ -285,6 +296,12 @@ export const createEmptyForm = (formType: FormType = FormType.COOKING_AND_COOLIN
         initials: '',
         results: ''
       },
+      lastRackBatch: {
+        ccp2_126: { temp: '', time: '', initial: '' },
+        ccp2_80: { temp: '', time: '', initial: '' },
+        ccp2_55: { temp: '', time: '', initial: '' },
+        finalChill: { temp: '', time: '', initial: '' },
+      },
     } as PiroshkiFormEntry;
   }
 
@@ -292,7 +309,8 @@ export const createEmptyForm = (formType: FormType = FormType.COOKING_AND_COOLIN
     return {
       ...baseForm,
       formType: FormType.BAGEL_DOG_COOKING_COOLING,
-      entries: Array.from({ length: 9 }, () => ({ ...EMPTY_BASE_ROW })),
+      entries: Array.from({ length: 21 }, () => ({ ...EMPTY_BASE_ROW })), // Changed to 21 rows
+      lotNumber: '', // Add lot number field
       frankFlavorSizeTable: {
         beef81: { flavor: 'Beef 8-1', lotNumbers: '', packagesUsed: '' },
         polish81: { flavor: 'Polish 8-1', lotNumbers: '', packagesUsed: '' },

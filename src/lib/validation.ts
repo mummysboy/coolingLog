@@ -56,6 +56,52 @@ export const TEMPERATURE_RULES = {
   finalChill: {
     max: 39,
     description: 'Chill continuously to 39°F or below'
+  },
+  // Piroshki-specific validation rules
+  heatTreating: {
+    min: 165,
+    description: 'Heat treating temperature must reach 165°F or greater'
+  },
+  ccp2_126: {
+    min: 126,
+    description: '126°F or greater (CCP 2)'
+  },
+  ccp2_80: {
+    max: 80,
+    timeLimit: 105, // minutes from CCP2_126 time
+    description: '80°F or below within 105 minutes (CCP 2)'
+  },
+  ccp2_55: {
+    max: 55,
+    timeLimit: 4.75, // hours from CCP2_126 time
+    description: '55°F or below within 4.75 hours'
+  },
+  ccp2_finalChill: {
+    max: 40,
+    description: 'Chill continuously to 40°F or below'
+  },
+  // Bagel Dog-specific validation rules
+  bagelDog_ccp1: {
+    min: 166,
+    description: 'Temperature must reach 166°F or greater (CCP 1)'
+  },
+  bagelDog_ccp2: {
+    min: 127,
+    description: '127°F or greater (CCP 2)'
+  },
+  bagelDog_coolingTo80: {
+    max: 80,
+    timeLimit: 105, // minutes
+    description: '80°F or below within 105 minutes (CCP 2)'
+  },
+  bagelDog_coolingTo54: {
+    max: 54,
+    timeLimit: 4.75, // hours
+    description: '54°F or below within 4.75 hours'
+  },
+  bagelDog_finalChill: {
+    max: 40,
+    description: 'Chill continuously to 40°F or below'
   }
 };
 

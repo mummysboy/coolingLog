@@ -492,22 +492,26 @@ function mapGraphQLResultToPaperFormEntry(result: any, formType: FormType): Pape
           temp: entry.heatTreating.temperature?.toString() || '',
           time: convertDateTimeToTimeString(entry.heatTreating.time) || '',
           initial: entry.heatTreating.employeeInitials || '',
-          type: entry.heatTreating.type || ''
+          type: entry.heatTreating.type || '',
+          dataLog: entry.heatTreating.dataLog || false
         } : undefined,
         ccp2_126: entry.ccp2_126 ? {
           temp: entry.ccp2_126.temperature?.toString() || '',
           time: convertDateTimeToTimeString(entry.ccp2_126.time) || '',
-          initial: entry.ccp2_126.employeeInitials || ''
+          initial: entry.ccp2_126.employeeInitials || '',
+          dataLog: entry.ccp2_126.dataLog || false
         } : undefined,
         ccp2_80: entry.ccp2_80 ? {
           temp: entry.ccp2_80.temperature?.toString() || '',
           time: convertDateTimeToTimeString(entry.ccp2_80.time) || '',
-          initial: entry.ccp2_80.employeeInitials || ''
+          initial: entry.ccp2_80.employeeInitials || '',
+          dataLog: entry.ccp2_80.dataLog || false
         } : undefined,
         ccp2_55: entry.ccp2_55 ? {
           temp: entry.ccp2_55.temperature?.toString() || '',
           time: convertDateTimeToTimeString(entry.ccp2_55.time) || '',
-          initial: entry.ccp2_55.employeeInitials || ''
+          initial: entry.ccp2_55.employeeInitials || '',
+          dataLog: entry.ccp2_55.dataLog || false
         } : undefined
       })),
       quantityAndFlavor: parsedQuantityAndFlavor,
@@ -515,6 +519,28 @@ function mapGraphQLResultToPaperFormEntry(result: any, formType: FormType): Pape
         date: result.preShipmentReview.date || '',
         initials: result.preShipmentReview.initials || '',
         results: result.preShipmentReview.results || ''
+      } : undefined,
+      lastRackBatch: result.lastRackBatch ? {
+        ccp2_126: {
+          temp: result.lastRackBatch.ccp2_126?.temperature?.toString() || '',
+          time: convertDateTimeToTimeString(result.lastRackBatch.ccp2_126?.time) || '',
+          initial: result.lastRackBatch.ccp2_126?.employeeInitials || ''
+        },
+        ccp2_80: {
+          temp: result.lastRackBatch.ccp2_80?.temperature?.toString() || '',
+          time: convertDateTimeToTimeString(result.lastRackBatch.ccp2_80?.time) || '',
+          initial: result.lastRackBatch.ccp2_80?.employeeInitials || ''
+        },
+        ccp2_55: {
+          temp: result.lastRackBatch.ccp2_55?.temperature?.toString() || '',
+          time: convertDateTimeToTimeString(result.lastRackBatch.ccp2_55?.time) || '',
+          initial: result.lastRackBatch.ccp2_55?.employeeInitials || ''
+        },
+        finalChill: {
+          temp: result.lastRackBatch.finalChill?.temperature?.toString() || '',
+          time: convertDateTimeToTimeString(result.lastRackBatch.finalChill?.time) || '',
+          initial: result.lastRackBatch.finalChill?.employeeInitials || ''
+        }
       } : undefined
     } as any;
   }
@@ -586,7 +612,43 @@ class MultiTableStorageManager {
       }
       
       if (form.entries.length === 0) {
-        throw new Error('Invalid form data: entries array cannot be empty');
+        console.warn('Form has empty entries array, initializing with default entries');
+        // Initialize with default entries instead of rejecting the form
+        if (form.formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
+          form.entries = Array(9).fill(null).map(() => ({
+            rack: '',
+            type: '',
+            ccp1: { temp: '', time: '', initial: '', dataLog: false },
+            ccp2: { temp: '', time: '', initial: '', dataLog: false },
+            coolingTo80: { temp: '', time: '', initial: '', dataLog: false },
+            coolingTo54: { temp: '', time: '', initial: '', dataLog: false },
+            finalChill: { temp: '', time: '', initial: '', dataLog: false },
+            heatTreating: { temp: '', time: '', initial: '', dataLog: false, type: '' },
+            ccp2_126: { temp: '', time: '', initial: '', dataLog: false },
+            ccp2_80: { temp: '', time: '', initial: '', dataLog: false },
+            ccp2_55: { temp: '', time: '', initial: '', dataLog: false },
+          }));
+        } else if (form.formType === FormType.COOKING_AND_COOLING) {
+          form.entries = Array(9).fill(null).map(() => ({
+            rack: '',
+            type: '',
+            ccp1: { temp: '', time: '', initial: '', dataLog: false },
+            ccp2: { temp: '', time: '', initial: '', dataLog: false },
+            coolingTo80: { temp: '', time: '', initial: '', dataLog: false },
+            coolingTo54: { temp: '', time: '', initial: '', dataLog: false },
+            finalChill: { temp: '', time: '', initial: '', dataLog: false },
+          }));
+        } else if (form.formType === FormType.BAGEL_DOG_COOKING_COOLING) {
+          form.entries = Array(9).fill(null).map(() => ({
+            rack: '',
+            type: '',
+            ccp1: { temp: '', time: '', initial: '', dataLog: false },
+            ccp2: { temp: '', time: '', initial: '', dataLog: false },
+            coolingTo80: { temp: '', time: '', initial: '', dataLog: false },
+            coolingTo54: { temp: '', time: '', initial: '', dataLog: false },
+            finalChill: { temp: '', time: '', initial: '', dataLog: false },
+          }));
+        }
       }
       
       // Additional validation for form properties
@@ -1389,9 +1451,29 @@ class MultiTableStorageManager {
           
           return true; // Include forms that belong in this table
         })
-        .map((item: any) => 
-          mapGraphQLResultToPaperFormEntry(item, FormType.PIROSHKI_CALZONE_EMPANADA)
-        );
+        .map((item: any) => {
+          const mappedForm = mapGraphQLResultToPaperFormEntry(item, FormType.PIROSHKI_CALZONE_EMPANADA);
+          
+          // Ensure entries are populated
+          if (!mappedForm.entries || mappedForm.entries.length === 0) {
+            console.warn(`Form ${mappedForm.id} has no entries, initializing with default entries`);
+            mappedForm.entries = Array(9).fill(null).map(() => ({
+              rack: '',
+              type: '',
+              ccp1: { temp: '', time: '', initial: '', dataLog: false },
+              ccp2: { temp: '', time: '', initial: '', dataLog: false },
+              coolingTo80: { temp: '', time: '', initial: '', dataLog: false },
+              coolingTo54: { temp: '', time: '', initial: '', dataLog: false },
+              finalChill: { temp: '', time: '', initial: '', dataLog: false },
+              heatTreating: { temp: '', time: '', initial: '', dataLog: false, type: '' },
+              ccp2_126: { temp: '', time: '', initial: '', dataLog: false },
+              ccp2_80: { temp: '', time: '', initial: '', dataLog: false },
+              ccp2_55: { temp: '', time: '', initial: '', dataLog: false },
+            }));
+          }
+          
+          return mappedForm;
+        });
 
       console.log(`Retrieved ${forms.length} piroshki forms from table`);
       return forms;

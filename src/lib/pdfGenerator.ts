@@ -22,6 +22,7 @@ export interface PDFFormData {
   preShipmentReview?: any;
   frankFlavorSizeTable?: any;
   bagelDogPreShipmentReview?: any;
+  lastRackBatch?: any; // Added for LAST RACK/BATCH of Production Day
   [key: string]: any;
 }
 
@@ -396,7 +397,7 @@ const generatePiroshkiFormHTML = (formData: PDFFormData): string => {
     if (!formData.entries || formData.entries.length === 0) {
       return `
         <tr>
-          <td colspan="8" class="border border-black p-4 text-center text-gray-500">
+          <td colspan="9" class="border border-black p-4 text-center text-gray-500">
             No entries recorded
           </td>
         </tr>
@@ -438,6 +439,13 @@ const generatePiroshkiFormHTML = (formData: PDFFormData): string => {
             <div class="text-center">${formatTemperature(entry.ccp2_55?.temp)}</div>
             <div class="text-center">${formatTime(entry.ccp2_55?.time)}</div>
             <div class="text-center">${formatInitial(entry.ccp2_55?.initial)}</div>
+          </div>
+        </td>
+        <td class="border border-black p-1">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; align-items: center;">
+            <div class="text-center">${formatTemperature(entry.finalChill?.temp)}</div>
+            <div class="text-center">${formatTime(entry.finalChill?.time)}</div>
+            <div class="text-center">${formatInitial(entry.finalChill?.initial)}</div>
           </div>
         </td>
       </tr>
@@ -503,6 +511,10 @@ const generatePiroshkiFormHTML = (formData: PDFFormData): string => {
                 55°F or below<br/>
                 <strong>CCP 2</strong>
               </th>
+              <th style="border: 1px solid black; padding: 8px; width: 128px;">
+                Final Chill<br/>
+                <small>Temp, Time, Initial</small>
+              </th>
             </tr>
 
             <!-- Header Row 2 -->
@@ -538,12 +550,109 @@ const generatePiroshkiFormHTML = (formData: PDFFormData): string => {
                   <div style="text-align: center;">Initial</div>
                 </div>
               </th>
+              <th style="border: 1px solid black; padding: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; font-size: 11px;">
+                  <div style="text-align: center;">Temp</div>
+                  <div style="text-align: center;">Time</div>
+                  <div style="text-align: center;">Initial</div>
+                </div>
+              </th>
             </tr>
           </thead>
 
           <!-- Form Data Rows -->
           <tbody>
             ${generateFormRows()}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- LAST RACK/BATCH of Production Day Section -->
+      <div style="margin-top: 24px; border: 2px solid black; border-top: 0;">
+        <div style="background-color: #f3f4f6; padding: 8px; text-align: center; border-bottom: 1px solid black;">
+          <h3 style="margin: 0; font-size: 16px; font-weight: bold;">LAST RACK/BATCH of Production Day</h3>
+        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background-color: #f9fafb;">
+              <th style="border: 1px solid black; padding: 8px; width: 128px;">
+                126°F or greater<br/>
+                <strong>CCP 2</strong>
+              </th>
+              <th style="border: 1px solid black; padding: 8px; width: 128px;">
+                80°F or below<br/>
+                <strong>CCP 2</strong>
+              </th>
+              <th style="border: 1px solid black; padding: 8px; width: 128px;">
+                55°F or below<br/>
+                <strong>CCP 2</strong>
+              </th>
+              <th style="border: 1px solid black; padding: 8px; width: 160px;">
+                Chill Continuously to 40°F or below
+              </th>
+            </tr>
+            <tr style="background-color: #f9fafb;">
+              <th style="border: 1px solid black; padding: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; font-size: 11px;">
+                  <div style="text-align: center;">Temp</div>
+                  <div style="text-align: center;">Time</div>
+                  <div style="text-align: center;">Initial</div>
+                </div>
+              </th>
+              <th style="border: 1px solid black; padding: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; font-size: 11px;">
+                  <div style="text-align: center;">Temp</div>
+                  <div style="text-align: center;">Time</div>
+                  <div style="text-align: center;">Initial</div>
+                </div>
+              </th>
+              <th style="border: 1px solid black; padding: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; font-size: 11px;">
+                  <div style="text-align: center;">Temp</div>
+                  <div style="text-align: center;">Time</div>
+                  <div style="text-align: center;">Initial</div>
+                </div>
+              </th>
+              <th style="border: 1px solid black; padding: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; font-size: 11px;">
+                  <div style="text-align: center;">Temp</div>
+                  <div style="text-align: center;">Time</div>
+                  <div style="text-align: center;">Initial</div>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border: 1px solid black; padding: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; align-items: center;">
+                  <div style="text-align: center;">${formatTemperature(formData.lastRackBatch?.ccp2_126?.temp)}</div>
+                  <div style="text-align: center;">${formatTime(formData.lastRackBatch?.ccp2_126?.time)}</div>
+                  <div style="text-align: center;">${formatInitial(formData.lastRackBatch?.ccp2_126?.initial)}</div>
+                </div>
+              </td>
+              <td style="border: 1px solid black; padding: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; align-items: center;">
+                  <div style="text-align: center;">${formatTemperature(formData.lastRackBatch?.ccp2_80?.temp)}</div>
+                  <div style="text-align: center;">${formatTime(formData.lastRackBatch?.ccp2_80?.time)}</div>
+                  <div style="text-align: center;">${formatInitial(formData.lastRackBatch?.ccp2_80?.initial)}</div>
+                </div>
+              </td>
+              <td style="border: 1px solid black; padding: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; align-items: center;">
+                  <div style="text-align: center;">${formatTemperature(formData.lastRackBatch?.ccp2_55?.temp)}</div>
+                  <div style="text-align: center;">${formatTime(formData.lastRackBatch?.ccp2_55?.time)}</div>
+                  <div style="text-align: center;">${formatInitial(formData.lastRackBatch?.ccp2_55?.initial)}</div>
+                </div>
+              </td>
+              <td style="border: 1px solid black; padding: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; align-items: center;">
+                  <div style="text-align: center;">${formatTemperature(formData.lastRackBatch?.finalChill?.temp)}</div>
+                  <div style="text-align: center;">${formatTime(formData.lastRackBatch?.finalChill?.time)}</div>
+                  <div style="text-align: center;">${formatInitial(formData.lastRackBatch?.finalChill?.initial)}</div>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -626,7 +735,6 @@ const generatePiroshkiFormHTML = (formData: PDFFormData): string => {
                   <th style="border: 1px solid black; padding: 8px; background-color: #f3f4f6;">Ingredient</th>
                   <th style="border: 1px solid black; padding: 8px; background-color: #f3f4f6;">Beef</th>
                   <th style="border: 1px solid black; padding: 8px; background-color: #f3f4f6;">Chicken</th>
-                  <th style="border: 1px solid black; padding: 8px; background-color: #f3f4f6;">Liquid Eggs</th>
                 </tr>
               </thead>
               <tbody>
@@ -637,9 +745,6 @@ const generatePiroshkiFormHTML = (formData: PDFFormData): string => {
                   </td>
                   <td style="border: 1px solid black; padding: 4px; min-height: 20px;">
                     ${formData.lotNumbers?.chicken || ''}
-                  </td>
-                  <td style="border: 1px solid black; padding: 4px; min-height: 20px;">
-                    ${formData.lotNumbers?.liquidEggs || ''}
                   </td>
                 </tr>
               </tbody>
@@ -671,7 +776,7 @@ const generatePiroshkiFormHTML = (formData: PDFFormData): string => {
       ${formData.status === 'Approved' ? `
         <div style="margin-top: 24px; padding: 16px; background-color: #eef2ff; border: 2px solid #c7d2fe; border-radius: 8px; text-align: center;">
           <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #3730a3;">
-            <span style="font-size: 18px; font-weight: bold;">✓ Form Approved</span>
+            <span style="font-size: 18px; font-weight: 600;">✓ Form Approved</span>
           </div>
           <p style="color: #6366f1; margin: 4px 0 0 0;">
             Approved by: ${formData.approvedBy || 'N/A'}
@@ -690,7 +795,271 @@ const generatePiroshkiFormHTML = (formData: PDFFormData): string => {
 };
 
 const generateBagelDogFormHTML = (formData: PDFFormData): string => {
-  // This would be similar to the cooking/cooling form but with bagel dog specific fields
-  // For now, return the cooking/cooling form as a fallback
-  return generateCookingCoolingFormHTML(formData);
+  // Generate the main form table rows for Bagel Dog form
+  const generateFormRows = () => {
+    if (!formData.entries || formData.entries.length === 0) {
+      return `
+        <tr>
+          <td colspan="7" class="border border-black p-4 text-center text-gray-500">
+            No entries recorded
+          </td>
+        </tr>
+      `;
+    }
+
+    return formData.entries.map((entry, index) => `
+      <tr>
+        <td class="border border-black p-2 text-center">
+          ${entry.type || ''}
+        </td>
+        <td class="border border-black p-2 text-center">
+          ${index + 1}. ${entry.rack || ''}
+        </td>
+        <td class="border border-black p-1">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; align-items: center;">
+            <div class="text-center">${formatTemperature(entry.ccp1?.temp)}</div>
+            <div class="text-center">${formatTime(entry.ccp1?.time)}</div>
+            <div class="text-center">${formatInitial(entry.ccp1?.initial)}</div>
+          </div>
+        </td>
+        <td class="border border-black p-1">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; align-items: center;">
+            <div class="text-center">${formatTemperature(entry.ccp2?.temp)}</div>
+            <div class="text-center">${formatTime(entry.ccp2?.time)}</div>
+            <div class="text-center">${formatInitial(entry.ccp2?.initial)}</div>
+          </div>
+        </td>
+        <td class="border border-black p-1">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; align-items: center;">
+            <div class="text-center">${formatTemperature(entry.coolingTo80?.temp)}</div>
+            <div class="text-center">${formatTime(entry.coolingTo80?.time)}</div>
+            <div class="text-center">${formatInitial(entry.coolingTo80?.initial)}</div>
+          </div>
+        </td>
+        <td class="border border-black p-1">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; align-items: center;">
+            <div class="text-center">${formatTemperature(entry.coolingTo54?.temp)}</div>
+            <div class="text-center">${formatTime(entry.coolingTo54?.time)}</div>
+            <div class="text-center">${formatInitial(entry.coolingTo54?.initial)}</div>
+          </div>
+        </td>
+        <td class="border border-black p-1">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; align-items: center;">
+            <div class="text-center">${formatTemperature(entry.finalChill?.temp)}</div>
+            <div class="text-center">${formatTime(entry.finalChill?.time)}</div>
+            <div class="text-center">${formatInitial(entry.finalChill?.initial)}</div>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  };
+
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; background-color: white;">
+      <!-- Form Header -->
+      <div style="margin-bottom: 24px;">
+        <div style="border: 2px solid black; margin-bottom: 16px;">
+          <div style="background-color: #f3f4f6; padding: 16px; text-align: center;">
+            <h1 style="color: #111827; margin: 0; font-size: 20px; font-weight: bold;">
+              Bagel Dog Cooking &amp; Cooling
+            </h1>
+          </div>
+          <div style="padding: 16px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+              <div>
+                <span style="font-weight: 600;">Date: </span>
+                <span style="border-bottom: 2px solid #d1d5db; padding: 4px 8px; display: inline-block; min-width: 150px;">
+                  ${formatDate(formData.date)}
+                </span>
+              </div>
+              <div>
+                <span style="font-weight: 600;">Lot #: </span>
+                <span style="border-bottom: 2px solid #d1d5db; padding: 4px 8px; display: inline-block; min-width: 150px;">
+                  ${(formData as any).lotNumber || ''}
+                </span>
+              </div>
+              <div>
+                <span style="font-weight: 600;">Status: </span>
+                <span style="color: ${formData.status === 'Approved' ? '#4f46e5' : formData.status === 'Complete' ? '#059669' : '#d97706'}; font-weight: bold;">
+                  ${formData.status}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Table -->
+      <div style="border: 2px solid black; overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; min-width: 900px;">
+          <!-- Header Row 1 -->
+          <thead>
+            <tr style="background-color: #f3f4f6;">
+              <th style="border: 1px solid black; padding: 8px; width: 120px;">First Rack/Last Rack</th>
+              <th style="border: 1px solid black; padding: 8px; width: 120px;">Rack # &amp; Flavor</th>
+              <th style="border: 1px solid black; padding: 8px; width: 160px;">
+                CCP #1. 166°F or higher. Around 200°F for quality<br/>
+                <small>Temp, Time, Initial</small>
+              </th>
+              <th style="border: 1px solid black; padding: 8px; width: 160px;">
+                CCP #2 127°F or higher<br/>
+                <small>Temp, Time, Initial</small>
+              </th>
+              <th style="border: 1px solid black; padding: 8px; width: 160px;">
+                80°F or lower within 105 minutes<br/>
+                <small>Temp, Time, Initial</small>
+              </th>
+              <th style="border: 1px solid black; padding: 8px; width: 160px;">
+                54°F or lower within 4.75 hrs<br/>
+                <small>Temp, Time, Initial</small>
+              </th>
+              <th style="border: 1px solid black; padding: 8px; width: 160px;">
+                Chill Continuously to 40°F or below<br/>
+                <small>Temp, Time, Initial</small>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            ${generateFormRows()}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bottom Sections -->
+      <div style="margin-top: 24px; display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+        <!-- Left Section -->
+        <div>
+          <!-- Frank Flavor/Size Table -->
+          <div style="border: 2px solid black; margin-bottom: 16px;">
+            <div style="background-color: #f3f4f6; padding: 8px; text-align: center; border-bottom: 1px solid black;">
+              <h3 style="margin: 0; font-size: 14px; font-weight: bold;">Frank Flavor/Size &amp; Packages Used</h3>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+              <thead>
+                <tr style="background-color: #e5e7eb;">
+                  <th style="border: 1px solid black; padding: 4px; text-align: center;">Frank Flavor/Size</th>
+                  <th style="border: 1px solid black; padding: 4px; text-align: center;">Lot #(s)</th>
+                  <th style="border: 1px solid black; padding: 4px; text-align: center;">Packages Used</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(formData as any).frankFlavorSizeTable ? Object.entries((formData as any).frankFlavorSizeTable).map(([key, item]: [string, any]) => `
+                  <tr>
+                    <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: 600;">${item.flavor || ''}</td>
+                    <td style="border: 1px solid black; padding: 4px; text-align: center; min-height: 20px;">${item.lotNumbers || ''}</td>
+                    <td style="border: 1px solid black; padding: 4px; text-align: center; min-height: 20px;">${item.packagesUsed || ''}</td>
+                  </tr>
+                `).join('') : ''}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Thermometer # -->
+          <div style="border: 2px solid black; margin-bottom: 16px;">
+            <div style="padding: 8px;">
+              <span style="font-weight: 600;">Thermometer #: </span>
+              <span style="border-bottom: 1px solid black; padding: 4px; display: inline-block; min-width: 150px;">
+                ${formData.thermometerNumber || ''}
+              </span>
+            </div>
+          </div>
+
+          <!-- Pre-shipment Review -->
+          <div style="border: 2px solid black;">
+            <div style="background-color: #f3f4f6; padding: 8px; text-align: center; border-bottom: 1px solid black;">
+              <h4 style="margin: 0; font-size: 12px; font-weight: bold;">Pre-shipment Review</h4>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+              <thead>
+                <tr style="background-color: #e5e7eb;">
+                  <th style="border: 1px solid black; padding: 4px; text-align: center;">Date</th>
+                  <th style="border: 1px solid black; padding: 4px; text-align: center;">Results</th>
+                  <th style="border: 1px solid black; padding: 4px; text-align: center;">Signature</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="border: 1px solid black; padding: 4px; text-align: center; min-height: 20px;">
+                    ${(formData as any).bagelDogPreShipmentReview?.date || ''}
+                  </td>
+                  <td style="border: 1px solid black; padding: 4px; text-align: center; min-height: 20px;">
+                    ${(formData as any).bagelDogPreShipmentReview?.results || ''}
+                  </td>
+                  <td style="border: 1px solid black; padding: 4px; text-align: center; min-height: 20px;">
+                    ${(formData as any).bagelDogPreShipmentReview?.signature || ''}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right Section - Ingredients -->
+        <div>
+          <div style="border: 2px solid black;">
+            <div style="background-color: #f3f4f6; padding: 8px; text-align: center; border-bottom: 1px solid black;">
+              <h3 style="margin: 0; font-size: 14px; font-weight: bold;">Ingredients &amp; Lot #(s)</h3>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+              <thead>
+                <tr style="background-color: #e5e7eb;">
+                  <th style="border: 1px solid black; padding: 4px; text-align: center;">Ingredients</th>
+                  <th style="border: 1px solid black; padding: 4px; text-align: center;">Lot #(s)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${[
+                  'Unbleached Wheat Flour',
+                  'Large chopped onions',
+                  'Yeast',
+                  'Toasted onions',
+                  'Sugar',
+                  'Soybean Oil',
+                  'Salt',
+                  'Malt',
+                  'Egg',
+                  'Poppy Seeds'
+                ].map((ingredient, index) => `
+                  <tr>
+                    <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: 600;">${ingredient}</td>
+                    <td style="border: 1px solid black; padding: 4px; text-align: center; min-height: 20px;">
+                      ${(formData as any).ingredients?.[ingredient.toLowerCase().replace(/\s+/g, '')] || ''}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Corrective Actions -->
+      ${formData.correctiveActionsComments ? `
+        <div style="margin-top: 24px; border: 2px solid black;">
+          <div style="background-color: #f3f4f6; padding: 8px; text-align: center; border-bottom: 1px solid black;">
+            <h3 style="margin: 0; font-size: 14px; font-weight: bold;">Corrective Actions &amp; Comments</h3>
+          </div>
+          <div style="padding: 16px; min-height: 128px; font-size: 11px; white-space: pre-wrap;">
+            ${formData.correctiveActionsComments}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Form Status and Approval Info -->
+      ${formData.status === 'Complete' ? `
+        <div style="margin-top: 24px; padding: 16px; background-color: #f0fdf4; border: 2px solid #bbf7d0; border-radius: 8px; text-align: center;">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #166534;">
+            <span style="font-size: 18px; font-weight: 600;">✓ Form Completed Successfully!</span>
+          </div>
+          <p style="color: #16a34a; margin: 4px 0 0 0;">This form has been finalized and can no longer be edited</p>
+        </div>
+      ` : ''}
+
+      <!-- Footer -->
+      <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #d1d5db; text-align: center; color: #6b7280; font-size: 11px;">
+        <p style="margin: 0;">Generated on ${new Date().toLocaleString('en-US')}</p>
+        <p style="margin: 5px 0 0 0;">Food Safety Monitoring System - Form ID: ${formData.id}</p>
+      </div>
+    </div>
+  `;
 };
