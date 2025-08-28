@@ -57,6 +57,7 @@ export default function AdminDashboard() {
   })();
 
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState<string | null>(null); // Track which status dropdown is open
 
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0); // Force dashboard refresh
   const [isRefreshingAdmin, setIsRefreshingAdmin] = useState(false);
@@ -215,7 +216,8 @@ export default function AdminDashboard() {
         setShowSettingsDropdown(false);
       }
       
-
+      // Close status dropdown
+      setShowStatusDropdown(null);
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -1131,37 +1133,86 @@ export default function AdminDashboard() {
         case 'Complete':
           return {
             text: 'text-green-600',
-            icon: '✓'
+            icon: '✓',
+            bg: 'bg-green-50',
+            border: 'border-green-200'
           };
         case 'In Progress':
           return {
             text: 'text-yellow-600',
-            icon: '⏳'
+            icon: '⏳',
+            bg: 'bg-yellow-50',
+            border: 'border-yellow-200'
           };
         case 'Error':
           return {
             text: 'text-orange-600',
-            icon: '⚠️'
+            icon: '⚠️',
+            bg: 'bg-orange-50',
+            border: 'border-orange-200'
           };
         default:
           return {
             text: 'text-gray-600',
-            icon: '?'
+            icon: '?',
+            bg: 'bg-gray-50',
+            border: 'border-gray-200'
           };
       }
     };
 
     const styles = getStatusStyles(form.status);
 
+    const handleStatusChange = (newStatus: 'Complete' | 'In Progress' | 'Error' | 'Approved') => {
+      updateFormStatus(form.id, newStatus);
+      setShowStatusDropdown(null); // Close dropdown after selection
+      // Force dashboard refresh to show updated status
+      setDashboardRefreshKey(prev => prev + 1);
+      showToast('success', `Form status updated to ${newStatus}`, form.id);
+    };
+
+    const availableStatuses: Array<'Complete' | 'In Progress' | 'Error' | 'Approved'> = ['In Progress', 'Complete', 'Error', 'Approved'];
+
     return (
       <div className="space-y-1">
-        <div className={`
-          px-3 py-2 text-sm font-medium 
-          ${styles.text}
-        `}>
-          {styles.icon} {form.status}
+        <div className="relative">
+          <button
+            onClick={() => setShowStatusDropdown(form.id)}
+            className={`
+              w-full px-3 py-2 text-sm font-medium rounded-lg border transition-all duration-200
+              ${styles.bg} ${styles.border} ${styles.text}
+              hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500
+            `}
+          >
+            <div className="flex items-center justify-between">
+              <span>{styles.icon} {form.status}</span>
+              <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </button>
+
+          {showStatusDropdown === form.id && (
+            <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div className="py-1">
+                {availableStatuses.map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => handleStatusChange(status)}
+                    className={`
+                      w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors
+                      ${form.status === status ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}
+                    `}
+                  >
+                    {getStatusStyles(status).icon} {status}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        {/* NEW: Show last update time */}
+        
+        {/* Show last update time */}
         <div className="text-xs text-gray-500 px-3">
           Last updated: {form.lastTextEntry ? `${new Date(form.lastTextEntry).toLocaleDateString()} at ${new Date(form.lastTextEntry).toLocaleTimeString()}` : 'No text entered yet'}
         </div>
