@@ -176,10 +176,10 @@ export function StageStepper() {
                     )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 ipad-grid gap-4">
+                  <div className="grid grid-cols-1 mobile:grid-cols-2 ipad:grid-cols-2 gap-4 mobile:gap-6 ipad:gap-8">
                     {/* Temperature Input */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm mobile:text-base ipad:text-lg font-medium text-gray-700 mb-2">
                         Temperature
                       </label>
                       <KeypadInput
@@ -191,7 +191,7 @@ export function StageStepper() {
 
                     {/* Time Input */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm mobile:text-base ipad:text-lg font-medium text-gray-700 mb-2">
                         Time
                       </label>
                       <input
@@ -203,7 +203,7 @@ export function StageStepper() {
                           newTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
                           handleTimeChange(stageConfig.id, newTime);
                         }}
-                        className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none"
+                        className="w-full px-4 py-3 mobile:px-6 mobile:py-4 ipad:px-8 ipad:py-5 text-base mobile:text-lg ipad:text-xl border-2 border-gray-300 rounded-lg mobile:rounded-xl ipad:rounded-2xl focus:border-blue-500 focus:outline-none touch-target"
                       />
                     </div>
                   </div>
@@ -214,7 +214,7 @@ export function StageStepper() {
                   <button
                     onClick={() => handleSaveStage(stageConfig.id)}
                     disabled={!input.temp}
-                    className="w-full touch-target py-4 bg-blue-600 text-white text-lg font-semibold rounded-xl disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+                    className="w-full touch-target py-4 mobile:py-5 ipad:py-6 bg-blue-600 text-white text-base mobile:text-lg ipad:text-xl font-semibold rounded-lg mobile:rounded-xl ipad:rounded-2xl disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
                   >
                     Save Stage
                   </button>

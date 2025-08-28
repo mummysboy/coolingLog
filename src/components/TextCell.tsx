@@ -27,7 +27,7 @@ export function TextCell({
   readOnly,
   commitField,
   onBlurValidate,
-  className = "w-full border rounded px-2 py-1",
+  className = "w-full border rounded px-2 py-1 mobile:px-3 mobile:py-2 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-lg",
   placeholder,
   type = "text",
   step,

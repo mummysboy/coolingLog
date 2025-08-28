@@ -10,7 +10,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  userScalable: false,
+  userScalable: true,
+  maximumScale: 5,
+  minimumScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
@@ -19,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-gray-100 overflow-x-hidden">
+    <html lang="en" className="h-full">
+      <body className="min-h-screen bg-gray-100 overflow-x-hidden h-full">
         <AmplifyProvider>
           {children}
         </AmplifyProvider>

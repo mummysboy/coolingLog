@@ -211,15 +211,15 @@ export function TimePicker({
         onClick={handleOpen}
         className={`
           flex items-center justify-between cursor-pointer touch-manipulation
-          ${compact ? 'px-3 py-2 text-sm' : 'px-4 py-3 text-base'}
-          ${compact ? 'border border-gray-200 rounded-md' : 'border border-gray-300 rounded-lg'}
+          ${compact ? 'px-3 py-2 text-sm' : 'px-3 py-3 mobile:px-4 mobile:py-3 ipad:px-5 ipad:py-4 text-sm mobile:text-base ipad:text-lg'}
+          ${compact ? 'border border-gray-200 rounded-md' : 'border border-gray-300 rounded-lg mobile:rounded-xl ipad:rounded-2xl'}
           ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-blue-500 active:bg-blue-50'}
           ${isOpen ? 'border-blue-500 ring-2 ring-blue-200' : ''}
-          transition-all duration-150 ease-in-out
+          transition-all duration-150 ease-in-out touch-target
         `}
         style={{ minHeight: compact ? '44px' : '48px' }}
       >
-        <span className={`${compact ? 'text-sm' : 'text-base'} ${value ? 'text-gray-900' : 'text-gray-500'}`}>
+        <span className={`${compact ? 'text-sm' : 'text-sm mobile:text-base ipad:text-lg'} ${value ? 'text-gray-900' : 'text-gray-500'}`}>
           {value ? formatDisplayTime(value) : placeholder}
         </span>
 
@@ -228,12 +228,12 @@ export function TimePicker({
       {/* Scrollable Time Picker Dropdown */}
       {isOpen && !disabled && (
         <div 
-          className={`absolute z-50 w-80 mt-2 bg-white border border-gray-300 rounded-xl shadow-2xl ${
+          className={`absolute z-50 w-72 mobile:w-80 ipad:w-96 mt-2 bg-white border border-gray-300 rounded-lg mobile:rounded-xl ipad:rounded-2xl shadow-2xl ${
             dropdownPosition === 'left' ? 'right-0' : 'left-0'
           }`}
         >
           {/* Header with current selection */}
-          <div className="p-4 border-b border-gray-200 bg-gray-50 relative">
+          <div className="p-3 mobile:p-4 ipad:p-5 border-b border-gray-200 bg-gray-50 relative">
             {/* Data Log Checkbox - Top Right */}
             {onDataLogChange && (
               <div className="absolute top-2 right-2 flex items-center">
@@ -247,23 +247,23 @@ export function TimePicker({
               </div>
             )}
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900 mb-1">
+              <div className="text-xl mobile:text-2xl ipad:text-3xl font-bold text-gray-900 mb-1">
                 {selectedHour}:{selectedMinute} {selectedAMPM}
               </div>
-              <div className="text-sm text-gray-600">
+              <div className="text-sm mobile:text-base ipad:text-lg text-gray-600">
                 {selectedHour}:{selectedMinute}
               </div>
             </div>
           </div>
 
           {/* Scrollable Time Wheels */}
-          <div className="flex p-4">
+          <div className="flex p-3 mobile:p-4 ipad:p-5">
             {/* Hours Wheel */}
             <div className="flex-1">
-              <div className="text-center text-sm font-medium text-gray-700 mb-2">Hours</div>
+              <div className="text-center text-sm mobile:text-base ipad:text-lg font-medium text-gray-700 mb-2">Hours</div>
               <div 
                 ref={hourScrollRef}
-                className="h-48 overflow-y-auto scrollbar-hide border border-gray-200 rounded-lg"
+                className="h-40 mobile:h-44 ipad:h-48 overflow-y-auto scrollbar-hide border border-gray-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl"
                 style={{ scrollSnapType: 'y mandatory' }}
               >
                 {hours.map((hour) => (
@@ -271,14 +271,14 @@ export function TimePicker({
                     key={hour}
                     onClick={() => setSelectedHour(hour.toString())}
                     className={`
-                      py-3 text-center cursor-pointer transition-all duration-150 touch-manipulation
+                      py-2 mobile:py-3 ipad:py-3 text-center cursor-pointer transition-all duration-150 touch-manipulation
                       ${selectedHour === hour.toString() 
                         ? 'bg-blue-500 text-white font-semibold' 
                         : 'hover:bg-gray-100'
                       }
                       scroll-snap-align: center
                     `}
-                    style={{ minHeight: '48px' }}
+                    style={{ minHeight: '40px' }}
                   >
                     {hour}
                   </div>
@@ -287,11 +287,11 @@ export function TimePicker({
             </div>
 
             {/* Minutes Wheel */}
-            <div className="flex-1 ml-4">
-              <div className="text-center text-sm font-medium text-gray-700 mb-2">Minutes</div>
+            <div className="flex-1 ml-2 mobile:ml-3 ipad:ml-4">
+              <div className="text-center text-sm mobile:text-base ipad:text-lg font-medium text-gray-700 mb-2">Minutes</div>
               <div 
                 ref={minuteScrollRef}
-                className="h-48 overflow-y-auto scrollbar-hide border border-gray-200 rounded-lg"
+                className="h-40 mobile:h-44 ipad:h-48 overflow-y-auto scrollbar-hide border border-gray-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl"
                 style={{ scrollSnapType: 'y mandatory' }}
               >
                 {minutes.map((minute) => (
@@ -299,14 +299,14 @@ export function TimePicker({
                     key={minute}
                     onClick={() => setSelectedMinute(minute)}
                     className={`
-                      py-3 text-center cursor-pointer transition-all duration-150 touch-manipulation
+                      py-2 mobile:py-3 ipad:py-3 text-center cursor-pointer transition-all duration-150 touch-manipulation
                       ${selectedMinute === minute 
                         ? 'bg-blue-500 text-white font-semibold' 
                         : 'hover:bg-gray-100'
                       }
                       scroll-snap-align: center
                     `}
-                    style={{ minHeight: '48px' }}
+                    style={{ minHeight: '40px' }}
                   >
                     {minute}
                   </div>
@@ -315,9 +315,9 @@ export function TimePicker({
             </div>
 
             {/* AM/PM Selector */}
-            <div className="flex-1 ml-4">
-              <div className="text-center text-sm font-medium text-gray-700 mb-2">AM/PM</div>
-              <div className="h-48 flex flex-col border border-gray-200 rounded-lg overflow-hidden">
+            <div className="flex-1 ml-2 mobile:ml-3 ipad:ml-4">
+              <div className="text-center text-sm mobile:text-base ipad:text-lg font-medium text-gray-700 mb-2">AM/PM</div>
+              <div className="h-40 mobile:h-44 ipad:h-48 flex flex-col border border-gray-200 rounded-lg mobile:rounded-xl ipad:rounded-2xl overflow-hidden">
                 <button
                   onClick={() => setSelectedAMPM('AM')}
                   className={`
@@ -327,7 +327,7 @@ export function TimePicker({
                       : 'bg-gray-50 hover:bg-gray-100'
                     }
                   `}
-                  style={{ minHeight: '24px' }}
+                  style={{ minHeight: '20px' }}
                 >
                   AM
                 </button>
@@ -340,7 +340,7 @@ export function TimePicker({
                       : 'bg-gray-50 hover:bg-gray-100'
                     }
                   `}
-                  style={{ minHeight: '24px' }}
+                  style={{ minHeight: '20px' }}
                 >
                   PM
                 </button>
@@ -349,19 +349,19 @@ export function TimePicker({
           </div>
 
           {/* Action Buttons */}
-          <div className="p-4 border-t border-gray-200 bg-gray-50">
-            <div className="flex space-x-3">
+          <div className="p-3 mobile:p-4 ipad:p-5 border-t border-gray-200 bg-gray-50">
+            <div className="flex space-x-2 mobile:space-x-3 ipad:space-x-4">
               <button
                 onClick={() => setIsOpen(false)}
-                className="flex-1 py-3 px-4 bg-gray-300 text-gray-700 text-base font-medium rounded-lg hover:bg-gray-400 active:bg-gray-500 transition-colors touch-manipulation"
-                style={{ minHeight: '48px' }}
+                className="flex-1 py-3 mobile:py-3 ipad:py-4 px-3 mobile:px-4 ipad:px-5 bg-gray-300 text-gray-700 text-sm mobile:text-base ipad:text-lg font-medium rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-gray-400 active:bg-gray-500 transition-colors touch-manipulation touch-target"
+                style={{ minHeight: '44px' }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleTimeConfirm}
-                className="flex-1 py-3 px-4 bg-blue-500 text-white text-base font-medium rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors touch-manipulation"
-                style={{ minHeight: '48px' }}
+                className="flex-1 py-3 mobile:py-3 ipad:py-4 px-3 mobile:px-4 ipad:px-5 bg-blue-500 text-white text-sm mobile:text-base ipad:text-lg font-medium rounded-lg mobile:rounded-xl ipad:rounded-2xl hover:bg-blue-600 active:bg-blue-700 transition-colors touch-manipulation touch-target"
+                style={{ minHeight: '44px' }}
               >
                 Confirm
               </button>

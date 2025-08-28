@@ -16,20 +16,50 @@
   * {
     box-sizing: border-box;
   }
+  
+  html {
+    /* Prevent zoom on iOS */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
   body {
     background-color: #f9fafb;
     color: #111827;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* Optimize for touch devices */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* Allow text selection in specific areas */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
   }
 }
 
 @layer components {
+  /* Base touch target size for mobile */
   .touch-target {
-    @apply min-h-[64px] min-w-[64px];
+    @apply min-h-[44px] min-w-[44px];
   }
   
+  /* Enhanced touch targets for iPad */
+  .touch-target-ipad {
+    @apply min-h-[48px] min-w-[48px];
+  }
+  
+  /* Large touch targets for critical actions */
+  .touch-target-large {
+    @apply min-h-[56px] min-w-[56px];
+  }
+  
+  /* Stage card base styles */
   .stage-card {
-    @apply rounded-xl border-2 p-6 transition-all duration-200;
+    @apply rounded-xl border-2 p-4 transition-all duration-200;
   }
   
   .stage-card.pending {
@@ -48,28 +78,132 @@
     @apply border-red-300 bg-red-50;
   }
 
-  /* iPad landscape optimizations */
-  @media (min-width: 1024px) and (orientation: landscape) {
+  /* Mobile-first responsive design */
+  /* Mobile Portrait (320px - 767px) */
+  @media (max-width: 767px) and (orientation: portrait) {
     .touch-target {
-      @apply min-h-[72px] min-w-[72px];
+      @apply min-h-[48px] min-w-[48px];
     }
     
     .stage-card {
-      @apply p-8;
+      @apply p-4 rounded-lg;
     }
     
-    /* Larger text for better readability on iPad */
+    body {
+      font-size: 16px;
+    }
+    
+    /* Optimize grid layouts for mobile */
+    .mobile-grid {
+      @apply grid-cols-1 gap-4;
+    }
+    
+    /* Larger buttons for mobile */
+    .mobile-button {
+      @apply px-6 py-4 text-base font-medium;
+    }
+  }
+
+  /* Mobile Landscape (320px - 767px) */
+  @media (max-width: 767px) and (orientation: landscape) {
+    .touch-target {
+      @apply min-h-[44px] min-w-[44px];
+    }
+    
+    .stage-card {
+      @apply p-3 rounded-lg;
+    }
+    
+    body {
+      font-size: 16px;
+    }
+    
+    /* Optimize for landscape mobile */
+    .mobile-landscape-grid {
+      @apply grid-cols-2 gap-3;
+    }
+  }
+
+  /* iPad Portrait (768px - 1023px) */
+  @media (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
+    .touch-target {
+      @apply min-h-[52px] min-w-[52px];
+    }
+    
+    .stage-card {
+      @apply p-6 rounded-xl;
+    }
+    
+    body {
+      font-size: 17px;
+    }
+    
+    /* Optimize grid layouts for iPad portrait */
+    .ipad-portrait-grid {
+      @apply grid-cols-2 gap-6;
+    }
+    
+    /* Enhanced spacing for iPad */
+    .ipad-spacing {
+      @apply space-y-6;
+    }
+  }
+
+  /* iPad Landscape (1024px+) */
+  @media (min-width: 1024px) and (orientation: landscape) {
+    .touch-target {
+      @apply min-h-[56px] min-w-[56px];
+    }
+    
+    .stage-card {
+      @apply p-8 rounded-2xl;
+    }
+    
     body {
       font-size: 18px;
     }
     
     /* Optimize grid layouts for iPad landscape */
-    .ipad-grid {
+    .ipad-landscape-grid {
       @apply grid-cols-2 gap-8;
+    }
+    
+    /* Larger text for better readability on iPad */
+    .ipad-text-lg {
+      @apply text-lg;
+    }
+    
+    .ipad-text-xl {
+      @apply text-xl;
+    }
+    
+    /* Enhanced spacing for iPad landscape */
+    .ipad-landscape-spacing {
+      @apply space-y-8;
     }
   }
 
-  /* Prevent zoom on iOS */
+  /* iPad Pro and larger (1280px+) */
+  @media (min-width: 1280px) {
+    .touch-target {
+      @apply min-h-[60px] min-w-[60px];
+    }
+    
+    .stage-card {
+      @apply p-10 rounded-3xl;
+    }
+    
+    body {
+      font-size: 19px;
+    }
+    
+    /* Optimize for larger iPad screens */
+    .ipad-pro-grid {
+      @apply grid-cols-3 gap-10;
+    }
+  }
+
+  /* Prevent zoom on iOS inputs */
   input[type="color"],
   input[type="date"],
   input[type="datetime"],
@@ -87,5 +221,129 @@
   select:focus,
   textarea {
     font-size: 16px !important;
+  }
+
+  /* Enhanced form styling for different screen sizes */
+  .form-input-mobile {
+    @apply w-full px-4 py-3 text-base border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none;
+  }
+  
+  .form-input-ipad {
+    @apply w-full px-6 py-4 text-lg border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none;
+  }
+  
+  .form-button-mobile {
+    @apply w-full px-6 py-4 text-base font-semibold rounded-lg transition-colors;
+  }
+  
+  .form-button-ipad {
+    @apply w-full px-8 py-5 text-lg font-semibold rounded-xl transition-colors;
+  }
+
+  /* Responsive table styles */
+  .table-mobile {
+    @apply text-sm;
+  }
+  
+  .table-ipad {
+    @apply text-base;
+  }
+  
+  .table-ipad-pro {
+    @apply text-lg;
+  }
+
+  /* Responsive modal styles */
+  .modal-mobile {
+    @apply p-4 max-w-full mx-4;
+  }
+  
+  .modal-ipad {
+    @apply p-6 max-w-4xl mx-8;
+  }
+  
+  .modal-ipad-pro {
+    @apply p-8 max-w-6xl mx-12;
+  }
+
+  /* Responsive navigation */
+  .nav-mobile {
+    @apply flex-col space-y-4;
+  }
+  
+  .nav-ipad {
+    @apply flex-row space-x-6;
+  }
+
+  /* Responsive card layouts */
+  .card-grid-mobile {
+    @apply grid-cols-1 gap-4;
+  }
+  
+  .card-grid-ipad {
+    @apply grid-cols-2 gap-6;
+  }
+  
+  .card-grid-ipad-pro {
+    @apply grid-cols-3 gap-8;
+  }
+
+  /* Responsive spacing utilities */
+  .spacing-mobile {
+    @apply space-y-4;
+  }
+  
+  .spacing-ipad {
+    @apply space-y-6;
+  }
+  
+  .spacing-ipad-pro {
+    @apply space-y-8;
+  }
+
+  /* Responsive typography */
+  .text-responsive-xs {
+    @apply text-xs mobile:text-sm ipad:text-base;
+  }
+  
+  .text-responsive-sm {
+    @apply text-sm mobile:text-base ipad:text-lg;
+  }
+  
+  .text-responsive-base {
+    @apply text-base mobile:text-lg ipad:text-xl;
+  }
+  
+  .text-responsive-lg {
+    @apply text-lg mobile:text-xl ipad:text-2xl;
+  }
+  
+  .text-responsive-xl {
+    @apply text-xl mobile:text-2xl ipad:text-3xl;
+  }
+
+  /* Responsive padding and margins */
+  .p-responsive {
+    @apply p-4 mobile:p-6 ipad:p-8;
+  }
+  
+  .px-responsive {
+    @apply px-4 mobile:px-6 ipad:px-8;
+  }
+  
+  .py-responsive {
+    @apply py-4 mobile:py-6 ipad:py-8;
+  }
+  
+  .m-responsive {
+    @apply m-4 mobile:m-6 ipad:m-8;
+  }
+  
+  .mx-responsive {
+    @apply mx-4 mobile:mx-6 ipad:mx-8;
+  }
+  
+  .my-responsive {
+    @apply my-4 mobile:my-6 ipad:my-8;
   }
 }
