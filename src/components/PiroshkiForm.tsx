@@ -5,6 +5,7 @@ import { usePaperFormStore } from '@/stores/paperFormStore';
 import { PaperFormEntry, FormType, ensureDate, PiroshkiFormEntry } from '@/lib/paperFormTypes';
 import { TimePicker } from './TimePicker';
 import { TextCell } from './TextCell';
+import { DatePicker } from './DatePicker';
 import { validateTemperatureCell, getTimeDifferenceMinutes } from '@/lib/validation';
 
 interface PiroshkiFormProps {
@@ -67,16 +68,24 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
     return lines.join("\n");
   };
 
-  // Stage lock: if a stage has temp, time and initial filled, lock those inputs
+  // Stage lock: if a stage has temp, time and initial filled AND the form has been saved (not dirty), lock those inputs
   const isStageLocked = (rowIndex: number, stage: StageKey) => {
     if (!form) return false;
     // Admin forms should always be editable via admin UI
     if (isAdminForm) return false;
+    
+    // Check if this form has been saved (not dirty)
+    const { currentFormDirty } = usePaperFormStore.getState();
+    const isFormSaved = !currentFormDirty;
+    
+    // Only lock if form is saved AND all three primary fields are non-empty
+    if (!isFormSaved) return false;
+    
     const entry = form.entries?.[rowIndex];
     if (!entry) return false;
     const stageData = entry[stage] as any;
     if (!stageData) return false;
-    // Locked when all three primary fields are non-empty
+    // Locked when all three primary fields are non-empty AND form is saved
     return Boolean(stageData.temp || stageData.temp === 0) && Boolean(stageData.time) && Boolean(stageData.initial);
   };
 
@@ -529,12 +538,12 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
             </div>
             <div>
               <span className="font-semibold">Date: </span>
-              <input
-                type="date"
+              <DatePicker
                 value={ensureDate(form.date).toISOString().split('T')[0]}
-                onChange={async (e) => await handleFormFieldChange('date', new Date(e.target.value))}
+                onChange={async (dateValue) => await handleFormFieldChange('date', new Date(dateValue))}
                 className="border-b border-black bg-transparent"
-                readOnly={readOnly}
+                disabled={readOnly}
+                compact={true}
               />
             </div>
           </div>
@@ -669,8 +678,8 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
                           await handleCellChange(rowIndex, "heatTreating.time", time)
                         }
                         placeholder="Time"
-                        className={getCellClasses(rowIndex, "heatTreating.time", "w-full")}
                         disabled={readOnly || isStageLocked(rowIndex, 'heatTreating')}
+                        className={getCellClasses(rowIndex, "heatTreating.time", "w-full")}
                         showQuickTimes={false}
                         compact
                         dataLog={entry.heatTreating?.dataLog || false}
@@ -751,8 +760,8 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
                         await handleCellChange(rowIndex, "ccp2_126.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(rowIndex, "ccp2_126.time", "w-full")}
                       disabled={readOnly || isStageLocked(rowIndex, 'ccp2_126')}
+                      className={getCellClasses(rowIndex, "ccp2_126.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.ccp2_126?.dataLog || false}
@@ -830,8 +839,8 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
                         await handleCellChange(rowIndex, "ccp2_80.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(rowIndex, "ccp2_80.time", "w-full")}
                       disabled={readOnly || isStageLocked(rowIndex, 'ccp2_80')}
+                      className={getCellClasses(rowIndex, "ccp2_80.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.ccp2_80?.dataLog || false}
@@ -909,8 +918,8 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
                         await handleCellChange(rowIndex, "ccp2_55.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(rowIndex, "ccp2_55.time", "w-full")}
                       disabled={readOnly || isStageLocked(rowIndex, 'ccp2_55')}
+                      className={getCellClasses(rowIndex, "ccp2_55.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.ccp2_55?.dataLog || false}
@@ -988,8 +997,8 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
                         await handleCellChange(rowIndex, "finalChill.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(rowIndex, "finalChill.time", "w-full")}
                       disabled={readOnly || isStageLocked(rowIndex, 'finalChill')}
+                      className={getCellClasses(rowIndex, "finalChill.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.finalChill?.dataLog || false}
@@ -1134,8 +1143,8 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
                       }
                     }}
                     placeholder="Time"
-                    className="w-full"
                     disabled={readOnly}
+                    className="w-full"
                     showQuickTimes={false}
                     compact={true}
                   />
@@ -1204,8 +1213,8 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
                       }
                     }}
                     placeholder="Time"
-                    className="w-full"
                     disabled={readOnly}
+                    className="w-full"
                     showQuickTimes={false}
                     compact={true}
                   />
@@ -1274,8 +1283,8 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
                       }
                     }}
                     placeholder="Time"
-                    className="w-full"
                     disabled={readOnly}
+                    className="w-full"
                     showQuickTimes={false}
                     compact={true}
                   />
@@ -1344,8 +1353,8 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
                          }
                        }}
                        placeholder="Time"
-                       className="w-full"
                        disabled={readOnly}
+                       className="w-full"
                        showQuickTimes={false}
                        compact={true}
                      />
@@ -1485,16 +1494,16 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
               <div className="grid grid-cols-3 gap-2 text-sm">
                 <div>
                   <label className="block text-xs font-medium text-gray-700">Date</label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={form.preShipmentReview?.date || ''}
-                    onChange={(e) => {
+                    onChange={(dateValue) => {
                       const updated = { ...form.preShipmentReview };
-                      updated.date = e.target.value;
+                      updated.date = dateValue;
                       handleFormFieldChange('preShipmentReview', updated);
                     }}
                     className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
-                    readOnly={readOnly}
+                    disabled={readOnly}
+                    compact={true}
                   />
                 </div>
                 <div>

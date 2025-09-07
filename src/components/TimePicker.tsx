@@ -186,22 +186,31 @@ export function TimePicker({
 
   // Calculate optimal dropdown position to prevent overflow
   const calculateDropdownPosition = () => {
-    if (!dropdownRef.current) return 'left'; // Force left positioning for now
+    if (!dropdownRef.current) return 'left';
     
     const rect = dropdownRef.current.getBoundingClientRect();
-    const dropdownWidth = 320; // w-80 = 20rem = 320px
+    const dropdownWidth = 384; // ipad:w-96 = 24rem = 384px (largest size)
     const viewportWidth = window.innerWidth;
     
-    // Always open to the left if we're in the right half of the screen
-    if (rect.left > viewportWidth * 0.5) {
-      return 'left';
-    }
+    // Add some padding to ensure dropdown stays in view
+    const padding = 20;
     
     // Check if dropdown would overflow to the right
-    if (rect.left + dropdownWidth > viewportWidth) {
+    if (rect.left + dropdownWidth + padding > viewportWidth) {
       return 'left';
     }
     
+    // Check if dropdown would overflow to the left
+    if (rect.right - dropdownWidth - padding < 0) {
+      return 'right';
+    }
+    
+    // For iPad and smaller screens, prefer left positioning to avoid right-edge issues
+    if (viewportWidth <= 1024) {
+      return 'left';
+    }
+    
+    // For larger screens, use right positioning if there's enough space
     return 'right';
   };
 

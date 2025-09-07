@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { DatePicker } from "./DatePicker";
 import { useLogStore } from '@/stores/logStore';
 import { PRODUCTS, SUPPLIERS, PACKAGING_TYPES } from '@/lib/types';
 
@@ -138,11 +139,11 @@ export function ProductPicker() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Received Date
           </label>
-          <input
-            type="date"
+          <DatePicker
             value={currentLog?.receivedDate?.toISOString().split('T')[0] || ''}
-            onChange={(e) => updateLogField('receivedDate', new Date(e.target.value))}
+            onChange={(dateValue) => updateLogField('receivedDate', new Date(dateValue))}
             className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none"
+            compact={false}
           />
         </div>
 
@@ -151,11 +152,11 @@ export function ProductPicker() {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Expiration Date
           </label>
-          <input
-            type="date"
+          <DatePicker
             value={currentLog?.expirationDate?.toISOString().split('T')[0] || ''}
-            onChange={(e) => updateLogField('expirationDate', new Date(e.target.value))}
+            onChange={(dateValue) => updateLogField('expirationDate', new Date(dateValue))}
             className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none"
+            compact={false}
           />
         </div>
 

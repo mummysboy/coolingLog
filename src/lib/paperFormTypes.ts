@@ -133,6 +133,7 @@ export interface BaseFormRow {
     time: string;
     initial: string;
     dataLog: boolean;
+    date?: Date;
   };
 }
 
@@ -165,7 +166,7 @@ export interface PiroshkiFormEntry extends BaseFormEntry {
     ccp2_126: { temp: string; time: string; initial: string };
     ccp2_80: { temp: string; time: string; initial: string };
     ccp2_55: { temp: string; time: string; initial: string };
-    finalChill: { temp: string; time: string; initial: string };
+    finalChill: { temp: string; time: string; initial: string; date?: Date };
   };
 }
 
@@ -235,7 +236,7 @@ export const EMPTY_BASE_ROW: BaseFormRow = {
   ccp2: { temp: '', time: '', initial: '', dataLog: false },
   coolingTo80: { temp: '', time: '', initial: '', dataLog: false },
   coolingTo54: { temp: '', time: '', initial: '', dataLog: false },
-  finalChill: { temp: '', time: '', initial: '', dataLog: false },
+  finalChill: { temp: '', time: '', initial: '', dataLog: false, date: undefined },
 };
 
 export const EMPTY_PIROSHKI_ROW: PiroshkiFormRow = {
@@ -300,7 +301,7 @@ export const createEmptyForm = (formType: FormType = FormType.COOKING_AND_COOLIN
         ccp2_126: { temp: '', time: '', initial: '' },
         ccp2_80: { temp: '', time: '', initial: '' },
         ccp2_55: { temp: '', time: '', initial: '' },
-        finalChill: { temp: '', time: '', initial: '' },
+        finalChill: { temp: '', time: '', initial: '', date: undefined },
       },
     } as PiroshkiFormEntry;
   }
@@ -345,6 +346,12 @@ export const ensureDate = (date: Date | string | any): Date => {
   }
   
   if (typeof date === 'string') {
+    // Handle YYYY-MM-DD format dates properly to avoid timezone issues
+    if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = date.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+    
     const parsedDate = new Date(date);
     if (isNaN(parsedDate.getTime())) {
       console.warn('Invalid date string, using current date:', date);

@@ -10,6 +10,7 @@ import {
 } from "../lib/validation";
 import { TimePicker } from "./TimePicker";
 import { TextCell } from "./TextCell";
+import { DatePicker } from "./DatePicker";
 
 
 interface PaperFormProps {
@@ -107,16 +108,24 @@ export default function PaperForm({
   // Memoize entries cheaply; Zustand will re-render when 'entries' changes
   const memoizedEntries = form?.entries || [];
 
-  // Stage lock: if a stage has temp, time and initial filled, lock those inputs
+  // Stage lock: if a stage has temp, time and initial filled AND the form has been saved (not dirty), lock those inputs
   const isStageLocked = (rowIndex: number, stage: StageKey) => {
     if (!form) return false;
     // Admin forms should always be editable via admin UI
     if (isAdminForm) return false;
+    
+    // Check if this form has been saved (not dirty)
+    const { currentFormDirty } = usePaperFormStore.getState();
+    const isFormSaved = !currentFormDirty;
+    
+    // Only lock if form is saved AND all three primary fields are non-empty
+    if (!isFormSaved) return false;
+    
     const entry = form.entries?.[rowIndex];
     if (!entry) return false;
     const stageData = entry[stage] as any;
     if (!stageData) return false;
-    // Locked when all three primary fields are non-empty
+    // Locked when all three primary fields are non-empty AND form is saved
     return Boolean(stageData.temp || stageData.temp === 0) && Boolean(stageData.time) && Boolean(stageData.initial);
   };
 
@@ -254,11 +263,20 @@ export default function PaperForm({
   const handleCellChange = async (
     rowIndex: number,
     field: string,
-    value: string | boolean
+    value: string | boolean | Date
   ) => {
+    console.log('handleCellChange called:', { rowIndex, field, value, form: !!form, readOnly });
+    
     if (!form) return;
 
     if (readOnly) return;
+
+    // Convert date strings to Date objects for date fields
+    let processedValue: string | boolean | Date = value;
+    if (typeof value === 'string' && field.includes('.date') && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      processedValue = new Date(value);
+      console.log('Converted date string to Date object:', processedValue);
+    }
 
     // Update store
     if (isAdminForm) {
@@ -271,13 +289,13 @@ export default function PaperForm({
           ...entry,
           [section]: {
             ...sectionData,
-            [subField]: value,
+            [subField]: processedValue,
           },
         };
       } else {
         updatedEntries[rowIndex] = {
           ...updatedEntries[rowIndex],
-          [field]: value,
+          [field]: processedValue,
         };
       }
       try {
@@ -288,7 +306,7 @@ export default function PaperForm({
       }
     } else {
       try {
-        updateEntry(rowIndex, field, value);
+        updateEntry(rowIndex, field, processedValue);
       } catch (error) {
         console.error("❌ Error calling updateEntry:", error);
       }
@@ -733,14 +751,15 @@ export default function PaperForm({
               <div>
                 <div className="flex items-center space-x-2">
                   <span className="font-semibold">Date: </span>
-                  <input
-                    key={`date-${form?.id || "new"}`}
-                    type="date"
+                  <DatePicker
                     value={form?.date ? ensureDate(form.date).toISOString().split('T')[0] : ''}
-                    onChange={(e) => {
-                      const newValue = e.target.value;
+                    onChange={(dateValue) => {
                       if (readOnly) return;
-                      const dateVal = newValue ? new Date(newValue) : null;
+                      // Parse date string properly to avoid timezone issues
+                      const dateVal = dateValue ? (() => {
+                        const [year, month, day] = dateValue.split('-').map(Number);
+                        return new Date(year, month - 1, day);
+                      })() : null;
                       if (isAdminForm) {
                         updateAdminForm(form.id, { date: dateVal });
                         if (onFormUpdate) onFormUpdate(form.id, { date: dateVal });
@@ -749,8 +768,8 @@ export default function PaperForm({
                       }
                     }}
                     className="border-b-2 border-gray-300 bg-transparent px-2 py-1 w-full"
-                    readOnly={readOnly}
-                    onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
+                    disabled={readOnly}
+                    compact={true}
                   />
                 </div>
               </div>
@@ -909,8 +928,8 @@ export default function PaperForm({
                         await handleCellChange(rowIndex, "ccp1.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(rowIndex, "ccp1.time", "w-full")}
                       disabled={readOnly || isStageLocked(rowIndex, 'ccp1')}
+                      className={getCellClasses(rowIndex, "ccp1.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.ccp1?.dataLog || false}
@@ -997,8 +1016,8 @@ export default function PaperForm({
                         await handleCellChange(rowIndex, "ccp2.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(rowIndex, "ccp2.time", "w-full")}
                       disabled={readOnly || isStageLocked(rowIndex, 'ccp2')}
+                      className={getCellClasses(rowIndex, "ccp2.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.ccp2?.dataLog || false}
@@ -1084,8 +1103,8 @@ export default function PaperForm({
                         handleCellChange(rowIndex, "coolingTo80.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(rowIndex, "coolingTo80.time", "w-full")}
                       disabled={readOnly || isStageLocked(rowIndex, 'coolingTo80')}
+                      className={getCellClasses(rowIndex, "coolingTo80.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.coolingTo80?.dataLog || false}
@@ -1172,8 +1191,8 @@ export default function PaperForm({
                         handleCellChange(rowIndex, "coolingTo54.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(rowIndex, "coolingTo54.time", "w-full")}
                       disabled={readOnly || isStageLocked(rowIndex, 'coolingTo54')}
+                      className={getCellClasses(rowIndex, "coolingTo54.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.coolingTo54?.dataLog || false}
@@ -1253,14 +1272,27 @@ export default function PaperForm({
                     <div className="flex flex-col items-center">
                       <div className="flex flex-col items-center w-full">
                         <div className="flex flex-col items-center">
-                          <input
-                            type="date"
-                            value={entry.finalChill?.date ? ensureDate(entry.finalChill?.date).toISOString().split('T')[0] : ''}
-                            onChange={(e) => handleCellChange(rowIndex, 'finalChill.date', e.target.value)}
-                            className="w-24 md:w-28 text-xs md:text-sm border-0 bg-transparent text-center mb-1"
-                            readOnly={readOnly || isStageLocked(rowIndex, 'finalChill')}
-                            onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
-                            aria-label="Final chill date picker"
+                          <DatePicker
+                            value={(() => {
+                              const dateValue = entry.finalChill?.date ? ensureDate(entry.finalChill?.date).toISOString().split('T')[0] : '';
+                              console.log('DatePicker value calculation:', { 
+                                rowIndex,
+                                finalChillDate: entry.finalChill?.date,
+                                dateValue,
+                                finalChillData: entry.finalChill
+                              });
+                              return dateValue;
+                            })()}
+                            onChange={(dateValue) => {
+                              console.log('DatePicker onChange called with:', dateValue);
+                              handleCellChange(rowIndex, 'finalChill.date', dateValue);
+                            }}
+                            className="w-24 md:w-28 text-xs md:text-sm border border-gray-300 bg-white text-center mb-1 rounded"
+                            disabled={(() => {
+                              console.log('DatePicker disabled check:', { readOnly, rowIndex });
+                              return readOnly;
+                            })()}
+                            compact={true}
                           />
 
                         <TimePicker
@@ -1269,8 +1301,8 @@ export default function PaperForm({
                             handleCellChange(rowIndex, "finalChill.time", time)
                           }
                           placeholder="Time"
-                          className={getCellClasses(rowIndex, "finalChill.time", "w-20 md:w-24 mx-auto")}
                           disabled={readOnly || isStageLocked(rowIndex, 'finalChill')}
+                          className={getCellClasses(rowIndex, "finalChill.time", "w-20 md:w-24 mx-auto")}
                           showQuickTimes={false}
                           compact
                           dataLog={entry.finalChill?.dataLog || false}

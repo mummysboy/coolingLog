@@ -7,7 +7,9 @@
           "additionalAuthenticationProviders": [],
           "defaultAuthentication": {
             "apiKeyConfig": {
-              "apiKeyExpirationDays": 7
+              "apiKeyExpirationDate": "2026-09-04T16:16:19.849Z",
+              "apiKeyExpirationDays": 365,
+              "description": "FoodChilling"
             },
             "authenticationType": "API_KEY"
           }

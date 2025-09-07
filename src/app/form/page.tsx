@@ -10,6 +10,7 @@ import { PiroshkiForm } from '@/components/PiroshkiForm';
 import { validateForm, shouldHighlightCell } from '@/lib/validation';
 import BagelDogForm from '@/components/BagelDogForm';
 import { generateFormPDF } from '@/lib/pdfGenerator';
+import { downloadFileIOSCompatible } from '@/lib/iosDownloadHelper';
 
 // Debug flag for development
 const DEBUG_ALLOW_EDIT = false;
@@ -23,9 +24,11 @@ export default function FormPage() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [isAddFormDropdownOpen, setIsAddFormDropdownOpen] = useState(false);
   const [newlyCreatedFormId, setNewlyCreatedFormId] = useState<string | null>(null);
+  const [isArchivedDropdownOpen, setIsArchivedDropdownOpen] = useState(false);
 
   // Refs for outside-click detection
   const addFormDropdownRef = useRef<HTMLDivElement>(null);
+  const archivedDropdownRef = useRef<HTMLDivElement>(null);
 
   // Memoized form lists to avoid repeated filtering/sorting on every render
   const activeForms = useMemo(() => 
@@ -73,11 +76,14 @@ export default function FormPage() {
       if (isAddFormDropdownOpen && addFormDropdownRef.current && !addFormDropdownRef.current.contains(event.target as Node)) {
         setIsAddFormDropdownOpen(false);
       }
+      if (isArchivedDropdownOpen && archivedDropdownRef.current && !archivedDropdownRef.current.contains(event.target as Node)) {
+        setIsArchivedDropdownOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isAddFormDropdownOpen]);
+  }, [isAddFormDropdownOpen, isArchivedDropdownOpen]);
 
   // Body scroll lock when modal is open
   useEffect(() => {
@@ -200,19 +206,11 @@ export default function FormPage() {
       // Remove temporary div
       document.body.removeChild(tempDiv);
       
-      // Convert canvas to blob and download
+      // Convert canvas to blob and download using iOS-compatible method
       canvas.toBlob((blob) => {
         if (blob) {
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `${form.title ? form.title.replace(/[^a-zA-Z0-9]/g, '_') : 'FoodChillingLog'}_${form.id.slice(-6)}_${new Date(form.date).toISOString().split('T')[0]}.jpg`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-          
-          alert('JPEG downloaded successfully!');
+          const filename = `${form.title ? form.title.replace(/[^a-zA-Z0-9]/g, '_') : 'FoodChillingLog'}_${form.id.slice(-6)}_${new Date(form.date).toISOString().split('T')[0]}.jpg`;
+          downloadFileIOSCompatible(blob, filename, 'JPEG');
         }
       }, 'image/jpeg', 0.9);
       
@@ -509,7 +507,14 @@ export default function FormPage() {
 
   const formatTime = (timeString: string) => {
     if (!timeString) return '';
-    return timeString;
+    
+    // Convert 24-hour format to 12-hour format
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    
+    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   const formatTemperature = (temp: string | number) => {
@@ -903,7 +908,7 @@ export default function FormPage() {
               
               {/* Dropdown Menu */}
               {isAddFormDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 mobile:w-64 ipad:w-72 rounded-lg mobile:rounded-xl ipad:rounded-2xl shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                <div className="absolute right-0 mt-2 w-56 mobile:w-64 ipad:w-72 rounded-lg mobile:rounded-xl ipad:rounded-2xl shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10 max-w-[calc(100vw-2rem)] sm:max-w-none">
                   <div className="py-1" role="menu" aria-orientation="vertical">
                     <button
                       onClick={() => {
@@ -1271,77 +1276,40 @@ export default function FormPage() {
                           </button>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Archived Forms Section */}
-            {archivedForms.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-xl mobile:text-2xl ipad:text-3xl font-bold text-gray-900 mb-4 flex items-center">
-                  <svg className="w-5 h-5 mobile:w-6 mobile:h-6 ipad:w-7 ipad:h-7 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2V9a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  Archived Forms
-                </h2>
-
-                {archivedForms.map((form: PaperFormEntry) => (
-                  <div key={form.id} className="bg-white rounded-xl border-2 border-gray-200 mb-6">
-                    <div className="p-4 mobile:p-6 ipad:p-8">
-                      <div className="flex flex-col mobile:flex-row mobile:items-center mobile:justify-between space-y-4 mobile:space-y-0">
-                        <div className="flex items-center space-x-4">
-                          <div>
-                            <h3 className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
-                            <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
-                            <div className="flex items-center space-x-4 text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
-                              <span>Form #{form.id.slice(-6)}</span>
-                              <span>Archived: {new Date(form.date).toLocaleDateString()}</span>
-                            </div>
+                      
+                      {/* Additional Form Summary Info */}
+                      <div className="mt-4 grid grid-cols-1 mobile:grid-cols-2 ipad:grid-cols-3 gap-4 text-sm mobile:text-base ipad:text-lg">
+                        <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5">
+                          <div className="font-medium text-gray-700">Date Created</div>
+                          <div className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
+                            {new Date(form.dateCreated || form.date).toLocaleDateString()}
+                          </div>
+                          <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                            {new Date(form.dateCreated || form.date).toLocaleTimeString()}
                           </div>
                         </div>
-
-                        <div className="flex flex-col mobile:flex-row items-start mobile:items-center space-y-3 mobile:space-y-0 mobile:space-x-3">
-                          <div className="flex flex-col items-end text-sm mobile:text-base ipad:text-lg text-gray-600">
-                            <span className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-2 ipad:px-5 ipad:py-3 rounded-full text-sm mobile:text-base ipad:text-lg font-medium bg-gray-100 text-gray-800">📁 Archived</span>
+                        
+                        <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5">
+                          <div className="font-medium text-gray-700">Last Updated</div>
+                          <div className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
+                            {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleDateString() : 'No text entered yet'}
                           </div>
-                          
-                          {/* Download PDF Button */}
-                          <button
-                            onClick={() => handleDownloadPDF(form)}
-                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-green-100 hover:text-green-700 transition-colors"
-                            title="Download archived form as PDF"
-                          >
-                            <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Download PDF
-                          </button>
-                          
-                          {/* Download JPEG Button */}
-                          <button
-                            onClick={() => handleDownloadJPEG(form)}
-                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-purple-100 hover:text-purple-700 transition-colors"
-                            title="Download archived form as JPEG"
-                          >
-                            <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L22 10" />
-                            </svg>
-                            Download JPEG
-                          </button>
-                          
-                          <button
-                            onClick={() => handleViewForm(form)}
-                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                            title="View archived form (read-only)"
-                          >
-                            <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            View Form
-                          </button>
+                          <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                            {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : ''}
+                          </div>
+                        </div>
+                        
+                        {/* Corrective Actions and Comments - Always shown */}
+                        <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5 mobile:col-span-2 ipad:col-span-1">
+                          <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
+                          <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                            <textarea
+                              readOnly
+                              className="w-full h-20 mobile:h-24 ipad:h-28 p-2 mobile:p-3 ipad:p-4 text-sm mobile:text-base ipad:text-lg text-gray-700 bg-white border rounded-md resize-none"
+                              value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
+                                form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1349,9 +1317,140 @@ export default function FormPage() {
                 ))}
               </div>
             )}
+
+            {/* Archived Forms Section - Dropdown */}
+            {archivedForms.length > 0 && (
+              <div className="mb-16" ref={archivedDropdownRef}>
+                <button
+                  onClick={() => setIsArchivedDropdownOpen(!isArchivedDropdownOpen)}
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 mobile:w-6 mobile:h-6 ipad:w-7 ipad:h-7 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2V9a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <h2 className="text-xl mobile:text-2xl ipad:text-3xl font-bold text-gray-900">
+                      Archived Forms ({archivedForms.length})
+                    </h2>
+                  </div>
+                  <svg 
+                    className={`w-5 h-5 mobile:w-6 mobile:h-6 ipad:w-7 ipad:h-7 text-gray-600 transition-transform ${isArchivedDropdownOpen ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {isArchivedDropdownOpen && (
+                  <div className="mt-4 space-y-4 mb-8">
+                    {archivedForms.map((form: PaperFormEntry) => (
+                      <div key={form.id} className="bg-white rounded-xl border-2 border-gray-200 mb-6">
+                        <div className="p-4 mobile:p-6 ipad:p-8">
+                          <div className="flex flex-col mobile:flex-row mobile:items-center mobile:justify-between space-y-4 mobile:space-y-0">
+                            <div className="flex items-center space-x-4">
+                              <div>
+                                <h3 className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
+                                <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
+                                <div className="flex items-center space-x-4 text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                                  <span>Form #{form.id.slice(-6)}</span>
+                                  <span>Date Range: {new Date(form.dateCreated).toLocaleDateString()} - {new Date(form.date).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col mobile:flex-row items-start mobile:items-center space-y-3 mobile:space-y-0 mobile:space-x-3">
+                              <div className="flex flex-col items-end text-sm mobile:text-base ipad:text-lg text-gray-600">
+                                <span className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-2 ipad:px-5 ipad:py-3 rounded-full text-sm mobile:text-base ipad:text-lg font-medium bg-gray-100 text-gray-800">📁 Archived</span>
+                              </div>
+                              
+                              {/* Download PDF Button */}
+                              <button
+                                onClick={() => handleDownloadPDF(form)}
+                                className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-green-100 hover:text-green-700 transition-colors"
+                                title="Download archived form as PDF"
+                              >
+                                <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Download PDF
+                              </button>
+                              
+                              {/* Download JPEG Button */}
+                              <button
+                                onClick={() => handleDownloadJPEG(form)}
+                                className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-purple-100 hover:text-purple-700 transition-colors"
+                                title="Download archived form as JPEG"
+                              >
+                                <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L22 10" />
+                                </svg>
+                                Download JPEG
+                              </button>
+                              
+                              <button
+                                onClick={() => handleViewForm(form)}
+                                className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                                title="View archived form (read-only)"
+                              >
+                                <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                View Form
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {/* Additional Form Summary Info */}
+                          <div className="mt-4 grid grid-cols-1 mobile:grid-cols-2 ipad:grid-cols-3 gap-4 text-sm mobile:text-base ipad:text-lg">
+                            <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5">
+                              <div className="font-medium text-gray-700">Date Created</div>
+                              <div className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
+                                {new Date(form.dateCreated || form.date).toLocaleDateString()}
+                              </div>
+                              <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                                {new Date(form.dateCreated || form.date).toLocaleTimeString()}
+                              </div>
+                            </div>
+                            
+                            <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5">
+                              <div className="font-medium text-gray-700">Last Updated</div>
+                              <div className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
+                                {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleDateString() : 'No text entered yet'}
+                              </div>
+                              <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                                {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : ''}
+                              </div>
+                            </div>
+                            
+                            {/* Corrective Actions and Comments - Always shown */}
+                            <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5 mobile:col-span-2 ipad:col-span-1">
+                              <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
+                              <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                                <textarea
+                                  readOnly
+                                  className="w-full h-20 mobile:h-24 ipad:h-28 p-2 mobile:p-3 ipad:p-4 text-sm mobile:text-base ipad:text-lg text-gray-700 bg-white border rounded-md resize-none"
+                                  value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
+                                    form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
+      
+      {/* Add space at bottom of page */}
+      <div className="h-16"></div>
 
       {/* Form Details Modal - Exactly like admin page */}
       {showFormModal && selectedForm && (

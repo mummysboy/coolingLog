@@ -8,6 +8,7 @@ import { usePinStore } from '../stores/pinStore';
 import { usePaperFormStore } from '../stores/paperFormStore';
 import { validateForm } from '../lib/validation';
 import { ensureDate } from '../lib/paperFormTypes';
+import { DatePicker } from "./DatePicker";
 import { format } from 'date-fns';
 import { 
   ClockIcon, 
@@ -165,6 +166,12 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
   };
 
   const isStageLocked = (rowIndex: number, stage: StageKey): boolean => {
+    // Check if this form has been saved (has server-assigned ID, not client-generated)
+    const isFormSaved = !localForm.id.startsWith('form-');
+    
+    // Only lock if form is saved AND all three primary fields are non-empty
+    if (!isFormSaved) return false;
+    
     const entry = localForm.entries[rowIndex];
     if (!entry) return false;
     
@@ -367,12 +374,12 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
         <div className="flex justify-center items-center gap-8">
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-700">DATE:</label>
-            <input
-              type="date"
+            <DatePicker
               value={format(localForm.date, 'yyyy-MM-dd')}
-              onChange={(e) => handleInputChange('date', new Date(e.target.value))}
+              onChange={(dateValue) => handleInputChange('date', new Date(dateValue))}
               className="border border-gray-300 rounded px-2 py-1 text-sm"
               disabled={!isEditing}
+              compact={true}
             />
           </div>
           <div className="flex items-center gap-2">
@@ -535,8 +542,8 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
                         await handleCellChange(index, "ccp1.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(index, "ccp1.time", "w-full")}
                       disabled={readOnly || isStageLocked(index, 'ccp1')}
+                      className={getCellClasses(index, "ccp1.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.ccp1?.dataLog || false}
@@ -600,8 +607,8 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
                         await handleCellChange(index, "ccp2.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(index, "ccp2.time", "w-full")}
                       disabled={readOnly || isStageLocked(index, 'ccp2')}
+                      className={getCellClasses(index, "ccp2.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.ccp2?.dataLog || false}
@@ -665,8 +672,8 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
                         await handleCellChange(index, "coolingTo80.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(index, "coolingTo80.time", "w-full")}
                       disabled={readOnly || isStageLocked(index, 'coolingTo80')}
+                      className={getCellClasses(index, "coolingTo80.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.coolingTo80?.dataLog || false}
@@ -730,8 +737,8 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
                         await handleCellChange(index, "coolingTo54.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(index, "coolingTo54.time", "w-full")}
                       disabled={readOnly || isStageLocked(index, 'coolingTo54')}
+                      className={getCellClasses(index, "coolingTo54.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.coolingTo54?.dataLog || false}
@@ -795,8 +802,8 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
                         await handleCellChange(index, "finalChill.time", time)
                       }
                       placeholder="Time"
-                      className={getCellClasses(index, "finalChill.time", "w-full")}
                       disabled={readOnly || isStageLocked(index, 'finalChill')}
+                      className={getCellClasses(index, "finalChill.time", "w-full")}
                       showQuickTimes={false}
                       compact
                       dataLog={entry.finalChill?.dataLog || false}
@@ -927,19 +934,19 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
               <tbody>
                 <tr>
                   <td className="border border-gray-300 px-2 py-1">
-                    <input
-                      type="date"
+                    <DatePicker
                       value={localForm.bagelDogPreShipmentReview?.date || ''}
-                      onChange={(e) => {
+                      onChange={(dateValue) => {
                         const updated = { ...localForm };
                         if (updated.bagelDogPreShipmentReview) {
-                          updated.bagelDogPreShipmentReview.date = e.target.value;
+                          updated.bagelDogPreShipmentReview.date = dateValue;
                           setLocalForm(updated);
                           onFormUpdate(localForm.id, { bagelDogPreShipmentReview: updated.bagelDogPreShipmentReview });
                         }
                       }}
                       className="w-full text-center border-none outline-none"
                       disabled={!isEditing}
+                      compact={true}
                     />
                   </td>
                   <td className="border border-gray-300 px-2 py-1">

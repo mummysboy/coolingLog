@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { FormType, isPiroshkiForm, isBagelDogForm } from './paperFormTypes';
+import { downloadFileIOSCompatible, isIOS } from './iosDownloadHelper';
 
 export interface PDFFormData {
   id: string;
@@ -37,7 +38,14 @@ const formatDate = (dateString: string) => {
 
 const formatTime = (timeString: string) => {
   if (!timeString) return '';
-  return timeString;
+  
+  // Convert 24-hour format to 12-hour format
+  const [hours, minutes] = timeString.split(':');
+  const hour = parseInt(hours);
+  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  
+  return `${displayHour}:${minutes} ${ampm}`;
 };
 
 const formatTemperature = (temp: string | number) => {
@@ -111,8 +119,9 @@ export const generateFormPDF = async (formData: PDFFormData): Promise<void> => {
     const date = new Date(formData.date).toISOString().split('T')[0];
     const filename = `${formData.formType}_${date}_${formData.id.slice(-6)}.pdf`;
     
-    // Download the PDF
-    pdf.save(filename);
+    // Download the PDF using iOS-compatible method
+    const pdfBlob = pdf.output('blob');
+    downloadFileIOSCompatible(pdfBlob, filename, 'PDF');
     
   } catch (error) {
     console.error('Error generating PDF:', error);
