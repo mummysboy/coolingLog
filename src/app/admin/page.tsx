@@ -1650,9 +1650,9 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="font-medium text-gray-700">Completion Date</div>
-                        <div className="text-lg font-semibold text-gray-900">{new Date(form.date).toLocaleDateString()}</div>
-                        <div className="text-sm text-gray-600 mt-1">{new Date(form.date).toLocaleTimeString()}</div>
+                        <div className="font-medium text-gray-700">Last Updated</div>
+                        <div className="text-lg font-semibold text-gray-900">{form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleDateString() : 'No text entered yet'}</div>
+                        <div className="text-sm text-gray-600 mt-1">{form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : ''}</div>
                       </div>
 
                       <div className="bg-gray-50 rounded-lg p-3">
