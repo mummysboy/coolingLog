@@ -121,7 +121,7 @@ export default function FormPage() {
       // Store the new form ID to track it (used to auto-open the modal)
       setNewlyCreatedFormId(currentForm.id);
     }
-  }, [createNewForm, store]);
+  }, [createNewForm, store, saveForm]);
 
   // Function to handle PDF download
   const handleDownloadPDF = useCallback(async (form: PaperFormEntry) => {
@@ -218,7 +218,7 @@ export default function FormPage() {
       console.error('Error downloading JPEG:', error);
       alert('Failed to download JPEG. Please try again.');
     }
-  }, []);
+  }, [generateFormHTML]);
 
   // Helper function to generate HTML for JPEG conversion - using the exact same logic as PDF generator
   const generateFormHTML = (formData: any): string => {

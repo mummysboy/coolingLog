@@ -81,7 +81,7 @@ export default function PaperForm({
     });
 
     setIngredientCols(derived);
-  }, [form?.id, form?.lotNumbers, form?.ingredientColumns]);
+  }, [form]);
 
   const slugForLabel = (label: string, idx: number) => {
     if (!label || String(label).trim() === "") return `ingredient${idx}`;
@@ -103,7 +103,7 @@ export default function PaperForm({
     }
 
     setCorrectiveText(formatNumberedTextFromRaw(form.correctiveActionsComments));
-  }, [form?.correctiveActionsComments, form?.id]);
+  }, [form]);
 
   // Memoize entries cheaply; Zustand will re-render when 'entries' changes
   const memoizedEntries = form?.entries || [];

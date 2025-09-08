@@ -45,7 +45,7 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
       return;
     }
     setCorrectiveText(formatNumberedTextFromRaw(form.correctiveActionsComments));
-  }, [form?.correctiveActionsComments, form?.id]);
+  }, [form]);
 
   if (!form) return null;
 

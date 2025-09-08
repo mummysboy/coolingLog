@@ -65,14 +65,14 @@ export function IOSDownloadHelper({ fileType, onDownload, className = '' }: IOSD
               
               <ol className="list-decimal list-inside space-y-2 ml-2">
                 <li>Tap and hold the download link that appeared</li>
-                <li>Select "Download Linked File" or "Save to Files"</li>
+                <li>Select &quot;Download Linked File&quot; or &quot;Save to Files&quot;</li>
                 <li>Choose your preferred location (Files app, Photos, etc.)</li>
               </ol>
               
               <div className="bg-blue-50 p-3 rounded-md">
                 <p className="text-blue-800 text-xs">
-                  <strong>Alternative:</strong> If the download didn't work, tap the share button 
-                  in Safari and select "Save to Files" or "Add to Photos" (for {fileType === 'JPEG' ? 'images' : 'documents'}).
+                  <strong>Alternative:</strong> If the download didn&apos;t work, tap the share button 
+                  in Safari and select &quot;Save to Files&quot; or &quot;Add to Photos&quot; (for {fileType === 'JPEG' ? 'images' : 'documents'}).
                 </p>
               </div>
             </div>
