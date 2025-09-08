@@ -10,13 +10,12 @@ import { PiroshkiForm } from '@/components/PiroshkiForm';
 import { validateForm, shouldHighlightCell } from '@/lib/validation';
 import BagelDogForm from '@/components/BagelDogForm';
 import { generateFormPDF } from '@/lib/pdfGenerator';
-import { downloadFileIOSCompatible } from '@/lib/iosDownloadHelper';
 
 // Debug flag for development
 const DEBUG_ALLOW_EDIT = false;
 
 export default function FormPage() {
-  const { currentForm, createNewForm, updateFormStatus, approveForm, saveForm, savedForms, loadForm, loadFormsFromStorage } = usePaperFormStore();
+  const { currentForm, createNewForm, updateFormStatus, approveForm, saveForm, savedForms, loadForm, deleteForm, loadFormsFromStorage } = usePaperFormStore();
   const store = usePaperFormStore; // Get store reference for getState()
   const [formUpdateKey, setFormUpdateKey] = useState(0); // Force re-render when form updates
 
@@ -24,16 +23,14 @@ export default function FormPage() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [isAddFormDropdownOpen, setIsAddFormDropdownOpen] = useState(false);
   const [newlyCreatedFormId, setNewlyCreatedFormId] = useState<string | null>(null);
-  const [isArchivedDropdownOpen, setIsArchivedDropdownOpen] = useState(false);
 
   // Refs for outside-click detection
   const addFormDropdownRef = useRef<HTMLDivElement>(null);
-  const archivedDropdownRef = useRef<HTMLDivElement>(null);
 
   // Memoized form lists to avoid repeated filtering/sorting on every render
   const activeForms = useMemo(() => 
     savedForms
-      .filter((form: PaperFormEntry) => form.status !== 'Complete' && form.status !== 'Approved' && form.status !== 'Archive')
+      .filter((form: PaperFormEntry) => form.status !== 'Complete' && form.status !== 'Approved')
       .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [savedForms]
   );
@@ -52,38 +49,17 @@ export default function FormPage() {
     [savedForms]
   );
 
-  // Archived forms list
-  const archivedForms = useMemo(() => {
-    const filtered = savedForms.filter((form: PaperFormEntry) => form.status === 'Archive');
-    console.log('🔍 Archived forms debug:', {
-      totalForms: savedForms.length,
-      archivedCount: filtered.length,
-      allStatuses: savedForms.map(f => ({ id: f.id, status: f.status })),
-      archivedForms: filtered.map(f => ({ id: f.id, status: f.status, title: f.title }))
-    });
-    return filtered.sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [savedForms]);
-
-  // Total count excluding archived forms
-  const totalNonArchivedForms = useMemo(() => 
-    savedForms.filter((form: PaperFormEntry) => form.status !== 'Archive').length,
-    [savedForms]
-  );
-
   // Close dropdown when clicking outside using ref
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isAddFormDropdownOpen && addFormDropdownRef.current && !addFormDropdownRef.current.contains(event.target as Node)) {
         setIsAddFormDropdownOpen(false);
       }
-      if (isArchivedDropdownOpen && archivedDropdownRef.current && !archivedDropdownRef.current.contains(event.target as Node)) {
-        setIsArchivedDropdownOpen(false);
-      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isAddFormDropdownOpen, isArchivedDropdownOpen]);
+  }, [isAddFormDropdownOpen]);
 
   // Body scroll lock when modal is open
   useEffect(() => {
@@ -121,7 +97,7 @@ export default function FormPage() {
       // Store the new form ID to track it (used to auto-open the modal)
       setNewlyCreatedFormId(currentForm.id);
     }
-  }, [createNewForm, store, saveForm]);
+  }, [createNewForm, store]);
 
   // Function to handle PDF download
   const handleDownloadPDF = useCallback(async (form: PaperFormEntry) => {
@@ -146,397 +122,6 @@ export default function FormPage() {
     } catch (error) {
       console.error('Error downloading PDF:', error);
       alert('Failed to download PDF. Please try again.');
-    }
-  }, []);
-
-  // Helper function to generate HTML for JPEG conversion - using the exact same logic as PDF generator
-  const generateFormHTML = (formData: any): string => {
-    // Import the same functions used by the PDF generator
-    const { FormType, isPiroshkiForm, isBagelDogForm } = require('@/lib/paperFormTypes');
-    
-    // Determine form type and generate appropriate content - exactly like PDF generator
-    if (formData.formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
-      return generatePiroshkiFormHTML(formData);
-    } else if (formData.formType === FormType.BAGEL_DOG_COOKING_COOLING) {
-      return generateBagelDogFormHTML(formData);
-    } else {
-      return generateCookingCoolingFormHTML(formData);
-    }
-  };
-
-  // Copy the exact same HTML generation functions from pdfGenerator.ts
-  const generateCookingCoolingFormHTML = (formData: any): string => {
-    // Generate the main form table rows
-    const generateFormRows = () => {
-      if (!formData.entries || formData.entries.length === 0) {
-        return `
-          <tr>
-            <td colspan="7" class="border border-black p-4 text-center text-gray-500">
-              No entries recorded
-            </td>
-          </tr>
-        `;
-      }
-
-      return formData.entries.map((entry: any, index: number) => `
-        <tr>
-          <td class="border border-black p-2 text-center">
-            ${entry.rack || index + 1}
-          </td>
-          <td class="border border-black p-2 text-center">
-            ${entry.type || ''}
-          </td>
-          <td class="border border-black p-1" style="${getDataLogClass(entry.ccp1?.dataLog)}">
-            <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 0.25rem; align-items: center;">
-              <div class="text-center">${formatTemperature(entry.ccp1?.temp)}</div>
-              <div class="text-center">${formatTime(entry.ccp1?.time)}</div>
-              <div class="text-center">${formatInitial(entry.ccp1?.initial)}</div>
-            </div>
-          </td>
-          <td class="border border-black p-1" style="${getDataLogClass(entry.ccp2?.dataLog)}">
-            <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 0.25rem; align-items: center;">
-              <div class="text-center">${formatTemperature(entry.ccp2?.temp)}</div>
-              <div class="text-center">${formatTime(entry.ccp2?.time)}</div>
-              <div class="text-center">${formatInitial(entry.ccp2?.initial)}</div>
-            </div>
-          </td>
-          <td class="border border-black p-1" style="${getDataLogClass(entry.coolingTo80?.dataLog)}">
-            <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 0.25rem; align-items: center;">
-              <div class="text-center">${formatTemperature(entry.coolingTo80?.temp)}</div>
-              <div class="text-center">${formatTime(entry.coolingTo80?.time)}</div>
-              <div class="text-center">${formatInitial(entry.coolingTo80?.initial)}</div>
-            </div>
-          </td>
-          <td class="border border-black p-1" style="${getDataLogClass(entry.coolingTo54?.dataLog)}">
-            <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 0.25rem; align-items: center;">
-              <div class="text-center">${formatTemperature(entry.coolingTo54?.temp)}</div>
-              <div class="text-center">${formatTime(entry.coolingTo54?.time)}</div>
-              <div class="text-center">${formatInitial(entry.coolingTo54?.initial)}</div>
-            </div>
-          </td>
-          <td class="border border-black p-1" style="${getDataLogClass(entry.finalChill?.dataLog)}">
-            <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 0.25rem; align-items: center;">
-              <div class="text-center">${formatTemperature(entry.finalChill?.temp)}</div>
-              <div class="text-center">${formatTime(entry.finalChill?.time)}</div>
-              <div class="text-center">${formatInitial(entry.finalChill?.initial)}</div>
-            </div>
-          </td>
-        </tr>
-      `).join('');
-    };
-
-    return `
-      <div style="font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; background-color: white;">
-        <!-- Form Header -->
-        <div style="margin-bottom: 24px;">
-          <div style="border: 2px solid black; margin-bottom: 16px;">
-            <div style="background-color: #f3f4f6; padding: 16px; text-align: center;">
-              <h1 style="color: #111827; margin: 0; font-size: 20px; font-weight: bold;">
-                Cooking and Cooling for Meat &amp; Non Meat Ingredients
-              </h1>
-            </div>
-            <div style="padding: 16px;">
-              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
-                <div>
-                  <span style="font-weight: 600;">Title: </span>
-                  <span style="border-bottom: 2px solid #d1d5db; padding: 4px 8px; display: inline-block; min-width: 200px;">
-                    ${formData.title || ''}
-                  </span>
-                </div>
-                <div>
-                  <span style="font-weight: 600;">Date: </span>
-                  <span style="border-bottom: 2px solid #d1d5db; padding: 4px 8px; display: inline-block; min-width: 150px;">
-                    ${formatDate(formData.date)}
-                  </span>
-                </div>
-                <div>
-                  <span style="font-weight: 600;">Status: </span>
-                  <span style="color: ${formData.status === 'Approved' ? '#4f46e5' : formData.status === 'Complete' ? '#059669' : '#d97706'}; font-weight: bold;">
-                    ${formData.status}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Main Table -->
-        <div style="border: 2px solid black; overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 12px; min-width: 760px;">
-            <!-- Header Row 1 -->
-            <thead>
-              <tr style="background-color: #f3f4f6;">
-                <th style="border: 1px solid black; padding: 8px; width: 64px;">Rack</th>
-                <th style="border: 1px solid black; padding: 8px; width: 64px;">Type</th>
-                <th style="border: 1px solid black; padding: 8px; width: 128px;">
-                  Temperature Must reach 166°F or greater<br/>
-                  <strong>CCP 1</strong>
-                </th>
-                <th style="border: 1px solid black; padding: 8px; width: 128px;">
-                  127°F or greater<br/>
-                  <strong>CCP 2</strong><br/>
-                  <small>Record Temperature of 1st and LAST rack/batch of the day</small>
-                </th>
-                <th style="border: 1px solid black; padding: 8px; width: 128px;">
-                  80°F or below within 105 minutes<br/>
-                  <strong>CCP 2</strong><br/>
-                  <small>Record Temperature of 1st rack/batch of the day</small><br/>
-                  <small>Time: from CCP2 (127°F)</small>
-                </th>
-                <th style="border: 1px solid black; padding: 8px; width: 128px;">
-                  <strong>54°F</strong> or below within 4.75 hr<br/>
-                  <small>Time: from CCP2 (127°F)</small>
-                </th>
-                <th style="border: 1px solid black; padding: 8px; width: 160px;">
-                  Chill Continuously to<br/>
-                  39°F or below
-                </th>
-              </tr>
-
-              <!-- Header Row 2 -->
-              <tr style="background-color: #f9fafb;">
-                <th style="border: 1px solid black; padding: 4px; font-size: 11px;">Rack</th>
-                <th style="border: 1px solid black; padding: 4px; font-size: 11px;">Type</th>
-                <th style="border: 1px solid black; padding: 4px;">
-                  <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 1px; font-size: 11px;">
-                    <div style="text-align: center;">Temp</div>
-                    <div style="text-align: center;">Time</div>
-                    <div style="text-align: center;">Initial</div>
-                  </div>
-                </th>
-                <th style="border: 1px solid black; padding: 4px;">
-                  <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 1px; font-size: 11px;">
-                    <div style="text-align: center;">Temp</div>
-                    <div style="text-align: center;">Time</div>
-                    <div style="text-align: center;">Initial</div>
-                  </div>
-                </th>
-                <th style="border: 1px solid black; padding: 4px;">
-                  <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 1px; font-size: 11px;">
-                    <div style="text-align: center;">Temp</div>
-                    <div style="text-align: center;">Time</div>
-                    <div style="text-align: center;">Initial</div>
-                  </div>
-                </th>
-                <th style="border: 1px solid black; padding: 4px;">
-                  <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 1px; font-size: 11px;">
-                    <div style="text-align: center;">Temp</div>
-                    <div style="text-align: center;">Time</div>
-                    <div style="text-align: center;">Initial</div>
-                  </div>
-                </th>
-                <th style="border: 1px solid black; padding: 4px;">
-                  <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 1px; font-size: 11px;">
-                    <div style="text-align: center;">Temp</div>
-                    <div style="text-align: center;">Time</div>
-                    <div style="text-align: center;">Initial</div>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-
-            <!-- Form Data Rows -->
-            <tbody>
-              ${generateFormRows()}
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Bottom Section -->
-        <div style="border: 2px solid black; border-top: 0;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0;">
-            <!-- Left side -->
-            <div style="border-right: 1px solid black;">
-              <!-- Thermometer # -->
-              <div style="border-bottom: 1px solid black; padding: 8px; text-align: center;">
-                <span style="font-weight: 600;">Thermometer #</span>
-                <span style="margin-left: 8px; border-bottom: 1px solid black; padding: 4px; display: inline-block; min-width: 150px;">
-                  ${formData.thermometerNumber || ''}
-                </span>
-              </div>
-
-              <!-- Ingredients Table -->
-              <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                  <tr>
-                    <th style="border: 1px solid black; padding: 8px; background-color: #f3f4f6;">Ingredient</th>
-                    <th style="border: 1px solid black; padding: 8px; background-color: #f3f4f6;">Beef</th>
-                    <th style="border: 1px solid black; padding: 8px; background-color: #f3f4f6;">Chicken</th>
-                    <th style="border: 1px solid black; padding: 8px; background-color: #f3f4f6;">Liquid Eggs</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style="border: 1px solid black; padding: 8px; font-weight: 600;">Lot #(s)</td>
-                    <td style="border: 1px solid black; padding: 4px; min-height: 20px;">
-                      ${formData.lotNumbers?.beef || ''}
-                    </td>
-                    <td style="border: 1px solid black; padding: 4px; min-height: 20px;">
-                      ${formData.lotNumbers?.chicken || ''}
-                    </td>
-                    <td style="border: 1px solid black; padding: 4px; min-height: 20px;">
-                      ${formData.lotNumbers?.liquidEggs || ''}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Right side - Corrective Actions -->
-            <div style="padding: 16px; position: relative;">
-              <div style="margin-bottom: 8px;">
-                <h3 style="font-weight: 600; margin: 0;">Corrective Actions &amp; comments:</h3>
-              </div>
-              <div style="width: 100%; min-height: 128px; border: 1px solid #d1d5db; padding: 8px; font-size: 11px; background-color: white; white-space: pre-wrap;">
-                ${formData.correctiveActionsComments || ''}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Form Status and Approval Info -->
-        ${formData.status === 'Complete' ? `
-          <div style="margin-top: 24px; padding: 16px; background-color: #f9fafb; border: 2px solid #e5e7eb; border-radius: 8px; text-align: center;">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #374151;">
-              <span style="font-size: 18px; font-weight: 600;">✓ Form Completed Successfully!</span>
-            </div>
-            <p style="color: #6b7280; margin: 4px 0 0 0;">This form has been finalized and can no longer be edited</p>
-          </div>
-        ` : ''}
-
-        ${formData.status === 'Approved' ? `
-          <div style="margin-top: 24px; padding: 16px; background-color: #eef2ff; border: 2px solid #c7d2fe; border-radius: 8px; text-align: center;">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #3730a3;">
-              <span style="font-size: 18px; font-weight: 600;">✓ Form Approved</span>
-            </div>
-            <p style="color: #6366f1; margin: 4px 0 0 0;">
-              Approved by: ${formData.approvedBy || 'N/A'}
-              ${formData.approvedAt ? ` • ${formatDate(formData.approvedAt)}` : ''}
-            </p>
-          </div>
-        ` : ''}
-
-        <!-- Footer -->
-        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #d1d5db; text-align: center; color: #6b7280; font-size: 11px;">
-          <p style="margin: 0;">Generated on ${new Date().toLocaleString('en-US')}</p>
-          <p style="margin: 5px 0 0 0;">Food Safety Monitoring System - Form ID: ${formData.id}</p>
-        </div>
-      </div>
-    `;
-  };
-
-  // Helper functions for formatting data - copied from pdfGenerator.ts
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (timeString: string) => {
-    if (!timeString) return '';
-    
-    // Convert 24-hour format to 12-hour format
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours);
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
-
-  const formatTemperature = (temp: string | number) => {
-    if (!temp) return '';
-    return `${temp}°F`;
-  };
-
-  const formatInitial = (initial: string) => {
-    if (!initial) return '';
-    return initial.toUpperCase();
-  };
-
-  const getDataLogClass = (dataLog: boolean) => {
-    return dataLog ? 'background-color: #dbeafe;' : '';
-  };
-
-  // Placeholder functions for other form types - these would need to be implemented similarly
-  const generatePiroshkiFormHTML = (formData: any): string => {
-    return `<div>Piroshki form HTML generation not yet implemented for JPEG</div>`;
-  };
-
-  const generateBagelDogFormHTML = (formData: any): string => {
-    return `<div>Bagel Dog form HTML generation not yet implemented for JPEG</div>`;
-  };
-
-  // Function to handle JPEG download
-  const handleDownloadJPEG = useCallback(async (form: PaperFormEntry) => {
-    try {
-      // Create a temporary div to render the form content
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '-9999px';
-      tempDiv.style.width = '1200px';
-      tempDiv.style.backgroundColor = 'white';
-      tempDiv.style.padding = '20px';
-      tempDiv.style.fontFamily = 'Arial, sans-serif';
-      tempDiv.style.fontSize = '12px';
-      tempDiv.style.lineHeight = '1.4';
-      
-      // Use the exact same HTML generation as the PDF generator
-      const { generateFormPDF } = await import('@/lib/pdfGenerator');
-      
-      // Create the same data structure that the PDF generator expects
-      const pdfFormData = {
-        id: form.id,
-        title: form.title || getFormTypeDisplayName(form.formType),
-        formType: form.formType,
-        date: form.date instanceof Date ? form.date.toISOString() : new Date(form.date).toISOString(),
-        status: form.status,
-        approvedBy: form.approvedBy,
-        approvedAt: form.approvedAt ? (form.approvedAt instanceof Date ? form.approvedAt.toISOString() : new Date(form.approvedAt).toISOString()) : undefined,
-        correctiveActionsComments: form.correctiveActionsComments,
-        thermometerNumber: form.thermometerNumber,
-        lotNumbers: form.lotNumbers,
-        entries: form.entries,
-        quantityAndFlavor: (form as any).quantityAndFlavor,
-        preShipmentReview: (form as any).preShipmentReview,
-        frankFlavorSizeTable: (form as any).frankFlavorSizeTable,
-        bagelDogPreShipmentReview: (form as any).bagelDogPreShipmentReview
-      };
-      
-      // Generate the exact same HTML that the PDF uses
-      tempDiv.innerHTML = generateFormHTML(pdfFormData);
-      
-      // Add to DOM temporarily
-      document.body.appendChild(tempDiv);
-      
-      // Convert to canvas using html2canvas
-      const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(tempDiv, {
-        width: 1200,
-        height: tempDiv.scrollHeight,
-        scale: 2, // Higher quality
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
-      
-      // Remove temporary div
-      document.body.removeChild(tempDiv);
-      
-      // Convert canvas to blob and download using iOS-compatible method
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const filename = `${form.title ? form.title.replace(/[^a-zA-Z0-9]/g, '_') : 'FoodChillingLog'}_${form.id.slice(-6)}_${new Date(form.date).toISOString().split('T')[0]}.jpg`;
-          downloadFileIOSCompatible(blob, filename, 'JPEG');
-        }
-      }, 'image/jpeg', 0.9);
-      
-    } catch (error) {
-      console.error('Error downloading JPEG:', error);
-      alert('Failed to download JPEG. Please try again.');
     }
   }, []);
 
@@ -783,7 +368,27 @@ export default function FormPage() {
     })();
   };
 
+  // Function to delete form
+  const handleDeleteForm = (formId: string) => {
+    const formToDelete = savedForms.find(form => form.id === formId);
+    if (!formToDelete) return;
 
+    const formDate = new Date(formToDelete.date).toLocaleDateString();
+    const formInitial = formToDelete.formInitial || 'Unknown';
+    
+    if (confirm(`Are you sure you want to delete Form #${formToDelete.id.slice(-6)}?\n\nForm Details:\n• Date: ${formDate}\n• Initial: ${formInitial}\n• Status: ${formToDelete.status}\n\nThis will permanently delete ALL form data including:\n• All temperature and time entries\n• Thermometer number\n• Ingredients and lot numbers\n• Corrective actions and comments\n• Admin comments\n• Validation errors\n\nThis action cannot be undone.`)) {
+      console.log('Deleting form:', formToDelete.id, 'with all associated data');
+      
+      // Delete the form using the store
+      deleteForm(formId);
+      
+      // If this was the selected form in the modal, close the modal
+      if (selectedForm?.id === formId) {
+        setShowFormModal(false);
+        setSelectedForm(null);
+      }
+    }
+  };
 
   // Function to save a specific form to AWS
   const handleSaveFormToAWS = useCallback(async (formId: string) => {
@@ -872,13 +477,13 @@ export default function FormPage() {
   }, [updateFormStatus, selectedForm]);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-responsive">
+    <div className="min-h-screen bg-gray-50 py-8">
       {/* Header */}
-      <div className="max-w-7xl mx-auto px-responsive mb-6">
-        <div className="flex flex-col mobile:flex-row mobile:items-center mobile:justify-between space-y-4 mobile:space-y-0">
-          <div className="flex items-center justify-center mobile:justify-start space-x-3">
+      <div className="max-w-7xl mx-auto px-4 mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
             {/* Logo */}
-            <div className="flex items-center justify-center w-24 h-24 mobile:w-32 mobile:h-32 ipad:w-40 ipad:h-40 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-center w-32 h-32 rounded-xl overflow-hidden">
               <Image 
                 src="/logo.avif" 
                 alt="FoodChillingLog Logo" 
@@ -889,43 +494,43 @@ export default function FormPage() {
             </div>
           </div>
           
-          {/* Navigation and Add Form Section */}
-          <div className="flex items-center justify-center mobile:justify-end space-x-4">
+          {/* NEW: Navigation and Add Form Section */}
+          <div className="flex items-center space-x-4">
             {/* Add Form Button with Dropdown */}
             <div className="relative" ref={addFormDropdownRef}>
               <button
                 onClick={() => setIsAddFormDropdownOpen(!isAddFormDropdownOpen)}
-                className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 border border-transparent text-sm mobile:text-base ipad:text-base font-medium rounded-lg mobile:rounded-xl ipad:rounded-xl shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
                 Add Form
-                <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
               
               {/* Dropdown Menu */}
               {isAddFormDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 mobile:w-64 ipad:w-72 rounded-lg mobile:rounded-xl ipad:rounded-2xl shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10 max-w-[calc(100vw-2rem)] sm:max-w-none">
+                <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                   <div className="py-1" role="menu" aria-orientation="vertical">
                     <button
                       onClick={() => {
                         handleCreateForm(FormType.COOKING_AND_COOLING);
                       }}
-                      className={`block w-full text-left px-3 py-2 mobile:py-3 ipad:py-3 text-sm mobile:text-base ipad:text-base text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors`}
+                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
                       role="menuitem"
                     >
                       <div className="flex items-center">
-                        <div className={`w-8 h-8 mobile:w-10 mobile:h-10 ipad:w-12 ipad:h-12 ${getFormTypeColors(FormType.COOKING_AND_COOLING).bg} rounded-lg mobile:rounded-xl ipad:rounded-2xl flex items-center justify-center mr-3`}>
-                          <span className={`text-lg mobile:text-xl ipad:text-2xl ${getFormTypeColors(FormType.COOKING_AND_COOLING).text}`}>
+                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.COOKING_AND_COOLING).bg} rounded-lg flex items-center justify-center mr-3`}>
+                          <span className={`text-lg ${getFormTypeColors(FormType.COOKING_AND_COOLING).text}`}>
                             {getFormTypeIcon(FormType.COOKING_AND_COOLING)}
                           </span>
                         </div>
                         <div>
                           <div className="font-medium">{getFormTypeDisplayName(FormType.COOKING_AND_COOLING)}</div>
-                          <div className="text-xs mobile:text-sm ipad:text-base text-gray-500">{getFormTypeDescription(FormType.COOKING_AND_COOLING)}</div>
+                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.COOKING_AND_COOLING)}</div>
                         </div>
                       </div>
                     </button>
@@ -934,18 +539,18 @@ export default function FormPage() {
                       onClick={() => {
                         handleCreateForm(FormType.PIROSHKI_CALZONE_EMPANADA);
                       }}
-                      className={`block w-full text-left px-3 py-2 mobile:py-3 ipad:py-3 text-sm mobile:text-base ipad:text-base text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors`}
+                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
                       role="menuitem"
                     >
                       <div className="flex items-center">
-                        <div className={`w-8 h-8 mobile:w-10 mobile:h-10 ipad:w-12 ipad:h-12 ${getFormTypeColors(FormType.PIROSHKI_CALZONE_EMPANADA).bg} rounded-lg mobile:rounded-xl ipad:rounded-2xl flex items-center justify-center mr-3`}>
-                          <span className={`text-lg mobile:text-xl ipad:text-2xl ${getFormTypeColors(FormType.PIROSHKI_CALZONE_EMPANADA).text}`}>
+                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.PIROSHKI_CALZONE_EMPANADA).bg} rounded-lg flex items-center justify-center mr-3`}>
+                          <span className={`text-lg ${getFormTypeColors(FormType.PIROSHKI_CALZONE_EMPANADA).text}`}>
                             {getFormTypeIcon(FormType.PIROSHKI_CALZONE_EMPANADA)}
                           </span>
                         </div>
                         <div>
                           <div className="font-medium">{getFormTypeDisplayName(FormType.PIROSHKI_CALZONE_EMPANADA)}</div>
-                          <div className="text-xs mobile:text-sm ipad:text-base text-gray-500">{getFormTypeDescription(FormType.PIROSHKI_CALZONE_EMPANADA)}</div>
+                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.PIROSHKI_CALZONE_EMPANADA)}</div>
                         </div>
                       </div>
                     </button>
@@ -954,18 +559,18 @@ export default function FormPage() {
                       onClick={() => {
                         handleCreateForm(FormType.BAGEL_DOG_COOKING_COOLING);
                       }}
-                      className={`block w-full text-left px-3 py-2 mobile:py-3 ipad:py-3 text-sm mobile:text-base ipad:text-base text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors`}
+                      className={`block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900`}
                       role="menuitem"
                     >
                       <div className="flex items-center">
-                        <div className={`w-8 h-8 mobile:w-10 mobile:h-10 ipad:w-12 ipad:h-12 ${getFormTypeColors(FormType.BAGEL_DOG_COOKING_COOLING).bg} rounded-lg mobile:rounded-xl ipad:rounded-2xl flex items-center justify-center mr-3`}>
-                          <span className={`text-lg mobile:text-xl ipad:text-2xl ${getFormTypeColors(FormType.BAGEL_DOG_COOKING_COOLING).text}`}>
+                        <div className={`w-8 h-8 ${getFormTypeColors(FormType.BAGEL_DOG_COOKING_COOLING).bg} rounded-lg flex items-center justify-center mr-3`}>
+                          <span className={`text-lg ${getFormTypeColors(FormType.BAGEL_DOG_COOKING_COOLING).text}`}>
                             {getFormTypeIcon(FormType.BAGEL_DOG_COOKING_COOLING)}
                           </span>
                         </div>
                         <div>
                           <div className="font-medium">{getFormTypeDisplayName(FormType.BAGEL_DOG_COOKING_COOLING)}</div>
-                          <div className="text-xs mobile:text-sm ipad:text-base text-gray-500">{getFormTypeDescription(FormType.BAGEL_DOG_COOKING_COOLING)}</div>
+                          <div className="text-xs text-gray-500">{getFormTypeDescription(FormType.BAGEL_DOG_COOKING_COOLING)}</div>
                         </div>
                       </div>
                     </button>
@@ -979,21 +584,21 @@ export default function FormPage() {
       </div>
 
       {/* Form Content */}
-      <div className="max-w-7xl mx-auto px-responsive">
+      <div className="max-w-7xl mx-auto px-4">
         {/* Display all forms */}
         {savedForms.length === 0 ? (
-          <div className="text-center py-12 mobile:py-16 ipad:py-20 bg-white rounded-xl border-2 border-gray-200">
-            <div className="text-4xl mobile:text-5xl ipad:text-6xl mb-4">📝</div>
-            <h2 className="text-lg mobile:text-xl ipad:text-2xl font-semibold text-gray-900 mb-2">No Forms Yet</h2>
-            <p className="text-sm mobile:text-base ipad:text-lg text-gray-600 mb-4">Click the &quot;Add Form&quot; button above to create your first form.</p>
-            <p className="text-xs mobile:text-sm ipad:text-base text-gray-500">Forms are only created when you explicitly choose to create them.</p>
+          <div className="text-center py-12 bg-white rounded-xl border-2 border-gray-200">
+            <div className="text-6xl mb-4">📝</div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">No Forms Yet</h2>
+            <p className="text-gray-600 mb-4">Click the &quot;Add Form&quot; button above to create your first form.</p>
+            <p className="text-sm text-gray-500">Forms are only created when you explicitly choose to create them.</p>
           </div>
         ) : (
           <>
             {/* Active Forms Section */}
             <div className="mb-8">
-              <h2 className="text-xl mobile:text-2xl ipad:text-3xl font-bold text-gray-900 mb-4 flex items-center">
-                <svg className="w-5 h-5 mobile:w-6 mobile:h-6 ipad:w-7 ipad:h-7 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Active Forms
@@ -1003,11 +608,11 @@ export default function FormPage() {
                     key={form.id} 
                     className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
                   >
-                    <div className={`p-4 mobile:p-6 ipad:p-8`}>
-                      <div className="flex flex-col mobile:flex-row mobile:items-center mobile:justify-between space-y-4 mobile:space-y-0">
+                    <div className={`p-6`}>
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           {/* Status Indicator */}
-                          <div className={`w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 rounded-full ${
+                          <div className={`w-4 h-4 rounded-full ${
                             form.status === 'Complete' ? 'bg-green-500' :
                             form.status === 'Error' ? 'bg-red-500' :
                             'bg-yellow-500'
@@ -1015,21 +620,21 @@ export default function FormPage() {
                           
                           {/* Form Info */}
                           <div>
-                            <h3 className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
+                            <h3 className="text-lg font-semibold text-gray-900">
                               {form.title ? form.title : getFormTypeDisplayName(form.formType)}
                             </h3>
-                            <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                            <div className="text-sm text-gray-600 mt-1">
                               {getFormTypeDisplayName(form.formType)}
                             </div>
-                            <div className="flex items-center space-x-4 text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                            <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                               <span>Form #{form.id.slice(-6)}</span>
                             </div>
                           </div>
                         </div>
                         
-                        <div className="flex flex-col mobile:flex-row items-start mobile:items-center space-y-3 mobile:space-y-0 mobile:space-x-3">
+                        <div className="flex items-center space-x-3">
                           {/* Status Badge */}
-                          <span className={`inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-2 ipad:px-4 ipad:py-2 rounded-full text-sm mobile:text-base ipad:text-base font-medium ${
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                             form.status === 'Complete' ? 'bg-green-100 text-green-800' :
                             form.status === 'Error' ? 'bg-red-100 text-red-800' :
                             'bg-yellow-100 text-yellow-800'
@@ -1039,52 +644,64 @@ export default function FormPage() {
                              '⏳ In Progress'}
                           </span>
                           
+                          
+                          
                           {/* View Form Button */}
                           <button
                             onClick={() => handleViewForm(form)}
-                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
                             title="View and edit form details"
                           >
-                            <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                             View Form
                           </button>
                           
-
+                          {/* Delete Form Button */}
+                          <button
+                            onClick={() => handleDeleteForm(form.id)}
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors"
+                            title="Delete form"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete
+                          </button>
                         </div>
                       </div>
                       
                       {/* Additional Form Summary Info */}
-                      <div className="mt-4 grid grid-cols-1 mobile:grid-cols-2 ipad:grid-cols-3 gap-4 text-sm mobile:text-base ipad:text-lg">
-                        <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5">
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="bg-gray-50 rounded-lg p-3">
                           <div className="font-medium text-gray-700">Date Created</div>
-                          <div className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
+                          <div className="text-lg font-semibold text-gray-900">
                             {new Date(form.dateCreated || form.date).toLocaleDateString()}
                           </div>
-                          <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                          <div className="text-sm text-gray-600 mt-1">
                             {new Date(form.dateCreated || form.date).toLocaleTimeString()}
                           </div>
                         </div>
                         
-                        <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5">
+                        <div className="bg-gray-50 rounded-lg p-3">
                           <div className="font-medium text-gray-700">Last Updated</div>
-                          <div className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
+                          <div className="text-lg font-semibold text-gray-900">
                             {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleDateString() : 'No text entered yet'}
                           </div>
-                          <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                          <div className="text-sm text-gray-600 mt-1">
                             {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : ''}
                           </div>
                         </div>
                         
                         {/* Corrective Actions and Comments - Always shown */}
-                        <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5 mobile:col-span-2 ipad:col-span-1">
+                        <div className="bg-gray-50 rounded-lg p-3">
                           <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
-                          <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                          <div className="text-sm text-gray-600 mt-1">
                             <textarea
                               readOnly
-                              className="w-full h-20 mobile:h-24 ipad:h-28 p-2 mobile:p-3 ipad:p-4 text-sm mobile:text-base ipad:text-lg text-gray-700 bg-white border rounded-md resize-none"
+                              className="w-full h-20 p-2 text-sm text-gray-700 bg-white border rounded-md resize-none"
                               value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
                                 form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
                             />
@@ -1097,10 +714,10 @@ export default function FormPage() {
               
               {/* No Active Forms Message */}
               {activeForms.length === 0 && (
-                <div className="text-center py-8 mobile:py-12 ipad:py-16 bg-white rounded-xl border-2 border-gray-200">
-                  <div className="text-3xl mobile:text-4xl ipad:text-5xl mb-3">✅</div>
-                  <h3 className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900 mb-2">All Forms Completed!</h3>
-                  <p className="text-sm mobile:text-base ipad:text-lg text-gray-600">Great job! All your forms have been marked as complete.</p>
+                <div className="text-center py-8 bg-white rounded-xl border-2 border-gray-200">
+                  <div className="text-4xl mb-3">✅</div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">All Forms Completed!</h3>
+                  <p className="text-gray-600">Great job! All your forms have been marked as complete.</p>
                 </div>
               )}
             </div>
@@ -1108,8 +725,8 @@ export default function FormPage() {
             {/* Completed Forms Section */}
             {completedForms.length > 0 && (
               <div className="mb-8">
-                <h2 className="text-xl mobile:text-2xl ipad:text-3xl font-bold text-gray-900 mb-4 flex items-center">
-                  <svg className="w-5 h-5 mobile:w-6 mobile:h-6 ipad:w-7 ipad:h-7 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                  <svg className="w-6 h-6 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   Completed Forms
@@ -1120,40 +737,42 @@ export default function FormPage() {
                       key={form.id} 
                       className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}
                     >
-                      <div className={`p-4 mobile:p-6 ipad:p-8`}>
-                        <div className="flex flex-col mobile:flex-row mobile:items-center mobile:justify-between space-y-4 mobile:space-y-0">
+                      <div className={`p-6`}>
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
                             {/* Form Info */}
                             <div>
-                              <h3 className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
+                              <h3 className="text-lg font-semibold text-gray-900">
                                 {form.title ? form.title : getFormTypeDisplayName(form.formType)}
                               </h3>
-                              <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                              <div className="text-sm text-gray-600 mt-1">
                                 {getFormTypeDisplayName(form.formType)}
                               </div>
-                              <div className="flex items-center space-x-4 text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                              <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                                 <span>Form #{form.id.slice(-6)}</span>
                                 <span className="text-gray-600 font-medium">✓ Finalized</span>
                                 {form.approvedBy && (
-                                  <span className="ml-2 text-indigo-600 text-sm mobile:text-base ipad:text-lg">Approved by {form.approvedBy}</span>
+                                  <span className="ml-2 text-indigo-600 text-sm">Approved by {form.approvedBy}</span>
                                 )}
                               </div>
                             </div>
                           </div>
                           
-                          <div className="flex flex-col mobile:flex-row items-start mobile:items-center space-y-3 mobile:space-y-0 mobile:space-x-3">
+                          <div className="flex items-center space-x-3">
                             {/* Status Badge */}
-                                                      <span className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-2 ipad:px-4 ipad:py-2 rounded-full text-sm mobile:text-base ipad:text-base font-medium bg-green-100 text-green-800">
-                            ✓ Complete
-                          </span>
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                              ✓ Complete
+                            </span>
+                            
+                                                                                  {/* Download/Print removed for Completed forms; available only on Approved forms */}
                             
                             {/* View Form Button - Read Only */}
                             <button
                               onClick={() => handleViewForm(form)}
-                              className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
                               title="View completed form (read-only)"
                             >
-                              <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                               </svg>
@@ -1165,34 +784,34 @@ export default function FormPage() {
                         </div>
                         
                         {/* Additional Form Summary Info */}
-                        <div className="mt-4 grid grid-cols-1 mobile:grid-cols-2 ipad:grid-cols-3 gap-4 text-sm mobile:text-base ipad:text-lg">
-                          <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5">
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div className="bg-gray-50 rounded-lg p-3">
                             <div className="font-medium text-gray-700">Date Created</div>
-                            <div className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
+                            <div className="text-lg font-semibold text-gray-900">
                               {new Date(form.date).toLocaleDateString()}
                             </div>
-                            <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                            <div className="text-sm text-gray-600 mt-1">
                               {new Date(form.date).toLocaleTimeString()}
                             </div>
                           </div>
                           
-                          <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5">
+                          <div className="bg-gray-50 rounded-lg p-3">
                             <div className="font-medium text-gray-700">Completion Date</div>
-                            <div className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
+                            <div className="text-lg font-semibold text-gray-900">
                               {new Date(form.date).toLocaleDateString()}
                             </div>
-                            <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                            <div className="text-sm text-gray-600 mt-1">
                               {new Date(form.date).toLocaleTimeString()}
                             </div>
                           </div>
                           
                           {/* Corrective Actions and Comments - Always shown */}
-                          <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5 mobile:col-span-2 ipad:col-span-1">
+                          <div className="bg-gray-50 rounded-lg p-3">
                             <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
-                            <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                            <div className="text-sm text-gray-600 mt-1">
                               <textarea
                                 readOnly
-                                className="w-full h-20 mobile:h-24 ipad:h-28 p-2 mobile:p-3 ipad:p-4 text-sm mobile:text-base ipad:text-lg text-gray-700 bg-white border rounded-md resize-none"
+                                className="w-full h-20 p-2 text-sm text-gray-700 bg-white border rounded-md resize-none"
                                 value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
                                   form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
                               />
@@ -1207,8 +826,8 @@ export default function FormPage() {
             {/* Approved Forms Section */}
             {approvedForms.length > 0 && (
               <div className="mb-8">
-                <h2 className="text-xl mobile:text-2xl ipad:text-3xl font-bold text-gray-900 mb-4 flex items-center">
-                  <svg className="w-5 h-5 mobile:w-6 mobile:h-6 ipad:w-7 ipad:h-7 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                  <svg className="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   Approved Forms
@@ -1216,59 +835,47 @@ export default function FormPage() {
 
                 {approvedForms.map((form: PaperFormEntry) => (
                   <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
-                    <div className={`p-4 mobile:p-6 ipad:p-8`}>
-                      <div className="flex flex-col mobile:flex-row mobile:items-center mobile:justify-between space-y-4 mobile:space-y-0">
+                    <div className={`p-6`}>
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div>
-                            <h3 className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
-                            <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
-                            <div className="flex items-center space-x-4 text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                            <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
+                            <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
+                            <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                               <span>Form #{form.id.slice(-6)}</span>
                               {form.approvedBy && (
-                                <span className="text-sm mobile:text-base ipad:text-lg text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                                <span className="text-sm text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
                               )}
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex flex-col mobile:flex-row items-start mobile:items-center space-y-3 mobile:space-y-0 mobile:space-x-3">
-                          <div className="flex flex-col items-end text-sm mobile:text-base ipad:text-lg text-gray-600">
-                            <span className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-2 ipad:px-5 ipad:py-3 rounded-full text-sm mobile:text-base ipad:text-lg font-medium bg-indigo-100 text-indigo-800">✓ Approved</span>
+                        <div className="flex items-center space-x-3">
+                          <div className="flex flex-col items-end text-sm text-gray-600">
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">✓ Approved</span>
                             {form.approvedBy && (
-                              <span className="text-xs mobile:text-sm ipad:text-base text-indigo-700 mt-1">By {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                              <span className="text-xs text-indigo-700 mt-1">By {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
                             )}
                           </div>
                           
                           {/* Download PDF Button */}
                           <button
                             onClick={() => handleDownloadPDF(form)}
-                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-green-100 hover:text-green-700 transition-colors"
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-700 transition-colors"
                             title="Download form as PDF"
                           >
-                            <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                             Download PDF
                           </button>
                           
-                          {/* Download JPEG Button */}
-                          <button
-                            onClick={() => handleDownloadJPEG(form)}
-                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-purple-100 hover:text-purple-700 transition-colors"
-                            title="Download form as JPEG"
-                          >
-                            <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L22 10" />
-                            </svg>
-                            Download JPEG
-                          </button>
-                          
                           <button
                             onClick={() => handleViewForm(form)}
-                            className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
                             title="View approved form (read-only)"
                           >
-                            <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
@@ -1276,207 +883,35 @@ export default function FormPage() {
                           </button>
                         </div>
                       </div>
-                      
-                      {/* Additional Form Summary Info */}
-                      <div className="mt-4 grid grid-cols-1 mobile:grid-cols-2 ipad:grid-cols-3 gap-4 text-sm mobile:text-base ipad:text-lg">
-                        <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5">
-                          <div className="font-medium text-gray-700">Date Created</div>
-                          <div className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
-                            {new Date(form.dateCreated || form.date).toLocaleDateString()}
-                          </div>
-                          <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
-                            {new Date(form.dateCreated || form.date).toLocaleTimeString()}
-                          </div>
-                        </div>
-                        
-                        <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5">
-                          <div className="font-medium text-gray-700">Last Updated</div>
-                          <div className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
-                            {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleDateString() : 'No text entered yet'}
-                          </div>
-                          <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
-                            {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : ''}
-                          </div>
-                        </div>
-                        
-                        {/* Corrective Actions and Comments - Always shown */}
-                        <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5 mobile:col-span-2 ipad:col-span-1">
-                          <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
-                          <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
-                            <textarea
-                              readOnly
-                              className="w-full h-20 mobile:h-24 ipad:h-28 p-2 mobile:p-3 ipad:p-4 text-sm mobile:text-base ipad:text-lg text-gray-700 bg-white border rounded-md resize-none"
-                              value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
-                                form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
-                            />
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-
-            {/* Archived Forms Section - Dropdown */}
-            {archivedForms.length > 0 && (
-              <div className="mb-16" ref={archivedDropdownRef}>
-                <button
-                  onClick={() => setIsArchivedDropdownOpen(!isArchivedDropdownOpen)}
-                  className="w-full flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 mobile:w-6 mobile:h-6 ipad:w-7 ipad:h-7 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2V9a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    <h2 className="text-xl mobile:text-2xl ipad:text-3xl font-bold text-gray-900">
-                      Archived Forms ({archivedForms.length})
-                    </h2>
-                  </div>
-                  <svg 
-                    className={`w-5 h-5 mobile:w-6 mobile:h-6 ipad:w-7 ipad:h-7 text-gray-600 transition-transform ${isArchivedDropdownOpen ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-
-                {isArchivedDropdownOpen && (
-                  <div className="mt-4 space-y-4 mb-8">
-                    {archivedForms.map((form: PaperFormEntry) => (
-                      <div key={form.id} className="bg-white rounded-xl border-2 border-gray-200 mb-6">
-                        <div className="p-4 mobile:p-6 ipad:p-8">
-                          <div className="flex flex-col mobile:flex-row mobile:items-center mobile:justify-between space-y-4 mobile:space-y-0">
-                            <div className="flex items-center space-x-4">
-                              <div>
-                                <h3 className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
-                                <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
-                                <div className="flex items-center space-x-4 text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
-                                  <span>Form #{form.id.slice(-6)}</span>
-                                  <span>Date Range: {new Date(form.dateCreated).toLocaleDateString()} - {new Date(form.date).toLocaleDateString()}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-col mobile:flex-row items-start mobile:items-center space-y-3 mobile:space-y-0 mobile:space-x-3">
-                              <div className="flex flex-col items-end text-sm mobile:text-base ipad:text-lg text-gray-600">
-                                <span className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-2 ipad:px-5 ipad:py-3 rounded-full text-sm mobile:text-base ipad:text-lg font-medium bg-gray-100 text-gray-800">📁 Archived</span>
-                              </div>
-                              
-                              {/* Download PDF Button */}
-                              <button
-                                onClick={() => handleDownloadPDF(form)}
-                                className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-green-600 bg-green-50 border border-green-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-green-100 hover:text-green-700 transition-colors"
-                                title="Download archived form as PDF"
-                              >
-                                <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Download PDF
-                              </button>
-                              
-                              {/* Download JPEG Button */}
-                              <button
-                                onClick={() => handleDownloadJPEG(form)}
-                                className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-purple-100 hover:text-purple-700 transition-colors"
-                                title="Download archived form as JPEG"
-                              >
-                                <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L22 10" />
-                                </svg>
-                                Download JPEG
-                              </button>
-                              
-                              <button
-                                onClick={() => handleViewForm(form)}
-                                className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                                title="View archived form (read-only)"
-                              >
-                                <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                View Form
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {/* Additional Form Summary Info */}
-                          <div className="mt-4 grid grid-cols-1 mobile:grid-cols-2 ipad:grid-cols-3 gap-4 text-sm mobile:text-base ipad:text-lg">
-                            <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5">
-                              <div className="font-medium text-gray-700">Date Created</div>
-                              <div className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
-                                {new Date(form.dateCreated || form.date).toLocaleDateString()}
-                              </div>
-                              <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
-                                {new Date(form.dateCreated || form.date).toLocaleTimeString()}
-                              </div>
-                            </div>
-                            
-                            <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5">
-                              <div className="font-medium text-gray-700">Last Updated</div>
-                              <div className="text-base mobile:text-lg ipad:text-xl font-semibold text-gray-900">
-                                {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleDateString() : 'No text entered yet'}
-                              </div>
-                              <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
-                                {form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : ''}
-                              </div>
-                            </div>
-                            
-                            {/* Corrective Actions and Comments - Always shown */}
-                            <div className="bg-gray-50 rounded-lg p-3 mobile:p-4 ipad:p-5 mobile:col-span-2 ipad:col-span-1">
-                              <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
-                              <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
-                                <textarea
-                                  readOnly
-                                  className="w-full h-20 mobile:h-24 ipad:h-28 p-2 mobile:p-3 ipad:p-4 text-sm mobile:text-base ipad:text-lg text-gray-700 bg-white border rounded-md resize-none"
-                                  value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
-                                    form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </>
         )}
       </div>
-      
-      {/* Add space at bottom of page */}
-      <div className="h-16"></div>
 
       {/* Form Details Modal - Exactly like admin page */}
       {showFormModal && selectedForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-50 rounded-2xl w-full h-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
-            <div className="flex flex-col mobile:flex-row mobile:justify-between mobile:items-center p-4 mobile:p-6 ipad:p-8 bg-white border-b space-y-4 mobile:space-y-0">
+            <div className="flex justify-between items-center p-4 bg-white border-b">
               <div>
-                <h3 className="text-lg mobile:text-xl ipad:text-2xl font-semibold">
+                <h3 className="text-xl font-semibold">
                   {selectedForm.title ? selectedForm.title : 'Edit Form'} - {new Date(selectedForm.date).toLocaleDateString()}
                 </h3>
-                <div className="text-sm mobile:text-base ipad:text-lg text-gray-600 mt-1">
+                <div className="text-sm text-gray-600 mt-1">
                   Status: <span className={`font-medium ${
                     selectedForm.status === 'Approved' ? 'text-indigo-600' :
                     selectedForm.status === 'Complete' ? 'text-green-600' :
                     selectedForm.status === 'In Progress' ? 'text-yellow-600' :
-                    selectedForm.status === 'Archive' ? 'text-gray-600' :
                     'text-orange-600'
                   }`}>
                     {selectedForm.status}
                   </span>
-                  {(selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive') && (
-                    <span className={`ml-2 font-medium ${
-                      selectedForm.status === 'Approved' ? 'text-indigo-600' : 
-                      selectedForm.status === 'Complete' ? 'text-green-600' :
-                      'text-gray-600'
-                    }`}>(Read-Only)</span>
+                  {(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && (
+                    <span className={`ml-2 font-medium ${selectedForm.status === 'Approved' ? 'text-indigo-600' : 'text-green-600'}`}>(Read-Only)</span>
                   )}
                   {DEBUG_ALLOW_EDIT && (
                     <div className="mt-1 text-orange-600 font-medium">
@@ -1485,89 +920,50 @@ export default function FormPage() {
                   )}
                 </div>
               </div>
+              <button
+                onClick={async () => {
+                  // Auto-save form to AWS when closing modal (do not finalize status)
+                  try {
+                    console.log('Modal closing - auto-saving form to AWS');
+                    await saveForm();
+                    console.log('Form auto-saved successfully to AWS');
+                  } catch (error) {
+                    console.error('Error auto-saving form when closing modal:', error);
+                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    alert(`Warning: Form could not be auto-saved: ${errorMessage}`);
+                  }
+                  
+                  // Close the modal
+                  setShowFormModal(false);
+                  setSelectedForm(null);
+                  setNewlyCreatedFormId(null); // Reset the flag when closing
+                }}
+                className="text-gray-400 hover:text-gray-600 text-2xl transition-colors"
+                title="Close and save form to AWS"
+                aria-label="Close modal and save form to AWS"
+              >
+                ✕
+              </button>
               
-              {/* Right side buttons container */}
-              <div className="flex flex-col mobile:flex-row items-start mobile:items-center space-y-3 mobile:space-y-0 mobile:space-x-3">
-                {/* Temporary button to reset form status */}
-                {selectedForm.status === 'Complete' && DEBUG_ALLOW_EDIT && (
-                  <button
-                    onClick={() => {
-                      if (confirm('Reset form status from Complete to In Progress? This will allow editing.')) {
-                        updateFormStatus(selectedForm.id, 'In Progress');
-                        // Update the local state
-                        setSelectedForm({ ...selectedForm, status: 'In Progress' });
-                        // Force re-render
-                        setFormUpdateKey(prev => prev + 1);
-                      }
-                    }}
-                    className="px-3 py-2 mobile:px-4 mobile:py-2 ipad:px-4 ipad:py-2 text-sm mobile:text-base ipad:text-base bg-orange-500 text-white rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-orange-600 transition-colors"
-                    title="Reset form status to allow editing"
-                    aria-label="Reset form status to In Progress"
-                  >
-                    Reset Status
-                  </button>
-                )}
-                
-                                 {/* Save Button */}
-                 <button
-                   onClick={async () => {
-                     // Prevent saving if form is Complete, Approved, or Archived
-                     if (selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive') {
-                       alert('Cannot save forms that are Complete, Approved, or Archived. These forms are read-only.');
-                       return;
-                     }
-                     
-                     // Save form to AWS when clicking save button
-                     try {
-                       console.log('Saving form to AWS...');
-                       await saveForm();
-                       console.log('Form saved successfully to AWS');
-                       
-                       // Close the modal after successful save
-                       setShowFormModal(false);
-                       setSelectedForm(null);
-                       setNewlyCreatedFormId(null);
-                     } catch (error) {
-                       console.error('Error saving form:', error);
-                       const errorMessage = error instanceof Error ? error.message : String(error);
-                       alert(`Error saving form: ${errorMessage}`);
-                     }
-                   }}
-                   disabled={selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive'}
-                   className={`inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-2 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium border border-transparent rounded-lg mobile:rounded-xl ipad:rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors ${
-                     selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive'
-                       ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                       : 'bg-blue-600 text-white hover:bg-blue-700'
-                   }`}
-                   title={selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive' 
-                     ? 'Cannot save read-only forms' 
-                     : 'Save form to AWS and close'}
-                   aria-label="Save form to AWS and close"
-                 >
-                   <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                   </svg>
-                   Save
-                 </button>
-                
-                {/* Cancel Button */}
+              {/* Temporary button to reset form status */}
+              {selectedForm.status === 'Complete' && DEBUG_ALLOW_EDIT && (
                 <button
                   onClick={() => {
-                    // Close the modal without saving
-                    setShowFormModal(false);
-                    setSelectedForm(null);
-                    setNewlyCreatedFormId(null); // Reset the flag when closing
+                    if (confirm('Reset form status from Complete to In Progress? This will allow editing.')) {
+                      updateFormStatus(selectedForm.id, 'In Progress');
+                      // Update the local state
+                      setSelectedForm({ ...selectedForm, status: 'In Progress' });
+                      // Force re-render
+                      setFormUpdateKey(prev => prev + 1);
+                    }
                   }}
-                  className="inline-flex items-center px-3 py-2 mobile:px-4 mobile:py-3 ipad:px-4 ipad:py-3 text-sm mobile:text-base ipad:text-base font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg mobile:rounded-xl ipad:rounded-xl hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
-                  title="Cancel and close modal without saving"
-                  aria-label="Cancel and close modal without saving"
+                  className="ml-2 px-3 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
+                  title="Reset form status to allow editing"
+                  aria-label="Reset form status to In Progress"
                 >
-                  <svg className="w-4 h-4 mobile:w-5 mobile:h-5 ipad:w-6 ipad:h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Cancel
+                  Reset Status
                 </button>
-              </div>
+              )}
             </div>
             
             <div className="flex-1 overflow-y-auto">
@@ -1575,21 +971,21 @@ export default function FormPage() {
                 <PiroshkiForm 
                   key={`${selectedForm.id}-${formUpdateKey}`}
                   formData={selectedForm}
-                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive') && !DEBUG_ALLOW_EDIT}
+                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
                   onFormUpdate={handleFormUpdate}
                 />
               ) : selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING ? (
                 <BagelDogForm
                   key={`${selectedForm.id}-${formUpdateKey}`}
                   formData={selectedForm}
-                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive') && !DEBUG_ALLOW_EDIT}
+                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
                   onFormUpdate={handleFormUpdate}
                 />
               ) : (
                 <PaperForm 
                   key={`${selectedForm.id}-${formUpdateKey}`}
                   formId={selectedForm.id}
-                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved' || selectedForm.status === 'Archive') && !DEBUG_ALLOW_EDIT}
+                  readOnly={(selectedForm.status === 'Complete' || selectedForm.status === 'Approved') && !DEBUG_ALLOW_EDIT}
                   onFormUpdate={handleFormUpdate}
                 />
               )}

@@ -27,6 +27,9 @@ type CookingCoolingFormEntry @model @auth(rules: [{ allow: public }]) {
   adminComments: [AdminComment!]
   resolvedErrors: [String!]
   
+  # Completion metadata
+  completedAt: AWSDateTime
+  
   createdAt: AWSDateTime
   updatedAt: AWSDateTime
 }
@@ -58,6 +61,9 @@ type PiroshkiFormEntry @model @auth(rules: [{ allow: public }]) {
   adminComments: [AdminComment!]
   resolvedErrors: [String!]
   
+  # Completion metadata
+  completedAt: AWSDateTime
+  
   createdAt: AWSDateTime
   updatedAt: AWSDateTime
 }
@@ -88,6 +94,9 @@ type BagelDogFormEntry @model @auth(rules: [{ allow: public }]) {
   # Admin comments and resolution
   adminComments: [AdminComment!]
   resolvedErrors: [String!]
+  
+  # Completion metadata
+  completedAt: AWSDateTime
   
   createdAt: AWSDateTime
   updatedAt: AWSDateTime

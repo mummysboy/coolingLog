@@ -121,11 +121,21 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
   ) => {
     set((state) => ({
       savedForms: state.savedForms.map((form) =>
-        form.id === formId ? { ...form, status } : form
+        form.id === formId ? { 
+          ...form, 
+          status,
+          // Set completedAt timestamp when status changes to Complete
+          completedAt: status === 'Complete' ? new Date() : form.completedAt
+        } : form
       ),
       currentForm:
         state.currentForm?.id === formId
-          ? { ...state.currentForm, status }
+          ? { 
+              ...state.currentForm, 
+              status,
+              // Set completedAt timestamp when status changes to Complete
+              completedAt: status === 'Complete' ? new Date() : state.currentForm.completedAt
+            }
           : state.currentForm,
     }));
 

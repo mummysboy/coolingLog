@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { usePaperFormStore } from '@/stores/paperFormStore';
 import { usePinStore } from '@/stores/pinStore';
@@ -8,80 +8,17 @@ import { MOCK_USERS } from '@/lib/types';
 import { PaperFormEntry, FormType, getFormTypeDisplayName, getFormTypeIcon, getFormTypeColors } from '@/lib/paperFormTypes';
 import PaperForm from '@/components/PaperForm';
 import { generateFormPDF } from '@/lib/pdfGenerator';
-import { downloadFileIOSCompatible } from '@/lib/iosDownloadHelper';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
 import BagelDogForm from '@/components/BagelDogForm';
 import { shouldHighlightCell } from '@/lib/validation';
-import { ApprovalModal } from '@/components/ApprovalModal';
 
 
 export default function AdminDashboard() {
-  const { savedForms, currentForm, loadForm, loadFormsFromStorage, updateFormStatus, approveForm, deleteForm, isFormBlank, exportState, syncFormsToAWS, saveForm } = usePaperFormStore();
+  const { savedForms, currentForm, loadForm, loadFormsFromStorage, updateFormStatus, approveForm, deleteForm, isFormBlank, exportState, syncFormsToAWS } = usePaperFormStore();
 
   const { createPin, updatePin, deletePin, getAllPins, getPinForInitials } = usePinStore();
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [formToApprove, setFormToApprove] = useState<PaperFormEntry | null>(null);
-
-  // Simple form update handler that only updates local state (no auto-saving)
-  const handleFormUpdate = useCallback((formId: string, updates: Partial<PaperFormEntry>) => {
-    console.log('Admin form updated:', formId, updates);
-    
-    // Only auto-save status changes (like 'Complete') - same as form page
-    if (updates.status) {
-      console.log('Status updated to:', updates.status, 'updating store');
-      
-      // If changing to Approved, show the approval modal instead of directly updating
-      if (updates.status === 'Approved') {
-        const formToApprove = savedForms.find(f => f.id === formId);
-        if (formToApprove) {
-          setFormToApprove(formToApprove);
-          setShowApprovalModal(true);
-        }
-        return;
-      }
-      
-      updateFormStatus(formId, updates.status);
-      // Force dashboard refresh to show updated status
-      setDashboardRefreshKey(prev => prev + 1);
-      
-      // Close modal when form is completed
-      if (updates.status === 'Complete') {
-        setShowFormModal(false);
-        setSelectedForm(null);
-      }
-    }
-    
-    // Update the selectedForm state to reflect changes (local only)
-    if (selectedForm && selectedForm.id === formId) {
-      const updatedForm = { ...selectedForm, ...updates } as PaperFormEntry;
-      setSelectedForm(updatedForm);
-      console.log('SelectedForm updated to:', updatedForm.status);
-    }
-  }, [updateFormStatus, selectedForm, savedForms]);
-
-  // Handle form approval with initials
-  const handleFormApproval = useCallback(async (initials: string) => {
-    if (!formToApprove) return;
-    
-    try {
-      console.log('Approving form with initials:', initials, 'Form:', formToApprove);
-      await approveForm(formToApprove.id, initials);
-      
-      // Wait a moment for the store to update
-      setTimeout(() => {
-        const updatedForm = savedForms.find(f => f.id === formToApprove.id);
-        console.log('Updated form after approval:', updatedForm);
-      }, 100);
-      
-      setDashboardRefreshKey(prev => prev + 1);
-      setShowApprovalModal(false);
-      setFormToApprove(null);
-    } catch (error) {
-      console.error('Error approving form:', error);
-    }
-  }, [approveForm, formToApprove, savedForms]);
 
   // Compute a reliable header title for the modal: prefer the explicitly-selected form's title
   // (admin is explicitly viewing this form), then fall back to the store's currentForm title,
@@ -94,7 +31,6 @@ export default function AdminDashboard() {
   })();
 
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
-  const [showStatusDropdown, setShowStatusDropdown] = useState<string | null>(null); // Track which status dropdown is open
 
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0); // Force dashboard refresh
   const [isRefreshingAdmin, setIsRefreshingAdmin] = useState(false);
@@ -113,15 +49,7 @@ export default function AdminDashboard() {
     timestamp: Date;
   }>>([]);
 
-  // Archive functionality state
-  const [archiveSearchTerm, setArchiveSearchTerm] = useState('');
-  const [archiveFormTypeFilter, setArchiveFormTypeFilter] = useState('');
-  const [archiveDateFrom, setArchiveDateFrom] = useState('');
-  const [archiveDateTo, setArchiveDateTo] = useState('');
-  const [isArchivedDropdownOpen, setIsArchivedDropdownOpen] = useState(false);
-
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
-  const archivedDropdownRef = useRef<HTMLDivElement>(null);
 
 
   const adminUser = MOCK_USERS.find(user => user.role === 'admin');
@@ -212,7 +140,7 @@ export default function AdminDashboard() {
 
   // OPTIMIZATION: Memoize filtered forms to avoid repeated isFormBlank calls
   const filteredForms = useMemo(() => {
-    return savedForms.filter(form => !isFormBlank(form) && form.status !== 'Archive');
+    return savedForms.filter(form => !isFormBlank(form));
   }, [savedForms, isFormBlank]);
 
   const errorForms = useMemo(() => {
@@ -236,31 +164,88 @@ export default function AdminDashboard() {
   const approvedForms = useMemo(() =>
     filteredForms
       .filter(form => form.status === 'Approved')
-      .sort((a, b) => new Date(b.date).getTime() - new Date(b.date).getTime()),
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [filteredForms]
-  );
-
-  // Archive filtering and search functions
-  const archivedForms = useMemo(() => 
-    savedForms
-      .filter((form: PaperFormEntry) => form.status === 'Archive')
-      .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [savedForms]
   );
 
   const formCounts = useMemo(() => {
     return {
       total: filteredForms.length,
-      pending: activeForms.length,
+  pending: activeForms.length,
       complete: filteredForms.filter(f => f.status === 'Complete').length,
-      error: errorForms.length,
-      archived: archivedForms.length
+      error: errorForms.length
     };
-  }, [filteredForms, activeForms, errorForms, archivedForms]);
+  }, [filteredForms, activeForms, errorForms]);
 
-  // REMOVED: Complex status calculation logic that was interfering with form page status updates
-  // The admin page should just display the current status from the store, not try to recalculate it
-  // This prevents conflicts when the form page updates status to "Error"
+  // OPTIMIZATION: Memoize form status calculations to avoid expensive validation on every render
+  const formStatuses = useMemo(() => {
+    const statusMap = new Map<string, { newStatus: 'Complete' | 'In Progress' | 'Error', shouldUpdate: boolean }>();
+    
+  activeForms.forEach(form => {
+      const completeEntries = form.entries.filter(entry => 
+        entry.type && entry.ccp1.temp && entry.ccp2.temp && 
+        entry.coolingTo80.temp && entry.coolingTo54.temp && entry.finalChill.temp
+      ).length;
+      
+      // Check for errors only in cells that have all three fields (temp, time, initial)
+      let hasErrors = false;
+      form.entries.forEach((entry, rowIndex) => {
+        const stages = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+        stages.forEach(stage => {
+          const stageData = entry[stage as keyof typeof entry] as any;
+          // Only validate if all three fields are present
+          if (stageData && stageData.temp && stageData.time && stageData.initial) {
+            const validation = shouldHighlightCell(form, rowIndex, `${stage}.temp`);
+            if (validation.highlight && validation.severity === 'error') {
+              hasErrors = true;
+            }
+          }
+        });
+      });
+      
+      let newStatus: 'Complete' | 'In Progress' | 'Error';
+      
+      if (hasErrors) {
+        newStatus = 'Error';
+      } else if (completeEntries === form.entries.length && form.entries.length > 0) {
+        // All entries are complete with data
+        newStatus = 'Complete';
+      } else if (completeEntries > 0) {
+        // Some entries have data but not all
+        newStatus = 'In Progress';
+      } else {
+        // No entries have data
+        newStatus = 'In Progress';
+      }
+      
+      // Auto-update status logic:
+      // 1. Always allow updates to 'Error' status (new errors should be shown)
+      // 2. Allow updates from 'In Progress' to 'Complete' (when all issues are resolved)
+      // 3. Don't override 'In Progress' with 'In Progress' (prevents unnecessary updates)
+      // 4. Don't override 'In Progress' with 'Error' if admin has manually resolved (has corrective actions)
+      // 5. NEVER override manually set 'Complete' status (respect user's decision)
+      const shouldUpdate = newStatus !== form.status && (
+        newStatus === 'Error' || // Always show new errors
+        form.status !== 'In Progress' || // Allow updates from other statuses
+        newStatus === 'Complete' // Allow completion from 'In Progress'
+      );
+      
+      // Special case: Don't auto-update to 'Error' if admin has manually set to 'In Progress' and has corrective actions
+      const adminManuallyResolved = form.status === 'In Progress' && 
+        form.correctiveActionsComments && 
+        form.correctiveActionsComments.trim() && 
+        newStatus === 'Error';
+      
+      // CRITICAL: Never override manually set 'Complete' status
+      const manuallyCompleted = form.status === 'Complete';
+      
+      const finalShouldUpdate = shouldUpdate && !adminManuallyResolved && !manuallyCompleted;
+      
+      statusMap.set(form.id, { newStatus, shouldUpdate: finalShouldUpdate });
+    });
+    
+    return statusMap;
+  }, [activeForms]);
 
   // Close dropdown and modals when clicking outside
   useEffect(() => {
@@ -270,28 +255,14 @@ export default function AdminDashboard() {
         setShowSettingsDropdown(false);
       }
       
-      // Close archived dropdown
-      if (isArchivedDropdownOpen && archivedDropdownRef.current && !archivedDropdownRef.current.contains(event.target as Node)) {
-        setIsArchivedDropdownOpen(false);
-      }
-      
-      // Close status dropdown only if clicking outside both the button and dropdown
-      const target = event.target as Node;
-      const statusButton = document.querySelector(`[data-form-id="${showStatusDropdown}"]`);
-      const statusDropdown = document.querySelector(`[data-dropdown-for="${showStatusDropdown}"]`);
-      
-      if (showStatusDropdown && 
-          statusButton && !statusButton.contains(target) && 
-          statusDropdown && !statusDropdown.contains(target)) {
-        setShowStatusDropdown(null);
-      }
+
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showStatusDropdown, isArchivedDropdownOpen]);
+  }, []);
 
   // Auto-clear success message after 5 seconds
   useEffect(() => {
@@ -654,10 +625,6 @@ export default function AdminDashboard() {
   // Download PDF from admin page for approved forms
   const handleDownloadPDF = async (form: PaperFormEntry) => {
     try {
-      console.log('Generating PDF for form:', form);
-      console.log('Form approvedBy:', form.approvedBy);
-      console.log('Form approvedAt:', form.approvedAt);
-      
       await generateFormPDF({
         id: form.id,
         title: form.title || getFormTypeDisplayName(form.formType),
@@ -679,397 +646,6 @@ export default function AdminDashboard() {
       console.error('Error downloading PDF:', error);
       showToast('error', 'Failed to download PDF. Please try again.');
     }
-  };
-
-  // Download JPEG from admin page for approved forms
-  const handleDownloadJPEG = async (form: PaperFormEntry) => {
-    try {
-      // Create a temporary div to render the form content
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '-9999px';
-      tempDiv.style.width = '1200px';
-      tempDiv.style.backgroundColor = 'white';
-      tempDiv.style.padding = '20px';
-      tempDiv.style.fontFamily = 'Arial, sans-serif';
-      tempDiv.style.fontSize = '12px';
-      tempDiv.style.lineHeight = '1.4';
-      
-      // Use the exact same HTML generation as the PDF generator
-      const { generateFormHTML } = await import('@/lib/pdfGenerator');
-      
-      // Create the same data structure that the PDF generator expects
-      const pdfFormData = {
-        id: form.id,
-        title: form.title || getFormTypeDisplayName(form.formType),
-        formType: form.formType,
-        date: form.date instanceof Date ? form.date.toISOString() : new Date(form.date).toISOString(),
-        status: form.status,
-        approvedBy: form.approvedBy,
-        approvedAt: form.approvedAt ? (form.approvedAt instanceof Date ? form.approvedAt.toISOString() : new Date(form.approvedAt).toISOString()) : undefined,
-        correctiveActionsComments: form.correctiveActionsComments,
-        thermometerNumber: form.thermometerNumber,
-        lotNumbers: form.lotNumbers,
-        entries: form.entries,
-        quantityAndFlavor: (form as any).quantityAndFlavor,
-        preShipmentReview: (form as any).preShipmentReview,
-        frankFlavorSizeTable: (form as any).frankFlavorSizeTable,
-        bagelDogPreShipmentReview: (form as any).bagelDogPreShipmentReview
-      };
-      
-      // Generate the exact same HTML that the PDF uses
-      tempDiv.innerHTML = generateFormHTML(pdfFormData);
-      
-      // Add to DOM temporarily
-      document.body.appendChild(tempDiv);
-      
-      // Convert to canvas using html2canvas
-      const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(tempDiv, {
-        width: 1200,
-        height: tempDiv.scrollHeight,
-        scale: 2, // Higher quality
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
-      
-      // Remove temporary div
-      document.body.removeChild(tempDiv);
-      
-      // Convert canvas to blob and download using iOS-compatible method
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const filename = `${form.title ? form.title.replace(/[^a-zA-Z0-9]/g, '_') : 'FoodChillingLog'}_${form.id.slice(-6)}_${new Date(form.date).toISOString().split('T')[0]}.jpg`;
-          downloadFileIOSCompatible(blob, filename, 'JPEG');
-        }
-      }, 'image/jpeg', 0.9);
-      
-    } catch (error) {
-      console.error('Error downloading JPEG:', error);
-      showToast('error', 'Failed to download JPEG. Please try again.', form.id);
-    }
-  };
-
-  // Helper function to generate HTML for JPEG conversion - using the exact same logic as PDF generator
-  const generateFormHTML = (formData: any): string => {
-    // Import the same functions used by the PDF generator
-    const { FormType, isPiroshkiForm, isBagelDogForm } = require('@/lib/paperFormTypes');
-    
-    // Determine form type and generate appropriate content - exactly like PDF generator
-    if (formData.formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
-      return generatePiroshkiFormHTML(formData);
-    } else if (formData.formType === FormType.BAGEL_DOG_COOKING_COOLING) {
-      return generateBagelDogFormHTML(formData);
-    } else {
-      return generateCookingCoolingFormHTML(formData);
-    }
-  };
-
-  // Copy the exact same HTML generation functions from pdfGenerator.ts
-  const generateCookingCoolingFormHTML = (formData: any): string => {
-    // Generate the main form table rows
-    const generateFormRows = () => {
-      if (!formData.entries || formData.entries.length === 0) {
-        return `
-          <tr>
-            <td colspan="7" class="border border-black p-4 text-center text-gray-500">
-              No entries recorded
-            </td>
-          </tr>
-        `;
-      }
-
-      return formData.entries.map((entry: any, index: number) => `
-        <tr>
-          <td class="border border-black p-2 text-center">
-            ${entry.rack || index + 1}
-          </td>
-          <td class="border border-black p-2 text-center">
-            ${entry.type || ''}
-          </td>
-          <td class="border border-black p-1" style="${getDataLogClass(entry.ccp1?.dataLog)}">
-            <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 0.25rem; align-items: center;">
-              <div class="text-center">${formatTemperature(entry.ccp1?.temp)}</div>
-              <div class="text-center">${formatTime(entry.ccp1?.time)}</div>
-              <div class="text-center">${formatInitial(entry.ccp1?.initial)}</div>
-            </div>
-          </td>
-          <td class="border border-black p-1" style="${getDataLogClass(entry.ccp2?.dataLog)}">
-            <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 0.25rem; align-items: center;">
-              <div class="text-center">${formatTemperature(entry.ccp2?.temp)}</div>
-              <div class="text-center">${formatTime(entry.ccp2?.time)}</div>
-              <div class="text-center">${formatInitial(entry.ccp2?.initial)}</div>
-            </div>
-          </td>
-          <td class="border border-black p-1" style="${getDataLogClass(entry.coolingTo80?.dataLog)}">
-            <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 0.25rem; align-items: center;">
-              <div class="text-center">${formatTemperature(entry.coolingTo80?.temp)}</div>
-              <div class="text-center">${formatTime(entry.coolingTo80?.time)}</div>
-              <div class="text-center">${formatInitial(entry.coolingTo80?.initial)}</div>
-            </div>
-          </td>
-          <td class="border border-black p-1" style="${getDataLogClass(entry.coolingTo54?.dataLog)}">
-            <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 0.25rem; align-items: center;">
-              <div class="text-center">${formatTemperature(entry.coolingTo54?.temp)}</div>
-              <div class="text-center">${formatTime(entry.coolingTo54?.time)}</div>
-              <div class="text-center">${formatInitial(entry.coolingTo54?.initial)}</div>
-            </div>
-          </td>
-          <td class="border border-black p-1" style="${getDataLogClass(entry.finalChill?.dataLog)}">
-            <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 0.25rem; align-items: center;">
-              <div class="text-center">${formatTemperature(entry.finalChill?.temp)}</div>
-              <div class="text-center">${formatTime(entry.finalChill?.time)}</div>
-              <div class="text-center">${formatInitial(entry.finalChill?.initial)}</div>
-            </div>
-          </td>
-        </tr>
-      `).join('');
-    };
-
-    return `
-      <div style="font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; background-color: white;">
-        <!-- Form Header -->
-        <div style="margin-bottom: 24px;">
-          <div style="border: 2px solid black; margin-bottom: 16px;">
-            <div style="background-color: #f3f4f6; padding: 16px; text-align: center;">
-              <h1 style="color: #111827; margin: 0; font-size: 20px; font-weight: bold;">
-                Cooking and Cooling for Meat &amp; Non Meat Ingredients
-              </h1>
-            </div>
-            <div style="padding: 16px;">
-              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
-                <div>
-                  <span style="font-weight: 600;">Title: </span>
-                  <span style="border-bottom: 2px solid #d1d5db; padding: 4px 8px; display: inline-block; min-width: 200px;">
-                    ${formData.title || ''}
-                  </span>
-                </div>
-                <div>
-                  <span style="font-weight: 600;">Date: </span>
-                  <span style="border-bottom: 2px solid #d1d5db; padding: 4px 8px; display: inline-block; min-width: 150px;">
-                    ${formatDate(formData.date)}
-                  </span>
-                </div>
-                <div>
-                  <span style="font-weight: 600;">Status: </span>
-                  <span style="color: ${formData.status === 'Approved' ? '#4f46e5' : formData.status === 'Complete' ? '#059669' : '#d97706'}; font-weight: bold;">
-                    ${formData.status}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Main Table -->
-        <div style="border: 2px solid black; overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 12px; min-width: 760px;">
-            <!-- Header Row 1 -->
-            <thead>
-              <tr style="background-color: #f3f4f6;">
-                <th style="border: 1px solid black; padding: 8px; width: 64px;">Rack</th>
-                <th style="border: 1px solid black; padding: 8px; width: 64px;">Type</th>
-                <th style="border: 1px solid black; padding: 8px; width: 128px;">
-                  Temperature Must reach 166°F or greater<br/>
-                  <strong>CCP 1</strong>
-                </th>
-                <th style="border: 1px solid black; padding: 8px; width: 128px;">
-                  127°F or greater<br/>
-                  <strong>CCP 2</strong><br/>
-                  <small>Record Temperature of 1st and LAST rack/batch of the day</small>
-                </th>
-                <th style="border: 1px solid black; padding: 8px; width: 128px;">
-                  80°F or below within 105 minutes<br/>
-                  <strong>CCP 2</strong><br/>
-                  <small>Record Temperature of 1st rack/batch of the day</small><br/>
-                  <small>Time: from CCP2 (127°F)</small>
-                </th>
-                <th style="border: 1px solid black; padding: 8px; width: 128px;">
-                  <strong>54°F</strong> or below within 4.75 hr<br/>
-                  <small>Time: from CCP2 (127°F)</small>
-                </th>
-                <th style="border: 1px solid black; padding: 8px; width: 160px;">
-                  Chill Continuously to<br/>
-                  39°F or below
-                </th>
-              </tr>
-
-              <!-- Header Row 2 -->
-              <tr style="background-color: #f9fafb;">
-                <th style="border: 1px solid black; padding: 4px; font-size: 11px;">Rack</th>
-                <th style="border: 1px solid black; padding: 4px; font-size: 11px;">Type</th>
-                <th style="border: 1px solid black; padding: 4px;">
-                  <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 1px; font-size: 11px;">
-                    <div style="text-align: center;">Temp</div>
-                    <div style="text-align: center;">Time</div>
-                    <div style="text-align: center;">Initial</div>
-                  </div>
-                </th>
-                <th style="border: 1px solid black; padding: 4px;">
-                  <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 1px; font-size: 11px;">
-                    <div style="text-align: center;">Temp</div>
-                    <div style="text-align: center;">Time</div>
-                    <div style="text-align: center;">Initial</div>
-                  </div>
-                </th>
-                <th style="border: 1px solid black; padding: 4px;">
-                  <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 1px; font-size: 11px;">
-                    <div style="text-align: center;">Temp</div>
-                    <div style="text-align: center;">Time</div>
-                    <div style="text-align: center;">Initial</div>
-                  </div>
-                </th>
-                <th style="border: 1px solid black; padding: 4px;">
-                  <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 1px; font-size: 11px;">
-                    <div style="text-align: center;">Temp</div>
-                    <div style="text-align: center;">Time</div>
-                    <div style="text-align: center;">Initial</div>
-                  </div>
-                </th>
-                <th style="border: 1px solid black; padding: 4px;">
-                  <div style="display: grid; grid-template-columns: 1fr 1.618fr 0.618fr; gap: 1px; font-size: 11px;">
-                    <div style="text-align: center;">Temp</div>
-                    <div style="text-align: center;">Time</div>
-                    <div style="text-align: center;">Initial</div>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-
-            <!-- Form Data Rows -->
-            <tbody>
-              ${generateFormRows()}
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Bottom Section -->
-        <div style="border: 2px solid black; border-top: 0;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0;">
-            <!-- Left side -->
-            <div style="border-right: 1px solid black;">
-              <!-- Thermometer # -->
-              <div style="border-bottom: 1px solid black; padding: 8px; text-align: center;">
-                <span style="font-weight: 600;">Thermometer #</span>
-                <span style="margin-left: 8px; border-bottom: 1px solid black; padding: 4px; display: inline-block; min-width: 150px;">
-                  ${formData.thermometerNumber || ''}
-                </span>
-              </div>
-
-              <!-- Ingredients Table -->
-              <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                  <tr>
-                    <th style="border: 1px solid black; padding: 8px; background-color: #f3f4f6;">Ingredient</th>
-                    <th style="border: 1px solid black; padding: 8px; background-color: #f3f4f6;">Beef</th>
-                    <th style="border: 1px solid black; padding: 8px; background-color: #f3f4f6;">Chicken</th>
-                    <th style="border: 1px solid black; padding: 8px; background-color: #f3f4f6;">Liquid Eggs</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style="border: 1px solid black; padding: 8px; font-weight: 600;">Lot #(s)</td>
-                    <td style="border: 1px solid black; padding: 4px; min-height: 20px;">
-                      ${formData.lotNumbers?.beef || ''}
-                    </td>
-                    <td style="border: 1px solid black; padding: 4px; min-height: 20px;">
-                      ${formData.lotNumbers?.chicken || ''}
-                    </td>
-                    <td style="border: 1px solid black; padding: 4px; min-height: 20px;">
-                      ${formData.lotNumbers?.liquidEggs || ''}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Right side - Corrective Actions -->
-            <div style="padding: 16px; position: relative;">
-              <div style="margin-bottom: 8px;">
-                <h3 style="font-weight: 600; margin: 0;">Corrective Actions &amp; comments:</h3>
-              </div>
-              <div style="width: 100%; min-height: 128px; border: 1px solid #d1d5db; padding: 8px; font-size: 11px; background-color: white; white-space: pre-wrap;">
-                ${formData.correctiveActionsComments || ''}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Form Status and Approval Info -->
-        ${formData.status === 'Complete' ? `
-          <div style="margin-top: 24px; padding: 16px; background-color: #f9fafb; border: 2px solid #e5e7eb; border-radius: 8px; text-align: center;">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #374151;">
-              <span style="font-size: 18px; font-weight: 600;">✓ Form Completed Successfully!</span>
-            </div>
-            <p style="color: #6b7280; margin: 4px 0 0 0;">This form has been finalized and can no longer be edited</p>
-          </div>
-        ` : ''}
-
-        ${formData.status === 'Approved' ? `
-          <div style="margin-top: 24px; padding: 16px; background-color: #eef2ff; border: 2px solid #c7d2fe; border-radius: 8px; text-align: center;">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; color: #3730a3;">
-              <span style="font-size: 18px; font-weight: 600;">✓ Form Approved</span>
-            </div>
-            <p style="color: #6366f1; margin: 4px 0 0 0;">
-              Approved by: ${formData.approvedBy || 'N/A'}
-              ${formData.approvedAt ? ` • ${formatDate(formData.approvedAt)}` : ''}
-            </p>
-          </div>
-        ` : ''}
-
-        <!-- Footer -->
-        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #d1d5db; text-align: center; color: #6b7280; font-size: 11px;">
-          <p style="margin: 0;">Generated on ${new Date().toLocaleString('en-US')}</p>
-          <p style="margin: 5px 0 0 0;">Food Safety Monitoring System - Form ID: ${formData.id}</p>
-        </div>
-      </div>
-    `;
-  };
-
-  // Helper functions for formatting data - copied from pdfGenerator.ts
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (timeString: string) => {
-    if (!timeString) return '';
-    
-    // Convert 24-hour format to 12-hour format
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours);
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
-
-  const formatTemperature = (temp: string | number) => {
-    if (!temp) return '';
-    return `${temp}°F`;
-  };
-
-  const formatInitial = (initial: string) => {
-    if (!initial) return '';
-    return initial.toUpperCase();
-  };
-
-  const getDataLogClass = (dataLog: boolean) => {
-    return dataLog ? 'background-color: #dbeafe;' : '';
-  };
-
-  // Placeholder functions for other form types - these would need to be implemented similarly
-  const generatePiroshkiFormHTML = (formData: any): string => {
-    return `<div>Piroshki form HTML generation not yet implemented for JPEG</div>`;
-  };
-
-  const generateBagelDogFormHTML = (formData: any): string => {
-    return `<div>Bagel Dog form HTML generation not yet implemented for JPEG</div>`;
   };
 
   const handleDeleteForm = (formId: string) => {
@@ -1116,62 +692,8 @@ export default function AdminDashboard() {
     });
   };
 
-  // Archive functionality
-  const handleUnarchiveForm = async (formId: string) => {
-    try {
-      updateFormStatus(formId, 'In Progress');
-      setDashboardRefreshKey(prev => prev + 1);
-    } catch (error) {
-      console.error('Error restoring form from archive:', error);
-    }
-  };
-
-  const getFilteredArchivedForms = useCallback(() => {
-    let filtered = archivedForms;
-
-    // Apply search filter
-    if (archiveSearchTerm) {
-      const searchLower = archiveSearchTerm.toLowerCase();
-      filtered = filtered.filter(form => 
-        form.id.toLowerCase().includes(searchLower) ||
-        form.title?.toLowerCase().includes(searchLower) ||
-        getFormTypeDisplayName(form.formType).toLowerCase().includes(searchLower) ||
-        form.formInitial?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Apply form type filter
-    if (archiveFormTypeFilter) {
-      filtered = filtered.filter(form => form.formType === archiveFormTypeFilter);
-    }
-
-    // Apply date range filter
-    if (archiveDateFrom || archiveDateTo) {
-      filtered = filtered.filter(form => {
-        const formDate = new Date(form.date);
-        const fromDate = archiveDateFrom ? new Date(archiveDateFrom) : null;
-        const toDate = archiveDateTo ? new Date(archiveDateTo) : null;
-        
-        // Set time to start/end of day for proper comparison
-        if (fromDate) {
-          fromDate.setHours(0, 0, 0, 0);
-        }
-        if (toDate) {
-          toDate.setHours(23, 59, 59, 999);
-        }
-        
-        const isAfterFrom = !fromDate || formDate >= fromDate;
-        const isBeforeTo = !toDate || formDate <= toDate;
-        
-        return isAfterFrom && isBeforeTo;
-      });
-    }
-
-    return filtered;
-  }, [archivedForms, archiveSearchTerm, archiveFormTypeFilter, archiveDateFrom, archiveDateTo]);
-
   const getFilteredAndSortedForms = () => {
-    let filtered = savedForms.filter(form => form.status !== 'Archive'); // Exclude archived forms from main view
+    let filtered = savedForms; // Show ALL forms in admin page, including blank ones
     
     // Apply status filter
     if (filterStatus !== 'all') {
@@ -1257,136 +779,41 @@ export default function AdminDashboard() {
         case 'Complete':
           return {
             text: 'text-green-600',
-            icon: '✓',
-            bg: 'bg-green-50',
-            border: 'border-green-200'
+            icon: '✓'
           };
         case 'In Progress':
           return {
             text: 'text-yellow-600',
-            icon: '⏳',
-            bg: 'bg-yellow-50',
-            border: 'border-yellow-200'
+            icon: '⏳'
           };
         case 'Error':
           return {
             text: 'text-orange-600',
-            icon: '⚠️',
-            bg: 'bg-orange-50',
-            border: 'border-orange-200'
-          };
-        case 'Approved':
-          return {
-            text: 'text-indigo-600',
-            icon: '✓',
-            bg: 'bg-indigo-50',
-            border: 'border-indigo-200'
-          };
-        case 'Archive':
-          return {
-            text: 'text-gray-600',
-            icon: '📁',
-            bg: 'bg-gray-50',
-            border: 'border-gray-200'
+            icon: '⚠️'
           };
         default:
           return {
             text: 'text-gray-600',
-            icon: '?',
-            bg: 'bg-gray-50',
-            border: 'border-gray-200'
+            icon: '?'
           };
       }
     };
 
     const styles = getStatusStyles(form.status);
 
-    const handleStatusChange = (newStatus: 'Complete' | 'In Progress' | 'Error' | 'Approved' | 'Archive') => {
-      console.log('🔄 Status change requested:', { formId: form.id, currentStatus: form.status, newStatus });
-      
-      // If changing to Approved, show the approval modal instead of directly updating
-      if (newStatus === 'Approved') {
-        setFormToApprove(form);
-        setShowApprovalModal(true);
-        setShowStatusDropdown(null); // Close dropdown
-        return;
-      }
-      
-      try {
-        updateFormStatus(form.id, newStatus);
-        console.log('✅ Status update function called successfully');
-        
-        setShowStatusDropdown(null); // Close dropdown after selection
-        // Force dashboard refresh to show updated status
-        setDashboardRefreshKey(prev => prev + 1);
-      } catch (error) {
-        console.error('❌ Error updating form status:', error);
-      }
-    };
-
-    const availableStatuses: Array<'Complete' | 'In Progress' | 'Error' | 'Approved' | 'Archive'> = ['In Progress', 'Complete', 'Error', 'Approved', 'Archive'];
-
     return (
-      <div className="relative">
-          <button
-            data-form-id={form.id}
-            onClick={() => {
-              console.log('🖱️ Status button clicked for form:', form.id);
-              console.log('Current showStatusDropdown:', showStatusDropdown);
-              const newState = showStatusDropdown === form.id ? null : form.id;
-              console.log('Setting showStatusDropdown to:', newState);
-              setShowStatusDropdown(newState);
-            }}
-            className={`
-              inline-flex items-center px-3 py-2 text-sm font-medium rounded-md border transition-all duration-200
-              ${styles.bg} ${styles.border} ${styles.text}
-              hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500
-              ${showStatusDropdown === form.id ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
-            `}
-          >
-            <div className="flex items-center justify-between">
-              <span>{styles.icon} {form.status}</span>
-              <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </button>
-
-          {showStatusDropdown === form.id && (
-            <div 
-              data-dropdown-for={form.id}
-              className="absolute top-full left-0 mt-1 w-48 bg-white border-2 border-blue-300 rounded-lg shadow-xl z-[999999]"
-              style={{ 
-                position: 'absolute',
-                zIndex: 999999,
-                maxHeight: '300px',
-                overflow: 'visible'
-              }}
-            >
-
-              <div className="py-1">
-                <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                  Change Status
-                </div>
-                {availableStatuses.map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => {
-                      console.log('🎯 Status option clicked:', status);
-                      handleStatusChange(status);
-                    }}
-                    className={`
-                      w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors cursor-pointer
-                      ${form.status === status ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'}
-                    `}
-                  >
-                    {getStatusStyles(status).icon} {status}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+      <div className="space-y-1">
+        <div className={`
+          px-3 py-2 text-sm font-medium 
+          ${styles.text}
+        `}>
+          {styles.icon} {form.status}
         </div>
+        {/* NEW: Show last update time */}
+        <div className="text-xs text-gray-500 px-3">
+          Last updated: {form.lastTextEntry ? `${new Date(form.lastTextEntry).toLocaleDateString()} at ${new Date(form.lastTextEntry).toLocaleTimeString()}` : 'No text entered yet'}
+        </div>
+      </div>
     );
   };
 
@@ -1438,7 +865,7 @@ export default function AdminDashboard() {
               </button>
 
               {showSettingsDropdown && (
-                <div className="absolute top-full right-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-w-[calc(100vw-2rem)] sm:max-w-none">
+                <div className="absolute top-full right-0 mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                   <div className="py-1">
                     <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b">
                       Settings
@@ -1456,7 +883,6 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4">
-
           {/* Success Message */}
           {deleteSuccessMessage && (
             <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-4">
@@ -1496,11 +922,13 @@ export default function AdminDashboard() {
             {activeForms
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
               .map((form) => {
-                // Don't auto-update status here - just display the current status from the store
-                // The form page handles status updates, admin page should just display them
+                const formStatus = formStatuses.get(form.id);
+                if (formStatus?.shouldUpdate) {
+                  setTimeout(() => updateFormStatus(form.id, formStatus.newStatus), 0);
+                }
 
                 return (
-                  <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 mb-6`}>
+                  <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
                     <div className={`p-6`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
@@ -1515,15 +943,18 @@ export default function AdminDashboard() {
                             <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
                             <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                               <span>Form #{form.id.slice(-6)}</span>
-                              {form.approvedBy && (
-                                <span className="text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
-                              )}
                             </div>
                           </div>
                         </div>
 
                         <div className="flex items-center space-x-3">
-                          {renderStatusDisplay(form)}
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            form.status === 'Complete' ? 'bg-green-100 text-green-800' :
+                            form.status === 'Error' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {form.status === 'Complete' ? '✓ Complete' : form.status === 'Error' ? '⚠️ Has Errors' : '⏳ In Progress'}
+                          </span>
 
                           <button
                             onClick={() => handleViewForm(form)}
@@ -1597,25 +1028,23 @@ export default function AdminDashboard() {
                 Completed Forms
               </h2>
               {completedForms.map((form) => (
-                <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 mb-6`}>
+                <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
                   <div className={`p-6`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
                           <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
-                            <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                              <span>Form #{form.id.slice(-6)}</span>
-                              <span className="text-gray-600 font-medium">✓ Finalized</span>
-                              {form.approvedBy && (
-                                <span className="text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
-                              )}
-                            </div>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                            <span>Form #{form.id.slice(-6)}</span>
+                            <span className="text-gray-600 font-medium">✓ Finalized</span>
+                            {/* Approved by text removed per request */}
+                          </div>
                         </div>
                       </div>
 
                       <div className="flex items-center space-x-3">
-                        {renderStatusDisplay(form)}
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">✓ Complete</span>
                         <button
                           onClick={() => handleViewForm(form)}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
@@ -1628,8 +1057,40 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           onClick={() => {
-                            setFormToApprove(form);
-                            setShowApprovalModal(true);
+                            try {
+                              // First update the local state immediately for better UX
+                              updateFormStatus(form.id, 'In Progress');
+                              // removed success toast for reopen to avoid green notification
+                              // Force dashboard refresh to show updated status
+                              setDashboardRefreshKey(prev => prev + 1);
+                            } catch (error) {
+                              console.error('Error reopening form:', error);
+                              showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
+                            }
+                          }}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
+                          title="Reopen form for editing"
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.003 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Reopen
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!adminUser) {
+                              showToast('error', 'No admin user configured; cannot approve form', form.id);
+                              return;
+                            }
+
+                            try {
+                              await approveForm(form.id, adminUser.initials);
+                              // removed success toast for approve to avoid green notification
+                              setDashboardRefreshKey(prev => prev + 1);
+                            } catch (error) {
+                              console.error('Error approving form:', error);
+                              showToast('error', `Failed to approve form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
+                            }
                           }}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-indigo-600 border border-indigo-600 rounded-md hover:bg-indigo-700 hover:text-white transition-colors"
                           title="Approve form"
@@ -1651,8 +1112,12 @@ export default function AdminDashboard() {
 
                       <div className="bg-gray-50 rounded-lg p-3">
                         <div className="font-medium text-gray-700">Completion Date</div>
-                        <div className="text-lg font-semibold text-gray-900">{new Date(form.date).toLocaleDateString()}</div>
-                        <div className="text-sm text-gray-600 mt-1">{new Date(form.date).toLocaleTimeString()}</div>
+                        <div className="text-lg font-semibold text-gray-900">
+                          {form.completedAt ? new Date(form.completedAt).toLocaleDateString() : new Date(form.date).toLocaleDateString()}
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {form.completedAt ? new Date(form.completedAt).toLocaleTimeString() : new Date(form.date).toLocaleTimeString()}
+                        </div>
                       </div>
 
                       <div className="bg-gray-50 rounded-lg p-3">
@@ -1692,24 +1157,25 @@ export default function AdminDashboard() {
               </h2>
 
               {approvedForms.map((form) => (
-                <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 mb-6`}>
+                <div key={form.id} className={`bg-white rounded-xl border-2 border-gray-200 overflow-hidden mb-6`}>
                   <div className={`p-6`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
                           <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
-                            <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                              <span>Form #{form.id.slice(-6)}</span>
-                              {form.approvedBy && (
-                                <span className="text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
-                              )}
-                            </div>
+                          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                            <span>Form #{form.id.slice(-6)}</span>
+                            {/* Approved by text removed per request */}
+                          </div>
                         </div>
                       </div>
 
                       <div className="flex items-center space-x-3">
-                        {renderStatusDisplay(form)}
+                        <div className="flex flex-col items-end text-sm text-gray-600">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">✓ Approved</span>
+                          {/* Approved by text removed per request */}
+                        </div>
                         <button
                           onClick={() => handleViewForm(form)}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
@@ -1732,41 +1198,26 @@ export default function AdminDashboard() {
                           Download PDF
                         </button>
                         <button
-                          onClick={() => handleDownloadJPEG(form)}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 hover:text-purple-700 transition-colors"
-                          title="Download approved form as JPEG"
+                          onClick={() => {
+                            try {
+                              // First update the local state immediately for better UX
+                              updateFormStatus(form.id, 'In Progress');
+                              // removed success toast for reopen to avoid green notification
+                              // Force dashboard refresh to show updated status
+                              setDashboardRefreshKey(prev => prev + 1);
+                            } catch (error) {
+                              console.error('Error reopening form:', error);
+                              showToast('error', `Failed to reopen form: ${error instanceof Error ? error.message : 'Unknown error'}`, form.id);
+                            }
+                          }}
+                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 hover:text-orange-700 transition-colors"
+                          title="Reopen form for editing"
                         >
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.003 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                           </svg>
-                          Download JPEG
+                          Reopen
                         </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="font-medium text-gray-700">Date Created</div>
-                        <div className="text-lg font-semibold text-gray-900">{new Date(form.dateCreated || form.date).toLocaleDateString()}</div>
-                        <div className="text-sm text-gray-600 mt-1">{new Date(form.dateCreated || form.date).toLocaleTimeString()}</div>
-                      </div>
-
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="font-medium text-gray-700">Last Updated</div>
-                        <div className="text-lg font-semibold text-gray-900">{form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleDateString() : 'No text entered yet'}</div>
-                        <div className="text-sm text-gray-600 mt-1">{form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : ''}</div>
-                      </div>
-
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          <textarea
-                            readOnly
-                            className="w-full h-20 p-2 text-sm text-gray-700 bg-white border rounded-md resize-none"
-                            value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
-                              form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
-                          />
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -1775,234 +1226,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* Archive Section - Dropdown */}
-          {archivedForms.length > 0 && (
-            <div className="mb-16" ref={archivedDropdownRef}>
-              <button
-                onClick={() => setIsArchivedDropdownOpen(!isArchivedDropdownOpen)}
-                className="w-full flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <div className="flex items-center">
-                  <svg className="w-6 h-6 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2V9a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    Archive ({archivedForms.length})
-                  </h2>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="text-sm text-gray-600">
-                    {getFilteredArchivedForms().length} of {archivedForms.length} forms
-                    {(archiveSearchTerm || archiveFormTypeFilter || archiveDateFrom || archiveDateTo) && (
-                      <span className="ml-2 text-blue-600 font-medium">(filtered)</span>
-                    )}
-                  </div>
-                  <svg 
-                    className={`w-6 h-6 text-gray-600 transition-transform ${isArchivedDropdownOpen ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </button>
-
-              {isArchivedDropdownOpen && (
-                <div className="mt-4 mb-8">
-                  {/* Archive Search and Filters */}
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {/* Search */}
-                      <div>
-                        <label htmlFor="archive-search" className="block text-sm font-medium text-gray-700 mb-1">
-                          Search Archive
-                        </label>
-                        <input
-                          id="archive-search"
-                          type="text"
-                          value={archiveSearchTerm}
-                          onChange={(e) => setArchiveSearchTerm(e.target.value)}
-                          placeholder="Search by form number, title, type, or initials..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-
-                      {/* Form Type Filter */}
-                      <div>
-                        <label htmlFor="archive-type-filter" className="block text-sm font-medium text-gray-700 mb-1">
-                          Form Type
-                        </label>
-                        <select
-                          id="archive-type-filter"
-                          value={archiveFormTypeFilter}
-                          onChange={(e) => setArchiveFormTypeFilter(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">All Types</option>
-                          <option value="cooking-cooling">Cooking/Cooling</option>
-                          <option value="piroshki">Piroshki</option>
-                          <option value="bagel-dog">Bagel Dog</option>
-                        </select>
-                      </div>
-
-                      {/* Date Range Filter */}
-                      <div>
-                        <label htmlFor="archive-date-from" className="block text-sm font-medium text-gray-700 mb-1">
-                          From Date
-                        </label>
-                        <input
-                          id="archive-date-from"
-                          type="date"
-                          value={archiveDateFrom}
-                          onChange={(e) => setArchiveDateFrom(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="archive-date-to" className="block text-sm font-medium text-gray-700 mb-1">
-                          To Date
-                        </label>
-                        <input
-                          id="archive-date-to"
-                          type="date"
-                          value={archiveDateTo}
-                          onChange={(e) => setArchiveDateTo(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Clear Filters Button */}
-                    <div className="mt-4 flex justify-end">
-                      <button
-                        onClick={() => {
-                          setArchiveSearchTerm('');
-                          setArchiveFormTypeFilter('');
-                          setArchiveDateFrom('');
-                          setArchiveDateTo('');
-                        }}
-                        className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        Clear All Filters
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Archived Forms List */}
-                  <div className="transition-all duration-300 ease-in-out">
-                    {getFilteredArchivedForms().length > 0 ? (
-                      getFilteredArchivedForms().map((form) => (
-                    <div key={form.id} className="bg-white rounded-xl border-2 border-gray-200 mb-6 transition-all duration-200 ease-in-out hover:shadow-lg">
-                      <div className="p-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div>
-                              <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
-                              <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
-                              <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                                <span>Form #{form.id.slice(-6)}</span>
-                                <span>Date Range: {new Date(form.dateCreated).toLocaleDateString()} - {new Date(form.date).toLocaleDateString()}</span>
-                                {form.approvedBy && (
-                                  <span className="text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center space-x-3">
-                            {renderStatusDisplay(form)}
-                            <button
-                              onClick={() => handleViewForm(form)}
-                              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                              title="View archived form (read-only)"
-                            >
-                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                              View Form
-                            </button>
-                            <button
-                              onClick={() => handleUnarchiveForm(form.id)}
-                              className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 hover:text-green-700 transition-colors"
-                              title="Restore form from archive"
-                            >
-                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                              Restore
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                          <div className="bg-gray-50 rounded-lg p-3">
-                            <div className="font-medium text-gray-700">Date Created</div>
-                            <div className="text-lg font-semibold text-gray-900">{new Date(form.dateCreated || form.date).toLocaleDateString()}</div>
-                            <div className="text-sm text-gray-600 mt-1">{new Date(form.dateCreated || form.date).toLocaleTimeString()}</div>
-                          </div>
-
-                          <div className="bg-gray-50 rounded-lg p-3">
-                            <div className="font-medium text-gray-700">Last Updated</div>
-                            <div className="text-lg font-semibold text-gray-900">{form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleDateString() : 'No text entered yet'}</div>
-                            <div className="text-sm text-gray-600 mt-1">{form.lastTextEntry ? new Date(form.lastTextEntry).toLocaleTimeString() : ''}</div>
-                          </div>
-
-                          <div className="bg-gray-50 rounded-lg p-3">
-                            <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
-                            <div className="text-sm text-gray-600 mt-1">
-                              <textarea
-                                readOnly
-                                className="w-full h-20 p-2 text-sm text-gray-700 bg-white border rounded-md resize-none"
-                                value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
-                                  form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                  ) : (
-                    <div className="bg-white rounded-xl border-2 border-gray-200 p-8 text-center">
-                      <div className="flex flex-col items-center">
-                        <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No archived forms found</h3>
-                        <p className="text-gray-600 mb-4">
-                          {archiveSearchTerm || archiveFormTypeFilter || archiveDateFrom || archiveDateTo ? 
-                            'No forms match your current filters. Try adjusting your search criteria.' :
-                            'No forms have been archived yet. Archive forms by changing their status to "Archive".'
-                          }
-                        </p>
-                        {(archiveSearchTerm || archiveFormTypeFilter || archiveDateFrom || archiveDateTo) && (
-                          <button
-                            onClick={() => {
-                              setArchiveSearchTerm('');
-                              setArchiveFormTypeFilter('');
-                              setArchiveDateFrom('');
-                              setArchiveDateTo('');
-                            }}
-                            className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                          >
-                            Clear All Filters
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
         </main>
-        
-        {/* Add space at bottom of page */}
-        <div className="h-16"></div>
 
       {/* Form Details Modal */}
       {showFormModal && selectedForm && (
@@ -2017,67 +1241,24 @@ export default function AdminDashboard() {
                   Status: <span className={`font-medium ${
                     selectedForm.status === 'Complete' ? 'text-green-600' :
                     selectedForm.status === 'In Progress' ? 'text-yellow-600' :
-                    selectedForm.status === 'Approved' ? 'text-indigo-600' :
                     'text-orange-600'
                   }`}>
                     {selectedForm.status}
                   </span>
                 </div>
               </div>
-              
-              {/* Right side buttons container */}
-              <div className="flex items-center space-x-3">
-                {/* Save Button */}
-                <button
-                  onClick={async () => {
-                    // Save form to AWS when clicking save button
-                    try {
-                      console.log('Saving form to AWS...');
-                      await saveForm();
-                      console.log('Form saved successfully to AWS');
-                      
-                      // Close the modal after successful save
-                      setShowFormModal(false);
-                      setSelectedForm(null);
-                      // Force a re-render of the dashboard to show updated status
-                      setDashboardRefreshKey(prev => prev + 1);
-                      console.log('Dashboard refresh triggered on modal close');
-                    } catch (error) {
-                      console.error('Error saving form:', error);
-                      const errorMessage = error instanceof Error ? error.message : String(error);
-                      alert(`Error saving form: ${errorMessage}`);
-                    }
-                  }}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                  title="Save form to AWS and close"
-                  aria-label="Save form to AWS and close"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                  </svg>
-                  Save
-                </button>
-                
-                {/* Cancel Button */}
-                <button
-                  onClick={() => {
-                    console.log('Canceling admin modal - closing without saving');
-                    setShowFormModal(false);
-                    setSelectedForm(null);
-                    // Force a re-render of the dashboard to show updated status
-                    setDashboardRefreshKey(prev => prev + 1);
-                    console.log('Dashboard refresh triggered on modal close');
-                  }}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
-                  title="Cancel and close modal without saving"
-                  aria-label="Cancel and close modal without saving"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Cancel
-                </button>
-              </div>
+              <button
+                onClick={() => {
+                  console.log('Closing admin modal, forcing dashboard refresh');
+                  setShowFormModal(false);
+                  // Force a re-render of the dashboard to show updated status
+                  setDashboardRefreshKey(prev => prev + 1);
+                  console.log('Dashboard refresh triggered on modal close');
+                }}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ✕
+              </button>
             </div>
             
             <div className="flex-1 overflow-y-auto">
@@ -2086,14 +1267,58 @@ export default function AdminDashboard() {
                     key={`${selectedForm.id}-${dashboardRefreshKey}`}
                     formData={selectedForm}
                     readOnly={false}
-                    onFormUpdate={handleFormUpdate}
+                    onFormUpdate={(formId, updates) => {
+                      console.log('Admin form updated:', formId, updates);
+                      
+                      // Handle status updates
+                      if (updates.status) {
+                        updateFormStatus(formId, updates.status);
+                        // Force dashboard refresh to show updated status
+                        setDashboardRefreshKey(prev => prev + 1);
+                        
+                        // Do not show success toast here to avoid green notification
+                        // Close modal when form is completed
+                        if (updates.status === 'Complete') {
+                          setShowFormModal(false);
+                          setSelectedForm(null);
+                        }
+                      }
+                      
+                      // Update the selectedForm state to reflect changes
+                      if (selectedForm && selectedForm.id === formId) {
+                        const updatedForm = { ...selectedForm, ...updates };
+                        setSelectedForm(updatedForm as PaperFormEntry);
+                      }
+                    }}
                   />
                                  ) : selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING ? (
                    <BagelDogForm
                      key={`${selectedForm.id}-${dashboardRefreshKey}`}
                      formData={selectedForm}
                      readOnly={false}
-                     onFormUpdate={handleFormUpdate}
+                     onFormUpdate={(formId: string, updates: any) => {
+                       console.log('Admin form updated:', formId, updates);
+                       
+                       // Handle status updates
+                       if (updates.status) {
+                         updateFormStatus(formId, updates.status);
+                         // Force dashboard refresh to show updated status
+                         setDashboardRefreshKey(prev => prev + 1);
+                         
+                         // Do not show success toast here to avoid green notification
+                         // Close modal when form is completed
+                         if (updates.status === 'Complete') {
+                           setShowFormModal(false);
+                           setSelectedForm(null);
+                         }
+                       }
+                       
+                       // Update the selectedForm state to reflect changes
+                       if (selectedForm && selectedForm.id === formId) {
+                         const updatedForm = { ...selectedForm, ...updates };
+                         setSelectedForm(updatedForm as PaperFormEntry);
+                       }
+                     }}
                    />
                 ) : (
                   <PaperForm 
@@ -2102,7 +1327,29 @@ export default function AdminDashboard() {
                     formData={selectedForm}
                     isAdminForm={true}
                     readOnly={false}
-                    onFormUpdate={handleFormUpdate}
+                    onFormUpdate={(formId, updates) => {
+                      console.log('Admin form updated:', formId, updates);
+                      
+                      // Handle status updates
+                      if (updates.status) {
+                        updateFormStatus(formId, updates.status);
+                        // Force dashboard refresh to show updated status
+                        setDashboardRefreshKey(prev => prev + 1);
+                        
+                        // Do not show success toast here to avoid green notification
+                        // Close modal when form is completed
+                        if (updates.status === 'Complete') {
+                          setShowFormModal(false);
+                          setSelectedForm(null);
+                        }
+                      }
+                      
+                      // Update the selectedForm state to reflect changes
+                      if (selectedForm && selectedForm.id === formId) {
+                        const updatedForm = { ...selectedForm, ...updates };
+                        setSelectedForm(updatedForm as PaperFormEntry);
+                      }
+                    }}
                   />
                 )}
               </div>
@@ -2130,18 +1377,6 @@ export default function AdminDashboard() {
           )}
         </div>
       ))}
-
-      {/* Approval Modal */}
-      <ApprovalModal
-        isOpen={showApprovalModal}
-        onClose={() => {
-          setShowApprovalModal(false);
-          setFormToApprove(null);
-        }}
-        onApprove={handleFormApproval}
-        formTitle={formToApprove?.title}
-        formId={formToApprove?.id}
-      />
     </div>
   );
 }

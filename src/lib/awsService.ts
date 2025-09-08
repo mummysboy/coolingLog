@@ -291,7 +291,8 @@ function mapPaperFormEntryToGraphQLInput(form: PaperFormEntry): any {
       timestamp: ensureDate(comment.timestamp).toISOString(),
       comment: comment.comment
     })) || [],
-    resolvedErrors: form.resolvedErrors || []
+    resolvedErrors: form.resolvedErrors || [],
+    completedAt: form.completedAt ? ensureDate(form.completedAt).toISOString() : null
   };
 
   // Debug: Log what's being sent to AWS
@@ -471,7 +472,8 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
       timestamp: new Date(comment.timestamp),
       comment: comment.comment
     })) || [],
-    resolvedErrors: result.resolvedErrors || []
+    resolvedErrors: result.resolvedErrors || [],
+    completedAt: result.completedAt ? new Date(result.completedAt) : undefined
   };
   
   console.log('=== MAPPED FORM RESULT ===');
@@ -795,6 +797,7 @@ class AWSStorageManager {
                   lotNumbers
                   correctiveActionsComments
                   resolvedErrors
+                  completedAt
                   createdAt
                   updatedAt
                 }
@@ -833,6 +836,7 @@ class AWSStorageManager {
                   lotNumbers
                   correctiveActionsComments
                   resolvedErrors
+                  completedAt
                   createdAt
                   updatedAt
                 }
@@ -871,6 +875,7 @@ class AWSStorageManager {
                   lotNumbers
                   correctiveActionsComments
                   resolvedErrors
+                  completedAt
                   createdAt
                   updatedAt
                 }

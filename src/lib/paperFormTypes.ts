@@ -98,6 +98,8 @@ export interface BaseFormEntry {
   // Approval metadata (optional)
   approvedBy?: string;
   approvedAt?: Date;
+  // Completion metadata
+  completedAt?: Date;
 }
 
 // Base form row interface with common fields
