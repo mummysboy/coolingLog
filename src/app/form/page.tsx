@@ -538,7 +538,7 @@ export default function FormPage() {
       console.error('Error downloading JPEG:', error);
       alert('Failed to download JPEG. Please try again.');
     }
-  }, [generateFormHTML]);
+  }, []);
 
   // Function to handle form printing
   const handlePrintForm = useCallback((form: PaperFormEntry) => {

@@ -90,9 +90,9 @@ export function ApprovalModal({ isOpen, onClose, onApprove, formTitle, formId }:
                   Form Approved Successfully!
                 </p>
               </div>
-              <p className="text-green-700 text-sm mt-1">
-                This form has been approved and will show the approver's initials on the PDF.
-              </p>
+                <p className="text-green-700 text-sm mt-1">
+                  This form has been approved and will show the approver&apos;s initials on the PDF.
+                </p>
             </div>
 
             {/* Initials Input */}
@@ -114,7 +114,7 @@ export function ApprovalModal({ isOpen, onClose, onApprove, formTitle, formId }:
                   autoFocus
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  These initials will appear on the PDF as "Approved by: [INITIALS]"
+                  These initials will appear on the PDF as &quot;Approved by: [INITIALS]&quot;
                 </p>
               </div>
 
