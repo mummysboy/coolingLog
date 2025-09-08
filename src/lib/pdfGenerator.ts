@@ -129,7 +129,7 @@ export const generateFormPDF = async (formData: PDFFormData): Promise<void> => {
   }
 };
 
-const generateFormHTML = (formData: PDFFormData): string => {
+export const generateFormHTML = (formData: PDFFormData): string => {
   // Determine form type and generate appropriate content
   if (formData.formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
     return generatePiroshkiFormHTML(formData);

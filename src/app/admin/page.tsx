@@ -12,6 +12,7 @@ import { downloadFileIOSCompatible } from '@/lib/iosDownloadHelper';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
 import BagelDogForm from '@/components/BagelDogForm';
 import { shouldHighlightCell } from '@/lib/validation';
+import { ApprovalModal } from '@/components/ApprovalModal';
 
 
 export default function AdminDashboard() {
@@ -20,6 +21,8 @@ export default function AdminDashboard() {
   const { createPin, updatePin, deletePin, getAllPins, getPinForInitials } = usePinStore();
   const [selectedForm, setSelectedForm] = useState<PaperFormEntry | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [formToApprove, setFormToApprove] = useState<PaperFormEntry | null>(null);
 
   // Simple form update handler that only updates local state (no auto-saving)
   const handleFormUpdate = useCallback((formId: string, updates: Partial<PaperFormEntry>) => {
@@ -28,6 +31,17 @@ export default function AdminDashboard() {
     // Only auto-save status changes (like 'Complete') - same as form page
     if (updates.status) {
       console.log('Status updated to:', updates.status, 'updating store');
+      
+      // If changing to Approved, show the approval modal instead of directly updating
+      if (updates.status === 'Approved') {
+        const formToApprove = savedForms.find(f => f.id === formId);
+        if (formToApprove) {
+          setFormToApprove(formToApprove);
+          setShowApprovalModal(true);
+        }
+        return;
+      }
+      
       updateFormStatus(formId, updates.status);
       // Force dashboard refresh to show updated status
       setDashboardRefreshKey(prev => prev + 1);
@@ -45,7 +59,29 @@ export default function AdminDashboard() {
       setSelectedForm(updatedForm);
       console.log('SelectedForm updated to:', updatedForm.status);
     }
-  }, [updateFormStatus, selectedForm]);
+  }, [updateFormStatus, selectedForm, savedForms]);
+
+  // Handle form approval with initials
+  const handleFormApproval = useCallback(async (initials: string) => {
+    if (!formToApprove) return;
+    
+    try {
+      console.log('Approving form with initials:', initials, 'Form:', formToApprove);
+      await approveForm(formToApprove.id, initials);
+      
+      // Wait a moment for the store to update
+      setTimeout(() => {
+        const updatedForm = savedForms.find(f => f.id === formToApprove.id);
+        console.log('Updated form after approval:', updatedForm);
+      }, 100);
+      
+      setDashboardRefreshKey(prev => prev + 1);
+      setShowApprovalModal(false);
+      setFormToApprove(null);
+    } catch (error) {
+      console.error('Error approving form:', error);
+    }
+  }, [approveForm, formToApprove, savedForms]);
 
   // Compute a reliable header title for the modal: prefer the explicitly-selected form's title
   // (admin is explicitly viewing this form), then fall back to the store's currentForm title,
@@ -618,6 +654,10 @@ export default function AdminDashboard() {
   // Download PDF from admin page for approved forms
   const handleDownloadPDF = async (form: PaperFormEntry) => {
     try {
+      console.log('Generating PDF for form:', form);
+      console.log('Form approvedBy:', form.approvedBy);
+      console.log('Form approvedAt:', form.approvedAt);
+      
       await generateFormPDF({
         id: form.id,
         title: form.title || getFormTypeDisplayName(form.formType),
@@ -657,7 +697,7 @@ export default function AdminDashboard() {
       tempDiv.style.lineHeight = '1.4';
       
       // Use the exact same HTML generation as the PDF generator
-      const { generateFormPDF } = await import('@/lib/pdfGenerator');
+      const { generateFormHTML } = await import('@/lib/pdfGenerator');
       
       // Create the same data structure that the PDF generator expects
       const pdfFormData = {
@@ -1264,6 +1304,14 @@ export default function AdminDashboard() {
     const handleStatusChange = (newStatus: 'Complete' | 'In Progress' | 'Error' | 'Approved' | 'Archive') => {
       console.log('🔄 Status change requested:', { formId: form.id, currentStatus: form.status, newStatus });
       
+      // If changing to Approved, show the approval modal instead of directly updating
+      if (newStatus === 'Approved') {
+        setFormToApprove(form);
+        setShowApprovalModal(true);
+        setShowStatusDropdown(null); // Close dropdown
+        return;
+      }
+      
       try {
         updateFormStatus(form.id, newStatus);
         console.log('✅ Status update function called successfully');
@@ -1467,6 +1515,9 @@ export default function AdminDashboard() {
                             <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
                             <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                               <span>Form #{form.id.slice(-6)}</span>
+                              {form.approvedBy && (
+                                <span className="text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1553,11 +1604,13 @@ export default function AdminDashboard() {
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
                           <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
-                          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                            <span>Form #{form.id.slice(-6)}</span>
-                            <span className="text-gray-600 font-medium">✓ Finalized</span>
-                            {/* Approved by text removed per request */}
-                          </div>
+                            <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                              <span>Form #{form.id.slice(-6)}</span>
+                              <span className="text-gray-600 font-medium">✓ Finalized</span>
+                              {form.approvedBy && (
+                                <span className="text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                              )}
+                            </div>
                         </div>
                       </div>
 
@@ -1574,17 +1627,9 @@ export default function AdminDashboard() {
                           View Form
                         </button>
                         <button
-                          onClick={async () => {
-                            if (!adminUser) {
-                              return;
-                            }
-
-                            try {
-                              await approveForm(form.id, adminUser.initials);
-                              setDashboardRefreshKey(prev => prev + 1);
-                            } catch (error) {
-                              console.error('Error approving form:', error);
-                            }
+                          onClick={() => {
+                            setFormToApprove(form);
+                            setShowApprovalModal(true);
                           }}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-indigo-600 border border-indigo-600 rounded-md hover:bg-indigo-700 hover:text-white transition-colors"
                           title="Approve form"
@@ -1654,10 +1699,12 @@ export default function AdminDashboard() {
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
                           <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
-                          <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                            <span>Form #{form.id.slice(-6)}</span>
-                            {/* Approved by text removed per request */}
-                          </div>
+                            <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                              <span>Form #{form.id.slice(-6)}</span>
+                              {form.approvedBy && (
+                                <span className="text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                              )}
+                            </div>
                         </div>
                       </div>
 
@@ -1856,6 +1903,9 @@ export default function AdminDashboard() {
                               <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
                                 <span>Form #{form.id.slice(-6)}</span>
                                 <span>Date Range: {new Date(form.dateCreated).toLocaleDateString()} - {new Date(form.date).toLocaleDateString()}</span>
+                                {form.approvedBy && (
+                                  <span className="text-indigo-600 font-medium">Approved by {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -2080,6 +2130,18 @@ export default function AdminDashboard() {
           )}
         </div>
       ))}
+
+      {/* Approval Modal */}
+      <ApprovalModal
+        isOpen={showApprovalModal}
+        onClose={() => {
+          setShowApprovalModal(false);
+          setFormToApprove(null);
+        }}
+        onApprove={handleFormApproval}
+        formTitle={formToApprove?.title}
+        formId={formToApprove?.id}
+      />
     </div>
   );
 }
