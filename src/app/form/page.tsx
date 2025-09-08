@@ -149,77 +149,6 @@ export default function FormPage() {
     }
   }, []);
 
-  // Function to handle JPEG download
-  const handleDownloadJPEG = useCallback(async (form: PaperFormEntry) => {
-    try {
-      // Create a temporary div to render the form content
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '-9999px';
-      tempDiv.style.width = '1200px';
-      tempDiv.style.backgroundColor = 'white';
-      tempDiv.style.padding = '20px';
-      tempDiv.style.fontFamily = 'Arial, sans-serif';
-      tempDiv.style.fontSize = '12px';
-      tempDiv.style.lineHeight = '1.4';
-      
-      // Use the exact same HTML generation as the PDF generator
-      const { generateFormPDF } = await import('@/lib/pdfGenerator');
-      
-      // Create the same data structure that the PDF generator expects
-      const pdfFormData = {
-        id: form.id,
-        title: form.title || getFormTypeDisplayName(form.formType),
-        formType: form.formType,
-        date: form.date instanceof Date ? form.date.toISOString() : new Date(form.date).toISOString(),
-        status: form.status,
-        approvedBy: form.approvedBy,
-        approvedAt: form.approvedAt ? (form.approvedAt instanceof Date ? form.approvedAt.toISOString() : new Date(form.approvedAt).toISOString()) : undefined,
-        correctiveActionsComments: form.correctiveActionsComments,
-        thermometerNumber: form.thermometerNumber,
-        lotNumbers: form.lotNumbers,
-        entries: form.entries,
-        quantityAndFlavor: (form as any).quantityAndFlavor,
-        preShipmentReview: (form as any).preShipmentReview,
-        frankFlavorSizeTable: (form as any).frankFlavorSizeTable,
-        bagelDogPreShipmentReview: (form as any).bagelDogPreShipmentReview
-      };
-      
-      // Generate the exact same HTML that the PDF uses
-      tempDiv.innerHTML = generateFormHTML(pdfFormData);
-      
-      // Add to DOM temporarily
-      document.body.appendChild(tempDiv);
-      
-      // Convert to canvas using html2canvas
-      const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(tempDiv, {
-        width: 1200,
-        height: tempDiv.scrollHeight,
-        scale: 2, // Higher quality
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
-      
-      // Remove temporary div
-      document.body.removeChild(tempDiv);
-      
-      // Convert canvas to blob and download using iOS-compatible method
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const filename = `${form.title ? form.title.replace(/[^a-zA-Z0-9]/g, '_') : 'FoodChillingLog'}_${form.id.slice(-6)}_${new Date(form.date).toISOString().split('T')[0]}.jpg`;
-          downloadFileIOSCompatible(blob, filename, 'JPEG');
-        }
-      }, 'image/jpeg', 0.9);
-      
-    } catch (error) {
-      console.error('Error downloading JPEG:', error);
-      alert('Failed to download JPEG. Please try again.');
-    }
-  }, [generateFormHTML]);
-
   // Helper function to generate HTML for JPEG conversion - using the exact same logic as PDF generator
   const generateFormHTML = (formData: any): string => {
     // Import the same functions used by the PDF generator
@@ -539,6 +468,77 @@ export default function FormPage() {
   const generateBagelDogFormHTML = (formData: any): string => {
     return `<div>Bagel Dog form HTML generation not yet implemented for JPEG</div>`;
   };
+
+  // Function to handle JPEG download
+  const handleDownloadJPEG = useCallback(async (form: PaperFormEntry) => {
+    try {
+      // Create a temporary div to render the form content
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '-9999px';
+      tempDiv.style.width = '1200px';
+      tempDiv.style.backgroundColor = 'white';
+      tempDiv.style.padding = '20px';
+      tempDiv.style.fontFamily = 'Arial, sans-serif';
+      tempDiv.style.fontSize = '12px';
+      tempDiv.style.lineHeight = '1.4';
+      
+      // Use the exact same HTML generation as the PDF generator
+      const { generateFormPDF } = await import('@/lib/pdfGenerator');
+      
+      // Create the same data structure that the PDF generator expects
+      const pdfFormData = {
+        id: form.id,
+        title: form.title || getFormTypeDisplayName(form.formType),
+        formType: form.formType,
+        date: form.date instanceof Date ? form.date.toISOString() : new Date(form.date).toISOString(),
+        status: form.status,
+        approvedBy: form.approvedBy,
+        approvedAt: form.approvedAt ? (form.approvedAt instanceof Date ? form.approvedAt.toISOString() : new Date(form.approvedAt).toISOString()) : undefined,
+        correctiveActionsComments: form.correctiveActionsComments,
+        thermometerNumber: form.thermometerNumber,
+        lotNumbers: form.lotNumbers,
+        entries: form.entries,
+        quantityAndFlavor: (form as any).quantityAndFlavor,
+        preShipmentReview: (form as any).preShipmentReview,
+        frankFlavorSizeTable: (form as any).frankFlavorSizeTable,
+        bagelDogPreShipmentReview: (form as any).bagelDogPreShipmentReview
+      };
+      
+      // Generate the exact same HTML that the PDF uses
+      tempDiv.innerHTML = generateFormHTML(pdfFormData);
+      
+      // Add to DOM temporarily
+      document.body.appendChild(tempDiv);
+      
+      // Convert to canvas using html2canvas
+      const { default: html2canvas } = await import('html2canvas');
+      const canvas = await html2canvas(tempDiv, {
+        width: 1200,
+        height: tempDiv.scrollHeight,
+        scale: 2, // Higher quality
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+      
+      // Remove temporary div
+      document.body.removeChild(tempDiv);
+      
+      // Convert canvas to blob and download using iOS-compatible method
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const filename = `${form.title ? form.title.replace(/[^a-zA-Z0-9]/g, '_') : 'FoodChillingLog'}_${form.id.slice(-6)}_${new Date(form.date).toISOString().split('T')[0]}.jpg`;
+          downloadFileIOSCompatible(blob, filename, 'JPEG');
+        }
+      }, 'image/jpeg', 0.9);
+      
+    } catch (error) {
+      console.error('Error downloading JPEG:', error);
+      alert('Failed to download JPEG. Please try again.');
+    }
+  }, [generateFormHTML]);
 
   // Function to handle form printing
   const handlePrintForm = useCallback((form: PaperFormEntry) => {
