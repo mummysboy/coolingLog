@@ -708,23 +708,7 @@ export default function FormPage() {
                           </span>
                           
                           
-                          
-                          {/* Archive Button */}
-                          <button
-                            onClick={() => {
-                              if (confirm(`Are you sure you want to archive Form #${form.id.slice(-6)}?\n\nThis will move the form to the archived section.`)) {
-                                updateFormStatus(form.id, 'Archive');
-                                setFormUpdateKey(prev => prev + 1);
-                              }
-                            }}
-                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors"
-                            title="Archive this form"
-                          >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l6 6 6-6M5 8l6-6 6 6" />
-                            </svg>
-                            Archive
-                          </button>
+                
                           
                           {/* View Form Button */}
                           <button
