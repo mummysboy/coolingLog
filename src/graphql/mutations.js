@@ -29,6 +29,9 @@ export const updateCookingCoolingFormStatus = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -63,6 +66,9 @@ export const addAdminComment = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -97,6 +103,9 @@ export const resolveError = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -138,6 +147,9 @@ export const updatePiroshkiFormStatus = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -179,6 +191,9 @@ export const addPiroshkiAdminComment = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -220,6 +235,9 @@ export const resolvePiroshkiError = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -261,6 +279,9 @@ export const updateBagelDogFormStatus = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -302,6 +323,9 @@ export const addBagelDogAdminComment = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -343,6 +367,9 @@ export const resolveBagelDogError = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -380,6 +407,9 @@ export const createCookingCoolingFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -417,6 +447,9 @@ export const updateCookingCoolingFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -454,6 +487,9 @@ export const deleteCookingCoolingFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -498,6 +534,9 @@ export const createPiroshkiFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -542,6 +581,9 @@ export const updatePiroshkiFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -586,6 +628,9 @@ export const deletePiroshkiFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -630,6 +675,9 @@ export const createBagelDogFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -674,6 +722,9 @@ export const updateBagelDogFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -718,6 +769,9 @@ export const deleteBagelDogFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename

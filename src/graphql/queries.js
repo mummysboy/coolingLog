@@ -35,6 +35,9 @@ export const getCookingCoolingFormsByDateRange = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -69,6 +72,9 @@ export const getTodaysCookingCoolingForms = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -103,6 +109,9 @@ export const getCookingCoolingFormsByStatus = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -137,6 +146,9 @@ export const getCookingCoolingFormsByInitial = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -181,6 +193,9 @@ export const getPiroshkiFormsByDateRange = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -222,6 +237,9 @@ export const getTodaysPiroshkiForms = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -263,6 +281,9 @@ export const getPiroshkiFormsByStatus = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -304,6 +325,9 @@ export const getPiroshkiFormsByInitial = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -348,6 +372,9 @@ export const getBagelDogFormsByDateRange = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -389,6 +416,9 @@ export const getTodaysBagelDogForms = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -430,6 +460,9 @@ export const getBagelDogFormsByStatus = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -471,6 +504,9 @@ export const getBagelDogFormsByInitial = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -505,6 +541,9 @@ export const getCookingCoolingFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -535,6 +574,9 @@ export const listCookingCoolingFormEntries = /* GraphQL */ `
         lotNumbers
         correctiveActionsComments
         resolvedErrors
+        completedAt
+        approvedBy
+        approvedAt
         createdAt
         updatedAt
         __typename
@@ -579,6 +621,9 @@ export const getPiroshkiFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -610,6 +655,9 @@ export const listPiroshkiFormEntries = /* GraphQL */ `
         correctiveActionsComments
         quantityAndFlavor
         resolvedErrors
+        completedAt
+        approvedBy
+        approvedAt
         createdAt
         updatedAt
         __typename
@@ -654,6 +702,9 @@ export const getBagelDogFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -685,6 +736,9 @@ export const listBagelDogFormEntries = /* GraphQL */ `
         correctiveActionsComments
         frankFlavorSizeTable
         resolvedErrors
+        completedAt
+        approvedBy
+        approvedAt
         createdAt
         updatedAt
         __typename

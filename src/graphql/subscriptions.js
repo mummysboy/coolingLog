@@ -29,6 +29,9 @@ export const onCookingCoolingFormEntryCreated = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -63,6 +66,9 @@ export const onCookingCoolingFormEntryUpdated = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -97,6 +103,9 @@ export const onCookingCoolingFormStatusUpdated = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -138,6 +147,9 @@ export const onPiroshkiFormEntryCreated = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -179,6 +191,9 @@ export const onPiroshkiFormEntryUpdated = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -220,6 +235,9 @@ export const onPiroshkiFormStatusUpdated = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -261,6 +279,9 @@ export const onBagelDogFormEntryCreated = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -302,6 +323,9 @@ export const onBagelDogFormEntryUpdated = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -343,6 +367,9 @@ export const onBagelDogFormStatusUpdated = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -379,6 +406,9 @@ export const onCreateCookingCoolingFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -415,6 +445,9 @@ export const onUpdateCookingCoolingFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -451,6 +484,9 @@ export const onDeleteCookingCoolingFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -494,6 +530,9 @@ export const onCreatePiroshkiFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -537,6 +576,9 @@ export const onUpdatePiroshkiFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -580,6 +622,9 @@ export const onDeletePiroshkiFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -623,6 +668,9 @@ export const onCreateBagelDogFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -666,6 +714,9 @@ export const onUpdateBagelDogFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename
@@ -709,6 +760,9 @@ export const onDeleteBagelDogFormEntry = /* GraphQL */ `
         __typename
       }
       resolvedErrors
+      completedAt
+      approvedBy
+      approvedAt
       createdAt
       updatedAt
       __typename

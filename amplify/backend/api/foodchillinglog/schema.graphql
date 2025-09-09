@@ -30,6 +30,10 @@ type CookingCoolingFormEntry @model @auth(rules: [{ allow: public }]) {
   # Completion metadata
   completedAt: AWSDateTime
   
+  # Approval metadata
+  approvedBy: String
+  approvedAt: AWSDateTime
+  
   createdAt: AWSDateTime
   updatedAt: AWSDateTime
 }
@@ -64,6 +68,10 @@ type PiroshkiFormEntry @model @auth(rules: [{ allow: public }]) {
   # Completion metadata
   completedAt: AWSDateTime
   
+  # Approval metadata
+  approvedBy: String
+  approvedAt: AWSDateTime
+  
   createdAt: AWSDateTime
   updatedAt: AWSDateTime
 }
@@ -97,6 +105,10 @@ type BagelDogFormEntry @model @auth(rules: [{ allow: public }]) {
   
   # Completion metadata
   completedAt: AWSDateTime
+  
+  # Approval metadata
+  approvedBy: String
+  approvedAt: AWSDateTime
   
   createdAt: AWSDateTime
   updatedAt: AWSDateTime
@@ -285,6 +297,13 @@ input CreateCookingCoolingFormEntryInput {
   # Admin comments and resolution
   adminComments: [AdminCommentInput!]
   resolvedErrors: [String!]
+  
+  # Completion metadata
+  completedAt: AWSDateTime
+  
+  # Approval metadata
+  approvedBy: String
+  approvedAt: AWSDateTime
 }
 
 input UpdateCookingCoolingFormEntryInput {
@@ -308,6 +327,13 @@ input UpdateCookingCoolingFormEntryInput {
   # Admin comments and resolution
   adminComments: [AdminCommentInput!]
   resolvedErrors: [String!]
+  
+  # Completion metadata
+  completedAt: AWSDateTime
+  
+  # Approval metadata
+  approvedBy: String
+  approvedAt: AWSDateTime
 }
 
 input CreatePiroshkiFormEntryInput {
@@ -335,6 +361,13 @@ input CreatePiroshkiFormEntryInput {
   # Admin comments and resolution
   adminComments: [AdminCommentInput!]
   resolvedErrors: [String!]
+  
+  # Completion metadata
+  completedAt: AWSDateTime
+  
+  # Approval metadata
+  approvedBy: String
+  approvedAt: AWSDateTime
 }
 
 input UpdatePiroshkiFormEntryInput {
@@ -362,6 +395,13 @@ input UpdatePiroshkiFormEntryInput {
   # Admin comments and resolution
   adminComments: [AdminCommentInput!]
   resolvedErrors: [String!]
+  
+  # Completion metadata
+  completedAt: AWSDateTime
+  
+  # Approval metadata
+  approvedBy: String
+  approvedAt: AWSDateTime
 }
 
 input CreateBagelDogFormEntryInput {
@@ -389,6 +429,13 @@ input CreateBagelDogFormEntryInput {
   # Admin comments and resolution
   adminComments: [AdminCommentInput!]
   resolvedErrors: [String!]
+  
+  # Completion metadata
+  completedAt: AWSDateTime
+  
+  # Approval metadata
+  approvedBy: String
+  approvedAt: AWSDateTime
 }
 
 input UpdateBagelDogFormEntryInput {
@@ -416,6 +463,13 @@ input UpdateBagelDogFormEntryInput {
   # Admin comments and resolution
   adminComments: [AdminCommentInput!]
   resolvedErrors: [String!]
+  
+  # Completion metadata
+  completedAt: AWSDateTime
+  
+  # Approval metadata
+  approvedBy: String
+  approvedAt: AWSDateTime
 }
 
 # Custom queries
