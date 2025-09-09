@@ -24,13 +24,21 @@ export default function FormPage() {
   const [isAddFormDropdownOpen, setIsAddFormDropdownOpen] = useState(false);
   const [newlyCreatedFormId, setNewlyCreatedFormId] = useState<string | null>(null);
 
+  // Archive functionality state
+  const [archiveSearchTerm, setArchiveSearchTerm] = useState('');
+  const [archiveFormTypeFilter, setArchiveFormTypeFilter] = useState('');
+  const [archiveDateFrom, setArchiveDateFrom] = useState('');
+  const [archiveDateTo, setArchiveDateTo] = useState('');
+  const [isArchivedDropdownOpen, setIsArchivedDropdownOpen] = useState(false);
+
   // Refs for outside-click detection
   const addFormDropdownRef = useRef<HTMLDivElement>(null);
+  const archivedDropdownRef = useRef<HTMLDivElement>(null);
 
   // Memoized form lists to avoid repeated filtering/sorting on every render
   const activeForms = useMemo(() => 
     savedForms
-      .filter((form: PaperFormEntry) => form.status !== 'Complete' && form.status !== 'Approved')
+      .filter((form: PaperFormEntry) => form.status !== 'Complete' && form.status !== 'Approved' && form.status !== 'Archive')
       .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()),
     [savedForms]
   );
@@ -49,17 +57,72 @@ export default function FormPage() {
     [savedForms]
   );
 
+  const archivedForms = useMemo(() => 
+    savedForms
+      .filter((form: PaperFormEntry) => form.status === 'Archive')
+      .sort((a: PaperFormEntry, b: PaperFormEntry) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [savedForms]
+  );
+
+  // Archive filtering function
+  const getFilteredArchivedForms = useCallback(() => {
+    let filtered = archivedForms;
+
+    // Apply search filter
+    if (archiveSearchTerm) {
+      const searchLower = archiveSearchTerm.toLowerCase();
+      filtered = filtered.filter(form => 
+        form.id.toLowerCase().includes(searchLower) ||
+        form.title?.toLowerCase().includes(searchLower) ||
+        getFormTypeDisplayName(form.formType).toLowerCase().includes(searchLower) ||
+        form.formInitial?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply form type filter
+    if (archiveFormTypeFilter) {
+      filtered = filtered.filter(form => form.formType === archiveFormTypeFilter);
+    }
+
+    // Apply date range filter
+    if (archiveDateFrom || archiveDateTo) {
+      filtered = filtered.filter(form => {
+        const formDate = new Date(form.date);
+        const fromDate = archiveDateFrom ? new Date(archiveDateFrom) : null;
+        const toDate = archiveDateTo ? new Date(archiveDateTo) : null;
+        
+        // Set time to start/end of day for proper comparison
+        if (fromDate) {
+          fromDate.setHours(0, 0, 0, 0);
+        }
+        if (toDate) {
+          toDate.setHours(23, 59, 59, 999);
+        }
+        
+        const isAfterFrom = !fromDate || formDate >= fromDate;
+        const isBeforeTo = !toDate || formDate <= toDate;
+        
+        return isAfterFrom && isBeforeTo;
+      });
+    }
+
+    return filtered;
+  }, [archivedForms, archiveSearchTerm, archiveFormTypeFilter, archiveDateFrom, archiveDateTo]);
+
   // Close dropdown when clicking outside using ref
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isAddFormDropdownOpen && addFormDropdownRef.current && !addFormDropdownRef.current.contains(event.target as Node)) {
         setIsAddFormDropdownOpen(false);
       }
+      if (isArchivedDropdownOpen && archivedDropdownRef.current && !archivedDropdownRef.current.contains(event.target as Node)) {
+        setIsArchivedDropdownOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isAddFormDropdownOpen]);
+  }, [isAddFormDropdownOpen, isArchivedDropdownOpen]);
 
   // Body scroll lock when modal is open
   useEffect(() => {
@@ -646,6 +709,23 @@ export default function FormPage() {
                           
                           
                           
+                          {/* Archive Button */}
+                          <button
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to archive Form #${form.id.slice(-6)}?\n\nThis will move the form to the archived section.`)) {
+                                updateFormStatus(form.id, 'Archive');
+                                setFormUpdateKey(prev => prev + 1);
+                              }
+                            }}
+                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                            title="Archive this form"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l6 6 6-6M5 8l6-6 6 6" />
+                            </svg>
+                            Archive
+                          </button>
+                          
                           {/* View Form Button */}
                           <button
                             onClick={() => handleViewForm(form)}
@@ -657,18 +737,6 @@ export default function FormPage() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                             View Form
-                          </button>
-                          
-                          {/* Delete Form Button */}
-                          <button
-                            onClick={() => handleDeleteForm(form.id)}
-                            className="inline-flex items-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-200 rounded-md hover:bg-red-100 hover:text-red-700 transition-colors"
-                            title="Delete form"
-                          >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            Delete
                           </button>
                         </div>
                       </div>
@@ -765,6 +833,23 @@ export default function FormPage() {
                             </span>
                             
                                                                                   {/* Download/Print removed for Completed forms; available only on Approved forms */}
+                            
+                            {/* Archive Button */}
+                            <button
+                              onClick={() => {
+                                if (confirm(`Are you sure you want to archive Form #${form.id.slice(-6)}?\n\nThis will move the form to the archived section.`)) {
+                                  updateFormStatus(form.id, 'Archive');
+                                  setFormUpdateKey(prev => prev + 1);
+                                }
+                              }}
+                              className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                              title="Archive this form"
+                            >
+                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l6 6 6-6M5 8l6-6 6 6" />
+                              </svg>
+                              Archive
+                            </button>
                             
                             {/* View Form Button - Read Only */}
                             <button
@@ -886,6 +971,238 @@ export default function FormPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Archive Section - Dropdown */}
+            {archivedForms.length > 0 && (
+              <div className="mb-16" ref={archivedDropdownRef}>
+                <button
+                  onClick={() => setIsArchivedDropdownOpen(!isArchivedDropdownOpen)}
+                  className="w-full flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center">
+                    <svg className="w-6 h-6 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2V9a2 2 0 00-2-2H9a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Archive ({archivedForms.length})
+                    </h2>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="text-sm text-gray-600">
+                      {getFilteredArchivedForms().length} of {archivedForms.length} forms
+                      {(archiveSearchTerm || archiveFormTypeFilter || archiveDateFrom || archiveDateTo) && (
+                        <span className="ml-2 text-blue-600 font-medium">(filtered)</span>
+                      )}
+                    </div>
+                    <svg 
+                      className={`w-6 h-6 text-gray-600 transition-transform ${isArchivedDropdownOpen ? 'rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+
+                {isArchivedDropdownOpen && (
+                  <div className="mt-4 mb-8">
+                    {/* Archive Search and Filters */}
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Search */}
+                        <div>
+                          <label htmlFor="archive-search" className="block text-sm font-medium text-gray-700 mb-1">
+                            Search Archive
+                          </label>
+                          <input
+                            id="archive-search"
+                            type="text"
+                            value={archiveSearchTerm}
+                            onChange={(e) => setArchiveSearchTerm(e.target.value)}
+                            placeholder="Search by form number, title, type, or initials..."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+
+                        {/* Form Type Filter */}
+                        <div>
+                          <label htmlFor="archive-type-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                            Form Type
+                          </label>
+                          <select
+                            id="archive-type-filter"
+                            value={archiveFormTypeFilter}
+                            onChange={(e) => setArchiveFormTypeFilter(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="">All Types</option>
+                            <option value="COOKING_AND_COOLING">Cooking/Cooling</option>
+                            <option value="PIROSHKI_CALZONE_EMPANADA">Piroshki</option>
+                            <option value="BAGEL_DOG_COOKING_COOLING">Bagel Dog</option>
+                          </select>
+                        </div>
+
+                        {/* Date Range Filter */}
+                        <div>
+                          <label htmlFor="archive-date-from" className="block text-sm font-medium text-gray-700 mb-1">
+                            From Date
+                          </label>
+                          <input
+                            id="archive-date-from"
+                            type="date"
+                            value={archiveDateFrom}
+                            onChange={(e) => setArchiveDateFrom(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="archive-date-to" className="block text-sm font-medium text-gray-700 mb-1">
+                            To Date
+                          </label>
+                          <input
+                            id="archive-date-to"
+                            type="date"
+                            value={archiveDateTo}
+                            onChange={(e) => setArchiveDateTo(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Clear Filters Button */}
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          onClick={() => {
+                            setArchiveSearchTerm('');
+                            setArchiveFormTypeFilter('');
+                            setArchiveDateFrom('');
+                            setArchiveDateTo('');
+                          }}
+                          className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          Clear All Filters
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Archived Forms List */}
+                    <div className="transition-all duration-300 ease-in-out">
+                      {getFilteredArchivedForms().length > 0 ? (
+                        getFilteredArchivedForms().map((form: PaperFormEntry) => (
+                          <div key={form.id} className="bg-white rounded-xl border-2 border-gray-200 mb-6 transition-all duration-200 ease-in-out hover:shadow-lg">
+                            <div className="p-6">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-4">
+                                  <div>
+                                    <h3 className="text-lg font-semibold text-gray-900">{form.title ? form.title : getFormTypeDisplayName(form.formType)}</h3>
+                                    <div className="text-sm text-gray-600 mt-1">{getFormTypeDisplayName(form.formType)}</div>
+                                    <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                                      <span>Form #{form.id.slice(-6)}</span>
+                                      <span className="text-gray-600 font-medium">📁 Archived</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center space-x-3">
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                                    📁 Archived
+                                  </span>
+                                  
+                                  {/* View Form Button - Read Only */}
+                                  <button
+                                    onClick={() => handleViewForm(form)}
+                                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                                    title="View archived form (read-only)"
+                                  >
+                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    View Form
+                                  </button>
+                                </div>
+                              </div>
+                              
+                              {/* Additional Form Summary Info */}
+                              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                <div className="bg-gray-50 rounded-lg p-3">
+                                  <div className="font-medium text-gray-700">Date Created</div>
+                                  <div className="text-lg font-semibold text-gray-900">
+                                    {new Date(form.date).toLocaleDateString()}
+                                  </div>
+                                  <div className="text-sm text-gray-600 mt-1">
+                                    {new Date(form.date).toLocaleTimeString()}
+                                  </div>
+                                </div>
+                                
+                                <div className="bg-gray-50 rounded-lg p-3">
+                                  <div className="font-medium text-gray-700">Archived Date</div>
+                                  <div className="text-lg font-semibold text-gray-900">
+                                    {form.completedAt ? new Date(form.completedAt).toLocaleDateString() : 'Unknown'}
+                                  </div>
+                                  <div className="text-sm text-gray-600 mt-1">
+                                    {form.completedAt ? new Date(form.completedAt).toLocaleTimeString() : ''}
+                                  </div>
+                                </div>
+                                
+                                {/* Corrective Actions and Comments - Always shown */}
+                                <div className="bg-gray-50 rounded-lg p-3">
+                                  <div className="font-medium text-gray-700">Corrective Actions & Comments</div>
+                                  <div className="text-sm text-gray-600 mt-1">
+                                    <textarea
+                                      readOnly
+                                      className="w-full h-20 p-2 text-sm text-gray-700 bg-white border rounded-md resize-none"
+                                      value={form.correctiveActionsComments && form.correctiveActionsComments.trim() ?
+                                        form.correctiveActionsComments.split('\n').map((l, i) => `${i+1}. ${l}`).join('\n') : '(no comments)'}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 bg-white rounded-xl border-2 border-gray-200">
+                          <div className="text-4xl mb-3">🔍</div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Forms Match Your Filters</h3>
+                          <p className="text-gray-600">Try adjusting your search criteria or clearing the filters.</p>
+                          <button
+                            onClick={() => {
+                              setArchiveSearchTerm('');
+                              setArchiveFormTypeFilter('');
+                              setArchiveDateFrom('');
+                              setArchiveDateTo('');
+                            }}
+                            className="mt-3 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                          >
+                            Clear All Filters
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* No Archived Forms Message - Only show when there are no archived forms at all */}
+            {archivedForms.length === 0 && (
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                  <svg className="w-6 h-6 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8l6 6 6-6M5 8l6-6 6 6" />
+                  </svg>
+                  Archived Forms
+                </h2>
+                <div className="text-center py-8 bg-white rounded-xl border-2 border-gray-200">
+                  <div className="text-4xl mb-3">📁</div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Archived Forms</h3>
+                  <p className="text-gray-600">Forms that have been archived will appear here.</p>
+                  <p className="text-sm text-gray-500 mt-2">Use the "Archive" button on any form to move it to this section.</p>
+                </div>
               </div>
             )}
           </>
