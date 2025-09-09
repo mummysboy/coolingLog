@@ -160,7 +160,7 @@ export default function FormPage() {
       // Store the new form ID to track it (used to auto-open the modal)
       setNewlyCreatedFormId(currentForm.id);
     }
-  }, [createNewForm, store]);
+  }, [createNewForm, store, saveForm]);
 
   // Function to handle PDF download
   const handleDownloadPDF = useCallback(async (form: PaperFormEntry) => {
@@ -1201,7 +1201,7 @@ export default function FormPage() {
                   <div className="text-4xl mb-3">📁</div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No Archived Forms</h3>
                   <p className="text-gray-600">Forms that have been archived will appear here.</p>
-                  <p className="text-sm text-gray-500 mt-2">Use the "Archive" button on any form to move it to this section.</p>
+                  <p className="text-sm text-gray-500 mt-2">Use the &quot;Archive&quot; button on any form to move it to this section.</p>
                 </div>
               </div>
             )}
