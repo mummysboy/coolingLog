@@ -728,11 +728,17 @@ class MultiTableStorageManager {
         const existingForm = await this.getPaperForm(form.id, form.formType);
         console.log('Existing form found:', existingForm ? 'Yes' : 'No');
         
-  if (existingForm) {
+        if (existingForm) {
           console.log('Updating existing cooking/cooling form...');
           try {
             // Keep all fields including approval fields
             const graphqlInput = { ...input };
+            console.log('🔄 GraphQL input for update:', {
+              id: graphqlInput.id,
+              status: graphqlInput.status,
+              approvedBy: graphqlInput.approvedBy,
+              approvedAt: graphqlInput.approvedAt
+            });
             const result = await client.graphql({
               query: `mutation UpdateCookingCoolingFormEntry($input: UpdateCookingCoolingFormEntryInput!) {
                 updateCookingCoolingFormEntry(input: $input) { id }
