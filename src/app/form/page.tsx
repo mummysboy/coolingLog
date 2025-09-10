@@ -905,12 +905,7 @@ export default function FormPage() {
                         </div>
 
                         <div className="flex items-center space-x-3">
-                          <div className="flex flex-col items-end text-sm text-gray-600">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">✓ Approved</span>
-                            {form.approvedBy && (
-                              <span className="text-xs text-indigo-700 mt-1">By {form.approvedBy}{form.approvedAt ? ` • ${new Date(form.approvedAt).toLocaleString()}` : ''}</span>
-                            )}
-                          </div>
+      
                           
                           {/* Download PDF Button */}
                           <button
