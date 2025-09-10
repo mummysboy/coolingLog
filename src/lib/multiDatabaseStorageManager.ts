@@ -739,6 +739,7 @@ class MultiTableStorageManager {
               approvedBy: graphqlInput.approvedBy,
               approvedAt: graphqlInput.approvedAt
             });
+            console.log('🔄 Full GraphQL input object:', JSON.stringify(graphqlInput, null, 2));
             const result = await client.graphql({
               query: `mutation UpdateCookingCoolingFormEntry($input: UpdateCookingCoolingFormEntryInput!) {
                 updateCookingCoolingFormEntry(input: $input) { id }
@@ -1214,6 +1215,9 @@ class MultiTableStorageManager {
                     comment
                   }
                   resolvedErrors
+                  completedAt
+                  approvedBy
+                  approvedAt
                   createdAt
                   updatedAt
                 }
@@ -1413,6 +1417,9 @@ class MultiTableStorageManager {
                     comment
                   }
                   resolvedErrors
+                  completedAt
+                  approvedBy
+                  approvedAt
                   createdAt
                   updatedAt
                 }
@@ -1602,6 +1609,9 @@ class MultiTableStorageManager {
                     comment
                   }
                   resolvedErrors
+                  completedAt
+                  approvedBy
+                  approvedAt
                   createdAt
                   updatedAt
                 }
