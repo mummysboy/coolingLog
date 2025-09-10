@@ -731,10 +731,8 @@ class MultiTableStorageManager {
   if (existingForm) {
           console.log('Updating existing cooking/cooling form...');
           try {
-            // Remove fields not present in the Update input type (backend schema may not include approval fields yet)
+            // Keep all fields including approval fields
             const graphqlInput = { ...input };
-            if ('approvedBy' in graphqlInput) { delete (graphqlInput as any).approvedBy; console.log('Stripped approvedBy from GraphQL update input'); }
-            if ('approvedAt' in graphqlInput) { delete (graphqlInput as any).approvedAt; console.log('Stripped approvedAt from GraphQL update input'); }
             const result = await client.graphql({
               query: `mutation UpdateCookingCoolingFormEntry($input: UpdateCookingCoolingFormEntryInput!) {
                 updateCookingCoolingFormEntry(input: $input) { id }
@@ -785,10 +783,8 @@ class MultiTableStorageManager {
 
             // Log the full input object for debugging
             console.log('GraphQL create input (cooking/cooling):', input);
-            // Strip unknown fields before create as well (schema may not accept approval metadata)
+            // Keep all fields including approval fields
             const createInput = { ...input };
-            if ('approvedBy' in createInput) { delete (createInput as any).approvedBy; console.log('Stripped approvedBy from GraphQL create input'); }
-            if ('approvedAt' in createInput) { delete (createInput as any).approvedAt; console.log('Stripped approvedAt from GraphQL create input'); }
             const result = await client.graphql({
               query: `mutation CreateCookingCoolingFormEntry($input: CreateCookingCoolingFormEntryInput!) {
                 createCookingCoolingFormEntry(input: $input) { id }
@@ -841,8 +837,6 @@ class MultiTableStorageManager {
           console.log('Updating existing piroshki form...');
           try {
             const graphqlInput = { ...input };
-            if ('approvedBy' in graphqlInput) { delete (graphqlInput as any).approvedBy; console.log('Stripped approvedBy from GraphQL update input (piroshki)'); }
-            if ('approvedAt' in graphqlInput) { delete (graphqlInput as any).approvedAt; console.log('Stripped approvedAt from GraphQL update input (piroshki)'); }
             const result = await client.graphql({
               query: `mutation UpdatePiroshkiFormEntry($input: UpdatePiroshkiFormEntryInput!) {
                 updatePiroshkiFormEntry(input: $input) { id }
@@ -888,8 +882,6 @@ class MultiTableStorageManager {
             form.id = serverId;
 
             const createInput = { ...input };
-            if ('approvedBy' in createInput) { delete (createInput as any).approvedBy; console.log('Stripped approvedBy from GraphQL create input (piroshki)'); }
-            if ('approvedAt' in createInput) { delete (createInput as any).approvedAt; console.log('Stripped approvedAt from GraphQL create input (piroshki)'); }
             const result = await client.graphql({
               query: `mutation CreatePiroshkiFormEntry($input: CreatePiroshkiFormEntryInput!) {
                 createPiroshkiFormEntry(input: $input) { id }
@@ -926,8 +918,6 @@ class MultiTableStorageManager {
           console.log('Updating existing bagel dog form...');
           try {
             const graphqlInput = { ...input };
-            if ('approvedBy' in graphqlInput) { delete (graphqlInput as any).approvedBy; console.log('Stripped approvedBy from GraphQL update input (bagel dog)'); }
-            if ('approvedAt' in graphqlInput) { delete (graphqlInput as any).approvedAt; console.log('Stripped approvedAt from GraphQL update input (bagel dog)'); }
             const result = await client.graphql({
               query: `mutation UpdateBagelDogFormEntry($input: UpdateBagelDogFormEntryInput!) {
                 updateBagelDogFormEntry(input: $input) { id }
@@ -973,8 +963,6 @@ class MultiTableStorageManager {
             form.id = serverId;
 
             const createInput = { ...input };
-            if ('approvedBy' in createInput) { delete (createInput as any).approvedBy; console.log('Stripped approvedBy from GraphQL create input (bagel dog)'); }
-            if ('approvedAt' in createInput) { delete (createInput as any).approvedAt; console.log('Stripped approvedAt from GraphQL create input (bagel dog)'); }
             const result = await client.graphql({
               query: `mutation CreateBagelDogFormEntry($input: CreateBagelDogFormEntryInput!) {
                 createBagelDogFormEntry(input: $input) { id }
@@ -1128,10 +1116,12 @@ class MultiTableStorageManager {
               thermometerNumber
               ingredients
               lotNumbers
-              correctiveActionsComments
-              resolvedErrors
-              createdAt
-              updatedAt
+                  correctiveActionsComments
+                  resolvedErrors
+                  approvedBy
+                  approvedAt
+                  createdAt
+                  updatedAt
             }
           }
         }`

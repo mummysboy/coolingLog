@@ -349,6 +349,9 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
         console.log("=== FIRST FORM DEBUG ===");
         console.log("Form ID:", awsForms[0].id);
         console.log("Form type:", awsForms[0].formType);
+        console.log("Form status:", awsForms[0].status);
+        console.log("Form approvedBy:", awsForms[0].approvedBy);
+        console.log("Form approvedAt:", awsForms[0].approvedAt);
         console.log("Form entries count:", awsForms[0].entries?.length);
         console.log("Form entries from AWS:", awsForms[0].entries);
         console.log("=== END FIRST FORM DEBUG ===");
@@ -589,6 +592,8 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
   },
 
   approveForm: async (formId: string, adminInitial: string) => {
+    console.log(`🔄 Approving form ${formId} with initials: ${adminInitial}`);
+    
     // set status, approvedBy and approvedAt and persist
     set((state) => ({
       savedForms: state.savedForms.map((form) =>
@@ -604,11 +609,27 @@ export const usePaperFormStore = create<PaperFormStore>()((set, get) => ({
     try {
       const { currentForm } = get();
       if (currentForm && currentForm.id === formId) {
+        console.log(`🔄 Saving current form to AWS:`, {
+          id: currentForm.id,
+          status: currentForm.status,
+          approvedBy: currentForm.approvedBy,
+          approvedAt: currentForm.approvedAt
+        });
         await storageManager.savePaperForm(currentForm);
+        console.log(`✅ Current form saved successfully`);
       } else {
         // If currentForm isn't the one, find it in savedForms and save that copy
         const formToSave = get().savedForms.find((f) => f.id === formId);
-        if (formToSave) await storageManager.savePaperForm(formToSave);
+        if (formToSave) {
+          console.log(`🔄 Saving form from savedForms to AWS:`, {
+            id: formToSave.id,
+            status: formToSave.status,
+            approvedBy: formToSave.approvedBy,
+            approvedAt: formToSave.approvedAt
+          });
+          await storageManager.savePaperForm(formToSave);
+          console.log(`✅ Form from savedForms saved successfully`);
+        }
       }
     } catch (error) {
       console.error('Error saving approved form to AWS:', error);

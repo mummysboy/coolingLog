@@ -475,7 +475,9 @@ function mapGraphQLResultToPaperFormEntry(result: any): PaperFormEntry {
       comment: comment.comment
     })) || [],
     resolvedErrors: result.resolvedErrors || [],
-    completedAt: result.completedAt ? new Date(result.completedAt) : undefined
+    completedAt: result.completedAt ? new Date(result.completedAt) : undefined,
+    approvedBy: result.approvedBy || undefined,
+    approvedAt: result.approvedAt ? new Date(result.approvedAt) : undefined
   };
   
   console.log('=== MAPPED FORM RESULT ===');
