@@ -601,7 +601,8 @@ export function validateCookingCoolingFormCompletion(form: PaperFormEntry): {
     
     // Determine which sections to check based on form type
     let sections: string[] = [];
-    if (form.formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
+    const formTypeStr = String(form.formType);
+    if (formTypeStr === 'PIROSHKI_CALZONE_EMPANADA' || form.formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
       sections = ['heatTreating', 'ccp2_126', 'ccp2_80', 'ccp2_55', 'finalChill'];
     } else {
       sections = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
