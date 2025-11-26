@@ -11,7 +11,7 @@ import { generateFormPDF } from '@/lib/pdfGenerator';
 import { downloadFileIOSCompatible } from '@/lib/iosDownloadHelper';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
 import BagelDogForm from '@/components/BagelDogForm';
-import { shouldHighlightCell } from '@/lib/validation';
+import { shouldHighlightCell, validateCookingCoolingFormCompletion } from '@/lib/validation';
 import { ApprovalModal } from '@/components/ApprovalModal';
 
 
@@ -2017,6 +2017,31 @@ export default function AdminDashboard() {
                 {/* Save Button */}
                 <button
                   onClick={async () => {
+                    // Check for cooking/cooling form validation before saving
+                    if (selectedForm && (selectedForm.formType === FormType.COOKING_AND_COOLING || selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING)) {
+                      const validation = validateCookingCoolingFormCompletion(selectedForm);
+                      if (!validation.isValid) {
+                        const errorMessage = validation.incompleteSections
+                          .map(item => {
+                            const sectionName = (() => {
+                              switch (item.section) {
+                                case 'ccp1': return 'CCP1 (166°F)';
+                                case 'ccp2': return 'CCP2 (127°F)';
+                                case 'coolingTo80': return 'Cooling to 80°F';
+                                case 'coolingTo54': return 'Cooling to 54°F';
+                                case 'finalChill': return 'Final Chill (39°F)';
+                                default: return item.section;
+                              }
+                            })();
+                            return `Row ${item.rowIndex + 1} ${sectionName}: Missing ${item.missingFields.join(', ')}`;
+                          })
+                          .join('\n');
+                        
+                        alert(`Cannot save form. The following sections have incomplete data:\n\n${errorMessage}\n\nPlease complete all fields (Temperature, Time, and Initials) for each section before saving.`);
+                        return;
+                      }
+                    }
+                    
                     // Save form to AWS when clicking save button
                     try {
                       console.log('Saving form to AWS...');

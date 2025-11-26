@@ -692,6 +692,7 @@ export default function PaperForm({
 
     const currentEntry = form.entries[rowIndex];
     const stageData = currentEntry[stageName] as any;
+    
     // Always apply highlight if validation flags this cell
     const v = shouldHighlightCell(form, rowIndex, field);
     if (v.highlight) {

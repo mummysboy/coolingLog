@@ -7,7 +7,7 @@ import type { PaperFormEntry } from '@/lib/paperFormTypes';
 import { FormType, getFormTypeDisplayName, getFormTypeDescription, getFormTypeIcon, getFormTypeColors, ensureDate } from '@/lib/paperFormTypes';
 import PaperForm from '@/components/PaperForm';
 import { PiroshkiForm } from '@/components/PiroshkiForm';
-import { validateForm, shouldHighlightCell } from '@/lib/validation';
+import { validateForm, shouldHighlightCell, validateCookingCoolingFormCompletion } from '@/lib/validation';
 import BagelDogForm from '@/components/BagelDogForm';
 import { generateFormPDF } from '@/lib/pdfGenerator';
 
@@ -1203,6 +1203,31 @@ export default function FormPage() {
               </div>
               <button
                 onClick={async () => {
+                  // Check for cooking/cooling form validation before closing
+                  if (selectedForm && (selectedForm.formType === FormType.COOKING_AND_COOLING || selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING)) {
+                    const validation = validateCookingCoolingFormCompletion(selectedForm);
+                    if (!validation.isValid) {
+                      const errorMessage = validation.incompleteSections
+                        .map(item => {
+                          const sectionName = (() => {
+                            switch (item.section) {
+                              case 'ccp1': return 'CCP1 (166°F)';
+                              case 'ccp2': return 'CCP2 (127°F)';
+                              case 'coolingTo80': return 'Cooling to 80°F';
+                              case 'coolingTo54': return 'Cooling to 54°F';
+                              case 'finalChill': return 'Final Chill (39°F)';
+                              default: return item.section;
+                            }
+                          })();
+                          return `Row ${item.rowIndex + 1} ${sectionName}: Missing ${item.missingFields.join(', ')}`;
+                        })
+                        .join('\n');
+                      
+                      alert(`Cannot close form. The following sections have incomplete data:\n\n${errorMessage}\n\nPlease complete all fields (Temperature, Time, and Initials) for each section before closing.`);
+                      return;
+                    }
+                  }
+                  
                   // Auto-save form to AWS when closing modal (do not finalize status)
                   try {
                     console.log('Modal closing - auto-saving form to AWS');

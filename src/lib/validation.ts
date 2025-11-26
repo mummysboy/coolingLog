@@ -550,3 +550,84 @@ export function generateErrorId(error: { rowIndex: number; field: string; messag
   
   return `error-${error.rowIndex}-${error.field}-${sanitizedMessage}`;
 }
+
+// Check if any field in a specific section has data
+export function hasAnySectionFieldData(row: BaseFormRow, section: string): boolean {
+  const sectionData = row[section as keyof BaseFormRow] as any;
+  if (!sectionData) return false;
+  
+  // Check if any of the three fields (temp, time, initial) have data
+  return Boolean(sectionData.temp || sectionData.temp === 0) || 
+         Boolean(sectionData.time) || 
+         Boolean(sectionData.initial);
+}
+
+// Check if a specific section is complete (all three fields filled)
+export function isSectionComplete(row: BaseFormRow, section: string): boolean {
+  const sectionData = row[section as keyof BaseFormRow] as any;
+  if (!sectionData) return false;
+  
+  // All three fields must have data
+  return Boolean(sectionData.temp || sectionData.temp === 0) && 
+         Boolean(sectionData.time) && 
+         Boolean(sectionData.initial);
+}
+
+// Validate cooking/cooling form for incomplete sections (section-level validation)
+export function validateCookingCoolingFormCompletion(form: PaperFormEntry): {
+  isValid: boolean;
+  incompleteSections: Array<{
+    rowIndex: number;
+    section: string;
+    missingFields: string[];
+  }>;
+} {
+  const incompleteSections: Array<{
+    rowIndex: number;
+    section: string;
+    missingFields: string[];
+  }> = [];
+  
+  if (!form.entries) {
+    return { isValid: true, incompleteSections: [] };
+  }
+  
+  form.entries.forEach((row, rowIndex) => {
+    if (!row) return;
+    
+    const sections = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+    
+    sections.forEach(section => {
+      // Check if this section has any data
+      if (hasAnySectionFieldData(row, section)) {
+        // If it has data, check if it's complete
+        if (!isSectionComplete(row, section)) {
+          const sectionData = row[section as keyof BaseFormRow] as any;
+          const missingFields: string[] = [];
+          
+          // Check which fields are missing
+          if (!Boolean(sectionData?.temp || sectionData?.temp === 0)) {
+            missingFields.push('Temperature');
+          }
+          if (!Boolean(sectionData?.time)) {
+            missingFields.push('Time');
+          }
+          if (!Boolean(sectionData?.initial)) {
+            missingFields.push('Initials');
+          }
+          
+          incompleteSections.push({
+            rowIndex,
+            section,
+            missingFields
+          });
+        }
+      }
+    });
+  });
+  
+  return {
+    isValid: incompleteSections.length === 0,
+    incompleteSections
+  };
+}
