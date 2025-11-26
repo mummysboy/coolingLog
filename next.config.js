@@ -1,10 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable experimental App Router (already being used)
-  experimental: {
-    appDir: true,
-  },
-
   // Headers for PWA and caching
   async headers() {
     return [
