@@ -94,7 +94,8 @@ export function isIPad(): boolean {
   if (typeof window === 'undefined') return false
 
   const userAgent = navigator.userAgent
-  return /iPad/.test(userAgent) || (navigator.userAgentData?.mobile === false && /iPad/.test(userAgent))
+  const navData = navigator as any
+  return /iPad/.test(userAgent) || (navData.userAgentData?.mobile === false && /iPad/.test(userAgent))
 }
 
 /**
