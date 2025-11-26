@@ -25,12 +25,11 @@ export function useServiceWorker(options: ServiceWorkerHookOptions = {}) {
   const updateCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Only register in production
-    const isDev = process.env.NODE_ENV === 'development';
+    // Only register if supported
     const isSupported = 'serviceWorker' in navigator;
 
-    if (isDev || !isSupported) {
-      console.log('[useServiceWorker]', isDev ? 'Development mode' : 'SW not supported');
+    if (!isSupported) {
+      console.log('[useServiceWorker] Service Workers not supported');
       return;
     }
 

@@ -11,29 +11,12 @@ export function ServiceWorkerInit() {
   const [newRegistration, setNewRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   useEffect(() => {
-    // Skip in development
-    if (process.env.NODE_ENV === 'development') {
-      return;
-    }
-
+    // Skip if service workers not supported
     if (!('serviceWorker' in navigator)) {
       return;
     }
 
-    const handleUpdateFound = () => {
-      const registration = newRegistration;
-      if (!registration?.installing) return;
-
-      const newWorker = registration.installing;
-
-      newWorker.addEventListener('statechange', () => {
-        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-          // New service worker is installed and waiting
-          setUpdateAvailable(true);
-          console.log('[ServiceWorkerInit] Update available');
-        }
-      });
-    };
+    let cleanupInterval: NodeJS.Timeout | null = null;
 
     const registerServiceWorker = async () => {
       try {
@@ -44,14 +27,24 @@ export function ServiceWorkerInit() {
         setNewRegistration(registration);
         console.log('[ServiceWorkerInit] Service Worker registered:', registration);
 
-        registration.addEventListener('updatefound', handleUpdateFound);
+        // Listen for updates on this registration
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New service worker is installed and waiting
+              setUpdateAvailable(true);
+              console.log('[ServiceWorkerInit] Update available');
+            }
+          });
+        });
 
         // Periodic update checks
-        const updateInterval = setInterval(() => {
+        cleanupInterval = setInterval(() => {
           registration.update();
         }, 60000); // Check every minute
-
-        return () => clearInterval(updateInterval);
       } catch (error) {
         console.error('[ServiceWorkerInit] Service Worker registration failed:', error);
       }
@@ -60,10 +53,17 @@ export function ServiceWorkerInit() {
     // Wait for page load
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', registerServiceWorker);
-      return () => document.removeEventListener('DOMContentLoaded', registerServiceWorker);
+      return () => {
+        document.removeEventListener('DOMContentLoaded', registerServiceWorker);
+        if (cleanupInterval) clearInterval(cleanupInterval);
+      };
     } else {
       registerServiceWorker();
     }
+
+    return () => {
+      if (cleanupInterval) clearInterval(cleanupInterval);
+    };
   }, []);
 
   const handleUpdate = () => {

@@ -50,25 +50,6 @@ export default function RootLayout({
         {/* Apple Icons */}
         <link rel="apple-touch-icon" href="/logo.avif" />
         <link rel="icon" type="image/avif" href="/logo.avif" />
-        
-        {/* Service Worker Registration Script */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-                    .then(function(registration) {
-                      console.log('Service Worker registration successful');
-                    })
-                    .catch(function(err) {
-                      console.log('Service Worker registration failed: ', err);
-                    });
-                });
-              }
-            `,
-          }}
-        />
       </head>
       <body className="min-h-screen bg-gray-100 overflow-x-hidden h-full">
         <AmplifyProvider>
