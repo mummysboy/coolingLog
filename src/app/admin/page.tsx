@@ -2073,6 +2073,35 @@ export default function AdminDashboard() {
                 {/* Cancel Button */}
                 <button
                   onClick={() => {
+                    // Check for form validation before closing
+                    if (selectedForm && (selectedForm.formType === FormType.COOKING_AND_COOLING || selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING || selectedForm.formType === FormType.PIROSHKI_CALZONE_EMPANADA)) {
+                      const validation = validateCookingCoolingFormCompletion(selectedForm);
+                      if (!validation.isValid) {
+                        const errorMessage = validation.incompleteSections
+                          .map((item: any) => {
+                            const sectionName = (() => {
+                              switch (item.section) {
+                                case 'ccp1': return 'CCP1 (166°F)';
+                                case 'ccp2': return 'CCP2 (127°F)';
+                                case 'coolingTo80': return 'Cooling to 80°F';
+                                case 'coolingTo54': return 'Cooling to 54°F';
+                                case 'finalChill': return 'Final Chill (39°F)';
+                                case 'heatTreating': return 'Heat Treating';
+                                case 'ccp2_126': return 'CCP2 126°F';
+                                case 'ccp2_80': return 'CCP2 80°F';
+                                case 'ccp2_55': return 'CCP2 55°F';
+                                default: return item.section;
+                              }
+                            })();
+                            return `Row ${item.rowIndex + 1} ${sectionName}: Missing ${item.missingFields.join(', ')}`;
+                          })
+                          .join('\n');
+                        
+                        alert(`Cannot close form. The following sections have incomplete data:\n\n${errorMessage}\n\nPlease complete all fields (Temperature, Time, and Initials) for each section before closing.`);
+                        return;
+                      }
+                    }
+                    
                     console.log('Canceling admin modal - closing without saving');
                     setShowFormModal(false);
                     setSelectedForm(null);

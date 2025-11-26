@@ -179,6 +179,52 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
     return !!(stageData?.temp && stageData?.time && stageData?.initial);
   };
 
+  // Helper: Check if any field in a stage row is partially filled (not all 3 required)
+  const validateStageFieldCompletion = (entry: any, stage: StageKey): { isValid: boolean; missingField?: string } => {
+    const stageData = entry?.[stage] as any;
+    if (!stageData) return { isValid: true }; // No data at all is OK
+
+    // Check if each field has content (handle strings, numbers, and dates)
+    const hasTemp = stageData.temp !== undefined && stageData.temp !== null && String(stageData.temp).trim() !== '';
+    const hasTime = stageData.time !== undefined && stageData.time !== null && String(stageData.time).trim() !== '';
+    const hasInitial = stageData.initial !== undefined && stageData.initial !== null && String(stageData.initial).trim() !== '';
+    
+    // If any field has data, all three must be filled
+    if (hasTemp || hasTime || hasInitial) {
+      if (!hasTemp) return { isValid: false, missingField: 'Temperature' };
+      if (!hasTime) return { isValid: false, missingField: 'Time' };
+      if (!hasInitial) return { isValid: false, missingField: 'Initial' };
+    }
+    
+    return { isValid: true };
+  };
+
+  // Helper: Check all stages for incomplete entries
+  const checkAllStagesComplete = (formToCheck?: any): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    const stages: StageKey[] = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+    const stageLabels: Record<StageKey, string> = {
+      ccp1: 'CCP1',
+      ccp2: 'CCP2',
+      coolingTo80: 'Cooling to 80°F',
+      coolingTo54: 'Cooling to 54°F',
+      finalChill: 'Final Chill',
+    };
+
+    // Use the provided form or fall back to current localForm
+    const targetForm = formToCheck || localForm;
+    targetForm?.entries?.forEach((entry: any, rowIndex: number) => {
+      stages.forEach((stage) => {
+        const validation = validateStageFieldCompletion(entry, stage);
+        if (!validation.isValid) {
+          errors.push(`Row ${rowIndex + 1} - ${stageLabels[stage]}: ${validation.missingField} is missing`);
+        }
+      });
+    });
+
+    return { isValid: errors.length === 0, errors };
+  };
+
   const getCellClasses = (rowIndex: number, field: string, baseClasses: string): string => {
     const entry = localForm.entries[rowIndex];
     if (!entry) return baseClasses;
@@ -1066,6 +1112,14 @@ export default function BagelDogForm({ formData, readOnly, onFormUpdate }: Bagel
           <button
             onClick={async () => {
               try {
+                // First check for incomplete stage fields (partial entries)
+                const stageCompletion = checkAllStagesComplete(localForm);
+                if (!stageCompletion.isValid) {
+                  const errorMessage = stageCompletion.errors.join('\n');
+                  alert(`Cannot complete form. Please fill in all required fields:\n\n${errorMessage}`);
+                  return;
+                }
+
                 console.log('🔄 Starting form completion process...');
                 
                 // Update form status to Complete

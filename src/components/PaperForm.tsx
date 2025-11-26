@@ -706,6 +706,59 @@ export default function PaperForm({
     return base;
   };
 
+  // Helper: Check if any field in a stage row is partially filled (not all 3 required)
+  const validateStageFieldCompletion = (entry: any, stage: StageKey): { isValid: boolean; missingField?: string } => {
+    const stageData = entry?.[stage] as any;
+    if (!stageData) return { isValid: true }; // No data at all is OK
+
+    // Check if each field has content (handle strings, numbers, and dates)
+    const hasTemp = stageData.temp !== undefined && stageData.temp !== null && String(stageData.temp).trim() !== '';
+    const hasTime = stageData.time !== undefined && stageData.time !== null && String(stageData.time).trim() !== '';
+    const hasInitial = stageData.initial !== undefined && stageData.initial !== null && String(stageData.initial).trim() !== '';
+    
+    console.log(`    Checking ${stage}: temp="${stageData.temp}" (${hasTemp}), time="${stageData.time}" (${hasTime}), initial="${stageData.initial}" (${hasInitial})`);
+    
+    // If any field has data, all three must be filled
+    if (hasTemp || hasTime || hasInitial) {
+      if (!hasTemp) return { isValid: false, missingField: 'Temperature' };
+      if (!hasTime) return { isValid: false, missingField: 'Time' };
+      if (!hasInitial) return { isValid: false, missingField: 'Initial' };
+    }
+    
+    return { isValid: true };
+  };
+
+  // Helper: Check all stages for incomplete entries
+  const checkAllStagesComplete = (formToCheck?: any): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    const stages: StageKey[] = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+    const stageLabels: Record<StageKey, string> = {
+      ccp1: 'CCP1',
+      ccp2: 'CCP2',
+      coolingTo80: 'Cooling to 80°F',
+      coolingTo54: 'Cooling to 54°F',
+      finalChill: 'Final Chill',
+    };
+
+    // Use the provided form or fall back to current form
+    const targetForm = formToCheck || form;
+    console.log('🔍 Checking stage completion for', targetForm?.entries?.length, 'entries');
+    targetForm?.entries?.forEach((entry: any, rowIndex: number) => {
+      stages.forEach((stage) => {
+        const stageData = entry?.[stage];
+        console.log(`  Row ${rowIndex + 1} - ${stage}:`, { temp: stageData?.temp, time: stageData?.time, initial: stageData?.initial });
+        const validation = validateStageFieldCompletion(entry, stage);
+        if (!validation.isValid) {
+          console.log(`    ❌ Incomplete - ${validation.missingField} missing`);
+          errors.push(`Row ${rowIndex + 1} - ${stageLabels[stage]}: ${validation.missingField} is missing`);
+        }
+      });
+    });
+
+    console.log('📊 Stage completion check result:', { isValid: errors.length === 0, errorCount: errors.length, errors });
+    return { isValid: errors.length === 0, errors };
+  };
+
   // Guard: no form yet
   if (!form) return null;
 
@@ -1542,6 +1595,48 @@ export default function PaperForm({
         <div className="mt-6 text-center">
           <button
             onClick={async () => {
+              console.log('========== COMPLETE BUTTON CLICKED ==========');
+              console.log('isAdminForm:', isAdminForm);
+              console.log('formData:', formData?.id);
+              console.log('storeForm:', storeForm?.id);
+              
+              // Get the current form from the store to ensure we have the latest data
+              const currentForm = isAdminForm && formData ? formData : storeForm;
+              console.log('Using currentForm:', { 
+                id: currentForm?.id, 
+                entriesCount: currentForm?.entries?.length,
+                status: currentForm?.status 
+              });
+              
+              if (!currentForm?.entries || currentForm.entries.length === 0) {
+                console.log('⚠️  WARNING: Form has no entries!');
+              }
+              
+              // Log first entry details
+              if (currentForm?.entries?.[0]) {
+                console.log('First entry data:', {
+                  rack: currentForm.entries[0].rack,
+                  type: currentForm.entries[0].type,
+                  ccp1: currentForm.entries[0].ccp1,
+                  ccp2: currentForm.entries[0].ccp2,
+                  coolingTo80: currentForm.entries[0].coolingTo80,
+                  coolingTo54: currentForm.entries[0].coolingTo54,
+                  finalChill: currentForm.entries[0].finalChill,
+                });
+              }
+              
+              // First check for incomplete stage fields (partial entries)
+              const stageCompletion = checkAllStagesComplete(currentForm);
+              console.log('Completion check result:', stageCompletion);
+              if (!stageCompletion.isValid) {
+                const errorMessage = stageCompletion.errors.join('\n');
+                console.log('❌ Form has incomplete fields, showing alert');
+                alert(`Cannot complete form. Please fill in all required fields:\n\n${errorMessage}`);
+                return;
+              }
+              console.log('✅ All stages complete, proceeding with validation');
+
+              // Then check for other validation errors
               const validation = validateForm(form);
               const hasErrors = validation.errors.some(
                 (e: any) => e.severity === "error"

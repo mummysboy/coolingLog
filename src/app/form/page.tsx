@@ -1203,9 +1203,33 @@ export default function FormPage() {
               </div>
               <button
                 onClick={async () => {
-                  // Check for cooking/cooling form validation before closing
-                  if (selectedForm && (selectedForm.formType === FormType.COOKING_AND_COOLING || selectedForm.formType === FormType.BAGEL_DOG_COOKING_COOLING)) {
-                    const validation = validateCookingCoolingFormCompletion(selectedForm);
+                  console.log('❌ X button clicked - validating before close');
+                  
+                  // Get the current form from store to ensure latest data
+                  const formToValidate = currentForm || selectedForm;
+                  console.log('📋 Form to validate:', { 
+                    formId: formToValidate?.id, 
+                    formType: formToValidate?.formType,
+                    entriesCount: formToValidate?.entries?.length 
+                  });
+                  
+                  if (!formToValidate) {
+                    console.log('⚠️  No form found, closing anyway');
+                    setShowFormModal(false);
+                    setSelectedForm(null);
+                    setNewlyCreatedFormId(null);
+                    return;
+                  }
+                  
+                  // Check for form validation before closing - same as Complete button
+                  if (formToValidate.formType === FormType.COOKING_AND_COOLING || formToValidate.formType === FormType.BAGEL_DOG_COOKING_COOLING || formToValidate.formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
+                    console.log('🔍 Running validation for form type:', formToValidate.formType);
+                    const validation = validateCookingCoolingFormCompletion(formToValidate);
+                    console.log('📊 Validation result:', { 
+                      isValid: validation.isValid, 
+                      incompleteSectionsCount: validation.incompleteSections.length
+                    });
+                    
                     if (!validation.isValid) {
                       const errorMessage = validation.incompleteSections
                         .map(item => {
@@ -1216,6 +1240,10 @@ export default function FormPage() {
                               case 'coolingTo80': return 'Cooling to 80°F';
                               case 'coolingTo54': return 'Cooling to 54°F';
                               case 'finalChill': return 'Final Chill (39°F)';
+                              case 'heatTreating': return 'Heat Treating';
+                              case 'ccp2_126': return 'CCP2 126°F';
+                              case 'ccp2_80': return 'CCP2 80°F';
+                              case 'ccp2_55': return 'CCP2 55°F';
                               default: return item.section;
                             }
                           })();
@@ -1223,20 +1251,22 @@ export default function FormPage() {
                         })
                         .join('\n');
                       
+                      console.log('🚫 Form has incomplete fields - blocking close');
                       alert(`Cannot close form. The following sections have incomplete data:\n\n${errorMessage}\n\nPlease complete all fields (Temperature, Time, and Initials) for each section before closing.`);
                       return;
                     }
+                    console.log('✅ All sections complete - proceeding with close');
                   }
                   
                   // Auto-save form to AWS when closing modal (do not finalize status)
                   try {
-                    console.log('Modal closing - auto-saving form to AWS');
+                    console.log('💾 Modal closing - auto-saving form to AWS');
                     await saveForm();
-                    console.log('Form auto-saved successfully to AWS');
+                    console.log('✅ Form auto-saved successfully to AWS');
                   } catch (error) {
-                    console.error('Error auto-saving form when closing modal:', error);
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    alert(`Warning: Form could not be auto-saved: ${errorMessage}`);
+                    console.error('❌ Error auto-saving form when closing modal:', error);
+                    const errorMsg = error instanceof Error ? error.message : String(error);
+                    alert(`Warning: Form could not be auto-saved: ${errorMsg}`);
                   }
                   
                   // Close the modal

@@ -1,4 +1,4 @@
-import { PaperFormEntry, BaseFormRow } from './paperFormTypes';
+import { PaperFormEntry, BaseFormRow, FormType } from './paperFormTypes';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -556,10 +556,12 @@ export function hasAnySectionFieldData(row: BaseFormRow, section: string): boole
   const sectionData = row[section as keyof BaseFormRow] as any;
   if (!sectionData) return false;
   
-  // Check if any of the three fields (temp, time, initial) have data
-  return Boolean(sectionData.temp || sectionData.temp === 0) || 
-         Boolean(sectionData.time) || 
-         Boolean(sectionData.initial);
+  // Check if any of the three fields (temp, time, initial) have data (not empty strings)
+  const hasTemp = sectionData.temp !== undefined && sectionData.temp !== null && String(sectionData.temp).trim() !== '';
+  const hasTime = sectionData.time !== undefined && sectionData.time !== null && String(sectionData.time).trim() !== '';
+  const hasInitial = sectionData.initial !== undefined && sectionData.initial !== null && String(sectionData.initial).trim() !== '';
+  
+  return hasTemp || hasTime || hasInitial;
 }
 
 // Check if a specific section is complete (all three fields filled)
@@ -567,10 +569,12 @@ export function isSectionComplete(row: BaseFormRow, section: string): boolean {
   const sectionData = row[section as keyof BaseFormRow] as any;
   if (!sectionData) return false;
   
-  // All three fields must have data
-  return Boolean(sectionData.temp || sectionData.temp === 0) && 
-         Boolean(sectionData.time) && 
-         Boolean(sectionData.initial);
+  // All three fields must have data (not empty strings)
+  const hasTemp = sectionData.temp !== undefined && sectionData.temp !== null && String(sectionData.temp).trim() !== '';
+  const hasTime = sectionData.time !== undefined && sectionData.time !== null && String(sectionData.time).trim() !== '';
+  const hasInitial = sectionData.initial !== undefined && sectionData.initial !== null && String(sectionData.initial).trim() !== '';
+  
+  return hasTemp && hasTime && hasInitial;
 }
 
 // Validate cooking/cooling form for incomplete sections (section-level validation)
@@ -595,7 +599,13 @@ export function validateCookingCoolingFormCompletion(form: PaperFormEntry): {
   form.entries.forEach((row, rowIndex) => {
     if (!row) return;
     
-    const sections = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+    // Determine which sections to check based on form type
+    let sections: string[] = [];
+    if (form.formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
+      sections = ['heatTreating', 'ccp2_126', 'ccp2_80', 'ccp2_55', 'finalChill'];
+    } else {
+      sections = ['ccp1', 'ccp2', 'coolingTo80', 'coolingTo54', 'finalChill'];
+    }
     
     sections.forEach(section => {
       // Check if this section has any data

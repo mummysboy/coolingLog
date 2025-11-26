@@ -68,6 +68,52 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
     return lines.join("\n");
   };
 
+  // Helper: Check if any field in a stage row is partially filled (not all 3 required)
+  const validateStageFieldCompletion = (entry: any, stage: StageKey): { isValid: boolean; missingField?: string } => {
+    const stageData = entry?.[stage] as any;
+    if (!stageData) return { isValid: true }; // No data at all is OK
+
+    // Check if each field has content (handle strings, numbers, and dates)
+    const hasTemp = stageData.temp !== undefined && stageData.temp !== null && String(stageData.temp).trim() !== '';
+    const hasTime = stageData.time !== undefined && stageData.time !== null && String(stageData.time).trim() !== '';
+    const hasInitial = stageData.initial !== undefined && stageData.initial !== null && String(stageData.initial).trim() !== '';
+    
+    // If any field has data, all three must be filled
+    if (hasTemp || hasTime || hasInitial) {
+      if (!hasTemp) return { isValid: false, missingField: 'Temperature' };
+      if (!hasTime) return { isValid: false, missingField: 'Time' };
+      if (!hasInitial) return { isValid: false, missingField: 'Initial' };
+    }
+    
+    return { isValid: true };
+  };
+
+  // Helper: Check all stages for incomplete entries
+  const checkAllStagesComplete = (formToCheck?: any): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    const stages: StageKey[] = ['heatTreating', 'ccp2_126', 'ccp2_80', 'ccp2_55', 'finalChill'];
+    const stageLabels: Record<StageKey, string> = {
+      heatTreating: 'Heat Treating',
+      ccp2_126: 'CCP2 126°F',
+      ccp2_80: 'CCP2 80°F',
+      ccp2_55: 'CCP2 55°F',
+      finalChill: 'Final Chill',
+    };
+
+    // Use the provided form or fall back to current form
+    const targetForm = formToCheck || form;
+    targetForm?.entries?.forEach((entry: any, rowIndex: number) => {
+      stages.forEach((stage) => {
+        const validation = validateStageFieldCompletion(entry, stage);
+        if (!validation.isValid) {
+          errors.push(`Row ${rowIndex + 1} - ${stageLabels[stage]}: ${validation.missingField} is missing`);
+        }
+      });
+    });
+
+    return { isValid: errors.length === 0, errors };
+  };
+
   // Stage lock: if a stage has temp, time and initial filled AND the form has been saved (not dirty), lock those inputs
   const isStageLocked = (rowIndex: number, stage: StageKey) => {
     if (!form) return false;
@@ -1573,6 +1619,14 @@ export function PiroshkiForm({ formData, readOnly = false, onSave, onFormUpdate 
           <button
             onClick={async () => {
               try {
+                // First check for incomplete stage fields (partial entries)
+                const stageCompletion = checkAllStagesComplete(form);
+                if (!stageCompletion.isValid) {
+                  const errorMessage = stageCompletion.errors.join('\n');
+                  alert(`Cannot complete form. Please fill in all required fields:\n\n${errorMessage}`);
+                  return;
+                }
+
                 console.log('🔄 Starting form completion process...');
                 
                 // Update form status to Complete
