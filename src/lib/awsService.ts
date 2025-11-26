@@ -5,8 +5,15 @@ import { type PaperFormEntry, FormType, ensureDate } from './paperFormTypes';
 import * as queries from '../graphql/queries';
 import * as mutations from '../graphql/mutations';
 
-// AWS API Client
-const client = generateClient();
+// AWS API Client - lazy initialized to avoid errors during build time
+let client: ReturnType<typeof generateClient> | null = null;
+
+function getClient() {
+  if (!client) {
+    client = generateClient();
+  }
+  return client;
+}
 
 // Helper function to convert time string (HH:MM) to DateTime
 function convertTimeStringToDateTime(timeString: string, baseDate: Date): string | null {
@@ -629,7 +636,7 @@ class AWSStorageManager {
       console.log('Testing AWS connection...');
       
       // Try a simple query to test connection
-      const result = await client.graphql({
+      const result = await getClient().graphql({
         query: queries.listCookingCoolingFormEntries,
         variables: { limit: 1 }
       }) as GraphQLResult<any>;
@@ -783,7 +790,7 @@ class AWSStorageManager {
         
         // Get forms from cooking cooling table
         try {
-          const cookingResult = await client.graphql({
+          const cookingResult = await getClient().graphql({
             query: `query ListCookingCoolingFormEntries {
               listCookingCoolingFormEntries {
                 items {
@@ -824,7 +831,7 @@ class AWSStorageManager {
         
         // Get forms from piroshki table
         try {
-          const piroshkiResult = await client.graphql({
+          const piroshkiResult = await getClient().graphql({
             query: `query ListPiroshkiFormEntries {
               listPiroshkiFormEntries {
                 items {
@@ -865,7 +872,7 @@ class AWSStorageManager {
         
         // Get forms from bagel dog table
         try {
-          const bagelDogResult = await client.graphql({
+          const bagelDogResult = await getClient().graphql({
             query: `query ListBagelDogFormEntries {
               listBagelDogFormEntries {
                 items {
@@ -921,7 +928,7 @@ class AWSStorageManager {
       
       // Try to delete from cooking cooling forms first
       try {
-        await client.graphql({
+        await getClient().graphql({
           query: mutations.deleteCookingCoolingFormEntry,
           variables: { input: { id } }
         });
@@ -933,7 +940,7 @@ class AWSStorageManager {
       
       // Try to delete from piroshki forms
       try {
-        await client.graphql({
+        await getClient().graphql({
           query: mutations.deletePiroshkiFormEntry,
           variables: { input: { id } }
         });
@@ -945,7 +952,7 @@ class AWSStorageManager {
       
       // Try to delete from bagel dog forms
       try {
-        await client.graphql({
+        await getClient().graphql({
           query: mutations.deleteBagelDogFormEntry,
           variables: { input: { id } }
         });
@@ -1018,7 +1025,7 @@ class AWSStorageManager {
       
       // Get cooking cooling forms by date range
       try {
-        const cookingCoolingResult = await client.graphql({
+        const cookingCoolingResult = await getClient().graphql({
           query: queries.getCookingCoolingFormsByDateRange,
           variables: { 
             startDate: startDate.toISOString(), 
@@ -1036,7 +1043,7 @@ class AWSStorageManager {
       
       // Get piroshki forms by date range
       try {
-        const piroshkiResult = await client.graphql({
+        const piroshkiResult = await getClient().graphql({
           query: queries.getPiroshkiFormsByDateRange,
           variables: { 
             startDate: startDate.toISOString(), 
@@ -1054,7 +1061,7 @@ class AWSStorageManager {
       
       // Get bagel dog forms by date range
       try {
-        const bagelDogResult = await client.graphql({
+        const bagelDogResult = await getClient().graphql({
           query: queries.getBagelDogFormsByDateRange,
           variables: { 
             startDate: startDate.toISOString(), 
@@ -1083,7 +1090,7 @@ class AWSStorageManager {
       
       // Get today's cooking cooling forms
       try {
-        const cookingCoolingResult = await client.graphql({
+        const cookingCoolingResult = await getClient().graphql({
           query: queries.getTodaysCookingCoolingForms
         }) as GraphQLResult<any>;
 
@@ -1097,7 +1104,7 @@ class AWSStorageManager {
       
       // Get today's piroshki forms
       try {
-        const piroshkiResult = await client.graphql({
+        const piroshkiResult = await getClient().graphql({
           query: queries.getTodaysPiroshkiForms
         }) as GraphQLResult<any>;
 
@@ -1111,7 +1118,7 @@ class AWSStorageManager {
       
       // Get today's bagel dog forms
       try {
-        const bagelDogResult = await client.graphql({
+        const bagelDogResult = await getClient().graphql({
           query: queries.getTodaysBagelDogForms
         }) as GraphQLResult<any>;
 
@@ -1137,7 +1144,7 @@ class AWSStorageManager {
       
       // Get cooking cooling forms by status
       try {
-        const cookingCoolingResult = await client.graphql({
+        const cookingCoolingResult = await getClient().graphql({
           query: queries.getCookingCoolingFormsByStatus,
           variables: { status: formattedStatus }
         }) as GraphQLResult<any>;
@@ -1152,7 +1159,7 @@ class AWSStorageManager {
       
       // Get piroshki forms by status
       try {
-        const piroshkiResult = await client.graphql({
+        const piroshkiResult = await getClient().graphql({
           query: queries.getPiroshkiFormsByStatus,
           variables: { status: formattedStatus }
         }) as GraphQLResult<any>;
@@ -1167,7 +1174,7 @@ class AWSStorageManager {
       
       // Get bagel dog forms by status
       try {
-        const bagelDogResult = await client.graphql({
+        const bagelDogResult = await getClient().graphql({
           query: queries.getBagelDogFormsByStatus,
           variables: { status: formattedStatus }
         }) as GraphQLResult<any>;
@@ -1193,7 +1200,7 @@ class AWSStorageManager {
       
       // Get cooking cooling forms by initial
       try {
-        const cookingCoolingResult = await client.graphql({
+        const cookingCoolingResult = await getClient().graphql({
           query: queries.getCookingCoolingFormsByInitial,
           variables: { initial }
         }) as GraphQLResult<any>;
@@ -1208,7 +1215,7 @@ class AWSStorageManager {
       
       // Get piroshki forms by initial
       try {
-        const piroshkiResult = await client.graphql({
+        const piroshkiResult = await getClient().graphql({
           query: queries.getPiroshkiFormsByInitial,
           variables: { initial }
         }) as GraphQLResult<any>;
@@ -1223,7 +1230,7 @@ class AWSStorageManager {
       
       // Get bagel dog forms by initial
       try {
-        const bagelDogResult = await client.graphql({
+        const bagelDogResult = await getClient().graphql({
           query: queries.getBagelDogFormsByInitial,
           variables: { initial }
         }) as GraphQLResult<any>;
@@ -1291,7 +1298,7 @@ class AWSStorageManager {
           console.log(`🔍 [AWS] Forms with same content but different IDs:`, sameContentForms);
         }
         
-        const result = await client.graphql({
+        const result = await getClient().graphql({
           query: mutations.updateCookingCoolingFormStatus,
           variables: { 
             formId, 
@@ -1322,7 +1329,7 @@ class AWSStorageManager {
       // Try to update piroshki form status
       try {
         console.log(`🔍 [AWS] Trying to update piroshki form status for ID: ${formId}`);
-        const result = await client.graphql({
+        const result = await getClient().graphql({
           query: mutations.updatePiroshkiFormStatus,
           variables: { 
             formId, 
@@ -1348,7 +1355,7 @@ class AWSStorageManager {
       // Try to update bagel dog form status
       try {
         console.log(`🔍 [AWS] Trying to update bagel dog form status for ID: ${formId}`);
-        const result = await client.graphql({
+        const result = await getClient().graphql({
           query: mutations.updateBagelDogFormStatus,
           variables: { 
             formId, 
@@ -1382,7 +1389,7 @@ class AWSStorageManager {
 
   async addAdminComment(formId: string, comment: any): Promise<PaperFormEntry> {
     try {
-      const result = await client.graphql({
+      const result = await getClient().graphql({
         query: mutations.addAdminComment,
         variables: { formId, comment }
       }) as GraphQLResult<any>;
@@ -1396,7 +1403,7 @@ class AWSStorageManager {
 
   async resolveError(formId: string, errorId: string): Promise<PaperFormEntry> {
     try {
-      const result = await client.graphql({
+      const result = await getClient().graphql({
         query: mutations.resolveError,
         variables: { formId, errorId }
       }) as GraphQLResult<any>;

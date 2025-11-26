@@ -9,8 +9,15 @@ import {
   isBagelDogForm
 } from './paperFormTypes';
 
-// AWS API Client
-const client = generateClient();
+// AWS API Client - lazy initialized to avoid errors during build time
+let client: ReturnType<typeof generateClient> | null = null;
+
+function getClient() {
+  if (!client) {
+    client = generateClient();
+  }
+  return client;
+}
 
 // Attempt to get a serialized, server-assigned form id. This expects a backend
 // mutation like `getNextFormId` that returns { nextId: String }. If the
@@ -18,7 +25,7 @@ const client = generateClient();
 // gracefully falls back to a locally-generated unique id.
 async function requestNextFormIdFromServer(): Promise<string> {
   try {
-    const result = await client.graphql({
+    const result = await getClient().graphql({
       query: `mutation GetNextFormId { getNextFormId { nextId } }`
     });
 
@@ -578,7 +585,7 @@ class MultiTableStorageManager {
       console.log('Testing AWS connection...');
       
       // Try a simple query to test connection
-      const result = await client.graphql({
+      const result = await getClient().graphql({
         query: `query TestConnection { __typename }`
       }) as GraphQLResult<any>;
       
@@ -679,7 +686,7 @@ class MultiTableStorageManager {
       // Test GraphQL client connectivity
       try {
         console.log('Testing GraphQL client connectivity...');
-        const testResult = await client.graphql({
+        const testResult = await getClient().graphql({
           query: `query TestConnection { __typename }`
         });
         console.log('GraphQL client test result:', testResult);
@@ -740,7 +747,7 @@ class MultiTableStorageManager {
               approvedAt: graphqlInput.approvedAt
             });
             console.log('🔄 Full GraphQL input object:', JSON.stringify(graphqlInput, null, 2));
-            const result = await client.graphql({
+            const result = await getClient().graphql({
               query: `mutation UpdateCookingCoolingFormEntry($input: UpdateCookingCoolingFormEntryInput!) {
                 updateCookingCoolingFormEntry(input: $input) { id }
               }`,
@@ -760,7 +767,7 @@ class MultiTableStorageManager {
             // Fallback: attempt to create the form if update failed (helps when record isn't present or update mutation misbehaves)
             try {
               console.log('Attempting fallback create for cooking/cooling form after update failure...');
-              const createResult = await client.graphql({
+              const createResult = await getClient().graphql({
                 query: `mutation CreateCookingCoolingFormEntry($input: CreateCookingCoolingFormEntryInput!) { createCookingCoolingFormEntry(input: $input) { id } }`,
                 variables: { input }
               });
@@ -792,7 +799,7 @@ class MultiTableStorageManager {
             console.log('GraphQL create input (cooking/cooling):', input);
             // Keep all fields including approval fields
             const createInput = { ...input };
-            const result = await client.graphql({
+            const result = await getClient().graphql({
               query: `mutation CreateCookingCoolingFormEntry($input: CreateCookingCoolingFormEntryInput!) {
                 createCookingCoolingFormEntry(input: $input) { id }
               }`,
@@ -844,7 +851,7 @@ class MultiTableStorageManager {
           console.log('Updating existing piroshki form...');
           try {
             const graphqlInput = { ...input };
-            const result = await client.graphql({
+            const result = await getClient().graphql({
               query: `mutation UpdatePiroshkiFormEntry($input: UpdatePiroshkiFormEntryInput!) {
                 updatePiroshkiFormEntry(input: $input) { id }
               }`,
@@ -863,7 +870,7 @@ class MultiTableStorageManager {
 
             try {
               console.log('Attempting fallback create for piroshki form after update failure...');
-              const createResult = await client.graphql({
+              const createResult = await getClient().graphql({
                 query: `mutation CreatePiroshkiFormEntry($input: CreatePiroshkiFormEntryInput!) { createPiroshkiFormEntry(input: $input) { id } }`,
                 variables: { input }
               });
@@ -889,7 +896,7 @@ class MultiTableStorageManager {
             form.id = serverId;
 
             const createInput = { ...input };
-            const result = await client.graphql({
+            const result = await getClient().graphql({
               query: `mutation CreatePiroshkiFormEntry($input: CreatePiroshkiFormEntryInput!) {
                 createPiroshkiFormEntry(input: $input) { id }
               }`,
@@ -925,7 +932,7 @@ class MultiTableStorageManager {
           console.log('Updating existing bagel dog form...');
           try {
             const graphqlInput = { ...input };
-            const result = await client.graphql({
+            const result = await getClient().graphql({
               query: `mutation UpdateBagelDogFormEntry($input: UpdateBagelDogFormEntryInput!) {
                 updateBagelDogFormEntry(input: $input) { id }
               }`,
@@ -944,7 +951,7 @@ class MultiTableStorageManager {
 
             try {
               console.log('Attempting fallback create for bagel dog form after update failure...');
-              const createResult = await client.graphql({
+              const createResult = await getClient().graphql({
                 query: `mutation CreateBagelDogFormEntry($input: CreateBagelDogFormEntryInput!) { createBagelDogFormEntry(input: $input) { id } }`,
                 variables: { input }
               });
@@ -970,7 +977,7 @@ class MultiTableStorageManager {
             form.id = serverId;
 
             const createInput = { ...input };
-            const result = await client.graphql({
+            const result = await getClient().graphql({
               query: `mutation CreateBagelDogFormEntry($input: CreateBagelDogFormEntryInput!) {
                 createBagelDogFormEntry(input: $input) { id }
               }`,
@@ -1021,7 +1028,7 @@ class MultiTableStorageManager {
       
       // Route to appropriate table based on form type
       if (formType === FormType.COOKING_AND_COOLING) {
-        const result = await client.graphql({
+        const result = await getClient().graphql({
           query: `query GetCookingCoolingFormEntry($id: ID!) {
             getCookingCoolingFormEntry(id: $id) { id date formInitial status title }
           }`,
@@ -1032,7 +1039,7 @@ class MultiTableStorageManager {
           return mapGraphQLResultToPaperFormEntry(result.data.getCookingCoolingFormEntry, formType);
         }
       } else if (formType === FormType.PIROSHKI_CALZONE_EMPANADA) {
-        const result = await client.graphql({
+        const result = await getClient().graphql({
           query: `query GetPiroshkiFormEntry($id: ID!) {
             getPiroshkiFormEntry(id: $id) { id date formInitial status title }
           }`,
@@ -1043,7 +1050,7 @@ class MultiTableStorageManager {
           return mapGraphQLResultToPaperFormEntry(result.data.getPiroshkiFormEntry, formType);
         }
       } else if (formType === FormType.BAGEL_DOG_COOKING_COOLING) {
-        const result = await client.graphql({
+        const result = await getClient().graphql({
           query: `query GetBagelDogFormEntry($id: ID!) {
             getBagelDogFormEntry(id: $id) { id date formInitial status title }
           }`,
@@ -1109,7 +1116,7 @@ class MultiTableStorageManager {
       console.log('Attempting to fetch cooking cooling forms...');
       
       // First, get the basic list of cooking cooling forms
-      const listResult = await client.graphql({
+      const listResult = await getClient().graphql({
         query: `query ListCookingCoolingFormEntries {
           listCookingCoolingFormEntries {
             items {
@@ -1145,7 +1152,7 @@ class MultiTableStorageManager {
       const formsWithDetails = await Promise.all(
         listResult.data.listCookingCoolingFormEntries.items.map(async (item: any) => {
           try {
-            const detailResult = await client.graphql({
+            const detailResult = await getClient().graphql({
               query: `query GetCookingCoolingFormEntry($id: ID!) {
                 getCookingCoolingFormEntry(id: $id) {
                   id
@@ -1269,7 +1276,7 @@ class MultiTableStorageManager {
       console.log('Attempting to fetch piroshki forms...');
       
       // First, get the basic list of piroshki forms
-      const listResult = await client.graphql({
+      const listResult = await getClient().graphql({
         query: `query ListPiroshkiFormEntries {
           listPiroshkiFormEntries {
             items {
@@ -1304,7 +1311,7 @@ class MultiTableStorageManager {
       const formsWithDetails = await Promise.all(
         listResult.data.listPiroshkiFormEntries.items.map(async (item: any) => {
           try {
-            const detailResult = await client.graphql({
+            const detailResult = await getClient().graphql({
               query: `query GetPiroshkiFormEntry($id: ID!) {
                 getPiroshkiFormEntry(id: $id) {
                   id
@@ -1498,7 +1505,7 @@ class MultiTableStorageManager {
       console.log('Attempting to fetch bagel dog forms...');
       
       // First, get the basic list of bagel dog forms
-      const listResult = await client.graphql({
+      const listResult = await getClient().graphql({
         query: `query ListBagelDogFormEntries {
           listBagelDogFormEntries {
             items {
@@ -1533,7 +1540,7 @@ class MultiTableStorageManager {
       const formsWithDetails = await Promise.all(
         listResult.data.listBagelDogFormEntries.items.map(async (item: any) => {
           try {
-            const detailResult = await client.graphql({
+            const detailResult = await getClient().graphql({
               query: `query GetBagelDogFormEntry($id: ID!) {
                 getBagelDogFormEntry(id: $id) {
                   id
@@ -1700,7 +1707,7 @@ class MultiTableStorageManager {
       console.log(`Executing mutation for form type ${formType}:`, mutation);
       console.log(`Variables:`, { input: { id } });
       
-      const result = await client.graphql({
+      const result = await getClient().graphql({
         query: mutation,
         variables: { input: { id } }
       }) as GraphQLResult<any>;

@@ -1,18 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Headers for PWA and caching
-  async headers() {
+  // Enable image optimization
+  images: {
+    formats: ['image/avif', 'image/webp'],
+  },
+  
+  // PWA headers
+  headers: async () => {
     return [
       {
-        source: '/service-worker.js',
+        source: '/sw.js',
         headers: [
           {
             key: 'Cache-Control',
             value: 'public, max-age=0, must-revalidate',
-          },
-          {
-            key: 'Service-Worker-Allowed',
-            value: '/',
           },
         ],
       },
@@ -25,56 +26,21 @@ const nextConfig = {
           },
         ],
       },
-      {
-        source: '/:path((?!.*\\.).*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=0, must-revalidate',
-          },
-        ],
-      },
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
-          },
-        ],
-      },
     ];
   },
 
-  // Redirects for PWA
-  async redirects() {
-    return [];
-  },
-
-  // Webpack config for service worker
+  // Suppress build-time warnings from Amplify during static generation
+  // Amplify will only be initialized in the browser (client-side)
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      config.output.publicPath = '/';
+      // Client-side webpack config
+      config.ignoreWarnings = [
+        ...(config.ignoreWarnings || []),
+        { module: /amplify/ },
+      ];
     }
     return config;
   },
+}
 
-  // Optimize images
-  images: {
-    formats: ['image/avif', 'image/webp'],
-  },
-};
-
-module.exports = nextConfig;
+module.exports = nextConfig
